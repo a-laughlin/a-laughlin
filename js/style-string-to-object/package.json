@@ -1,6 +1,6 @@
 {
   "name": "@a-laughlin/style-string-to-object",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "functional programming utils",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
@@ -10,7 +10,7 @@
   "peerDependencies": {
     "lodash": ">=4.17.15"
   },
-  "scripts":{
-    "test":""
+  "scripts": {
+    "test": ""
   }
 }
