@@ -2,7 +2,7 @@
 
 from setuptools import setup,find_packages
 setup(name='fp_utils',
-      version='0.0.2',
+      version='0.0.3',
       description='This package has shared components.',
       author='Adam Laughlin',
       author_email='',
