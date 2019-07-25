@@ -14,3 +14,6 @@ pd.set_option('display.width', 1500)
 pd.set_option('display.precision', 2)
 pd.set_option('display.float_format', lambda x: ('%.2f' % x).rstrip('0').rstrip('.'))
 pd.set_option('display.colheader_justify','left')
+
+def pandas_utils():
+  pass
