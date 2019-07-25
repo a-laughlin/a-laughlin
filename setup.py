@@ -8,8 +8,6 @@ setup(name='a_laughlin_utils',
       author='Adam Laughlin',
       author_email='',
       url='https://github.com/a-laughlin/a-laughlin.git',
-      packages=find_packages(where="./py/",include=[
-        'fp_utils','jupyter_utils','pandas_utils','vis_utils'
-      ]),
+      packages=find_packages(where="py",exclude=['*test.py']),
       license='LICENSE.txt',
     )
