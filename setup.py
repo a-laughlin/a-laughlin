@@ -8,6 +8,6 @@ setup(name='a-laughlin-utils',
       author='Adam Laughlin',
       author_email='',
       url='git+ssh://git@github.com/a-laughlin/a-laughlin-utils.git'
-      packages=find_packages(where="./py",exclude=['*test*']),
+      packages=['py/fp_utils','py/jupyter_utils','py/pandas_utils','py/vis_utils'],
       license='LICENSE.txt',
     )
