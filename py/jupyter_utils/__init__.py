@@ -1,6 +1,6 @@
 # jupyter utils
 
-from IPython.display import display
+# from IPython.display import display
 
 import warnings
 warnings.filterwarnings('warning')
