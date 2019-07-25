@@ -8,7 +8,7 @@
   "module": "style-string-to-object.js",
   "main": "style-string-to-object.cjs.js",
   "peerDependencies": {
-    "lodash": "^4.17.15"
+    "lodash": ">=4.17.15"
   },
   "scripts":{
     "test":""

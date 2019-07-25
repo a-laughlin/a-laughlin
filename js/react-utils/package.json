@@ -11,7 +11,6 @@
     "test":""
   },
   "peerDependencies":{
-    "@a-laughlin/fp-utils":"*",
-    "lodash":"^4.17.15"
+    "@a-laughlin/fp-utils":"*"
   }
 }
