@@ -4,8 +4,12 @@ from fn import _,F
 
 from funcy import autocurry, ljuxt, rcompose as pipe, merge,lmapcat,lmap,get_in,set_in,identity,flatten,pluck;
 
+
+
+# misc utils
 identity=lambda *x:x[0]
-noop=lambda *x:None
+noop = lambda *x: None
+constant = lambda x: lambda *ignored: x
 
 #logic
 def cond(predicateFnMatrix):
@@ -63,49 +67,38 @@ def to_transformer(fn,acc):
     fn(acc,v,k,c)
     return acc
   return inner
-transformTo = curry(lambda stubFn,fn,coll:reduce(to_transformer(fn),coll,stubFn()),arity=3)
+
+from functools import reduce
+transformTo = autocurry(lambda stubFn,fn,coll:reduce(to_transformer(fn),coll,stubFn()),arity=3)
 transToDict = transformTo(dict)
-listToArgs = lambda fn: lambda *lst,**kwargs: fn(*lst[0],**kwargs)
-argsToList = lambda fn: lambda *args,**kwargs: fn(args,**kwargs)
-
-from functools import partial
-def curry(fn,arity=2):
-  if arity < 1: return fn
-  def curryInner(*args,**kwargs):
-    if len(args) >= arity : return fn(*args[:arity],**kwargs)
-    return curry(partial(fn, *args[:arity],**kwargs), arity=arity-len(args))
-  return curryInner
-
-# curry tests
-lt = curry(lambda x,y: x > y)
-assert lt(2,1) == True
-assert lt(2)(1) == True
-assert lt(2,1,100) == True
-assert lt(2)(1,100) == True
-assert lt()(2,1,100) == True
+@autocurry
+def reduce_to(resultclass,fn,coll):
+  result = resultclass()
+  iter = coll.items() if isinstance(coll,dict) else enumerate(coll)
+  for k,v in iter:
+    fn(result,v,k)
+  return result
+reduce_to_list= reduce_to(list)
+reduce_to_dict= reduce_to(dict)
 
 
-# misc utils
-identity = lambda x: x
-noop = lambda *x: None
-constant = lambda x: lambda *ignored: x
+# stubs
 stub_0 = constant(0)
 stub_True = lambda *x: True
 stub_False = lambda *x: False
 stub_List = lambda *x: list()
 
-def assign_dicts(dest,*dicts):
+
+# dicts
+def assign(dest,*dicts):
   for d in dicts:
     for k in d.keys():
       dest[k]=d[k]
   return dest
 
-def assign_dicts(dest,*dicts):
-  for d in dicts:
-    for k in d.keys():
-      dest[k]=d[k]
-  return dest
 
+
+# graphs
 def analyze_graph(get_adjacent_vertices,collection}):
   graph = dict(
     vertices={id:dict(id=id,data=data) for v in get_adjacent_vertices('start',collection)},
@@ -141,14 +134,27 @@ def analyze_graph(get_adjacent_vertices,collection}):
 
 
 # files
-from json import load,dumps
+import json
 from urllib.request import urlopen,Request
 
 def read_json_file(filepath):
-  with open(filepath) as f: return load(f);
+  with open(filepath) as f: return json.load(f);
 
+@autocurry
 def write_json_file(filepath,data):
-  with open(filepath,'w') as f: f.write( dumps(data));
+  with open(filepath,'w') as f: f.write(json.dumps(data));
 
 def read_json_url(url):
   return load(urlopen(Request(url)));
+
+import csv
+@autocurry
+def iterable2d_to_csv_file(filepath="output.csv",iterable2d=[[],[]]):
+  """arr2d_to_csv_file("output.csv",iterable2d=[[],[]])"""
+  w = csv.writer(open(filepath, "w",newline=''),quoting=csv.QUOTE_MINIMAL)
+  for row in iterable2d: w.writerow(row);
+
+@autocurry
+def csv_file_to_iterable(filepath,**reader_args):
+  """csv_file_to_iterable(**reader_args,open('input.csv'))"""
+  return csv.reader(open(filepath,'r',newline=''), **reader_args);
