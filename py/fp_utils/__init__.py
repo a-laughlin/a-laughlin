@@ -49,7 +49,7 @@ mul = autocurry(lambda x,y:y*x)
 truediv = autocurry(lambda x,y:y/x)
 floordiv = autocurry(lambda x,y:y//x)
 pow = autocurry(lambda x,y:y**x)
-mod = autocurry(lambda x,y: y % x, arity=2))
+mod = autocurry(lambda x,y: y % x)
 divisibleBy = lambda x: pipe(mod(x), eq(0))
 
 #function manipulation
@@ -69,7 +69,7 @@ def to_transformer(fn,acc):
   return inner
 
 from functools import reduce
-transformTo = autocurry(lambda stubFn,fn,coll:reduce(to_transformer(fn),coll,stubFn()),arity=3)
+transformTo = autocurry(lambda stubFn,fn,coll:reduce(to_transformer(fn),coll,stubFn()))
 transToDict = transformTo(dict)
 @autocurry
 def reduce_to(resultclass,fn,coll):
@@ -99,7 +99,7 @@ def assign(dest,*dicts):
 
 
 # graphs
-def analyze_graph(get_adjacent_vertices,collection}):
+def analyze_graph(get_adjacent_vertices,collection):
   graph = dict(
     vertices={id:dict(id=id,data=data) for v in get_adjacent_vertices('start',collection)},
     root_vertices={},
@@ -149,9 +149,10 @@ def read_json_url(url):
 
 import csv
 @autocurry
-def iterable2d_to_csv_file(filepath="output.csv",iterable2d=[[],[]]):
+def iterable2d_to_csv_file(filepath="output.csv",cols=[],iterable2d=[[],[]]):
   """arr2d_to_csv_file("output.csv",iterable2d=[[],[]])"""
   w = csv.writer(open(filepath, "w",newline=''),quoting=csv.QUOTE_MINIMAL)
+  if cols: w.writerow(cols);
   for row in iterable2d: w.writerow(row);
 
 @autocurry

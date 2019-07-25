@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
-%matplotlib inline
+# %matplotlib inline
 
 def enum_axes(r=1,c=1,w=5,h=5,subplots_adjust_kw=dict(left=0.125,right=0.9,bottom=0.1,top=0.9,wspace=0.1,hspace=0.1)):
   """data=[[],[]] or [], r=rows,c=cols,w=cell_width,h=cell_height"""
