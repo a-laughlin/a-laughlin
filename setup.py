@@ -7,7 +7,7 @@ setup(name='a-laughlin-utils',
       description='This package has shared components.',
       author='Adam Laughlin',
       author_email='',
-      url='git+ssh://git@github.com/a-laughlin/a-laughlin-utils.git'
+      url='https://github.com/a-laughlin/a-laughlin.git',
       packages=['py/fp_utils','py/jupyter_utils','py/pandas_utils','py/vis_utils'],
       license='LICENSE.txt',
     )
