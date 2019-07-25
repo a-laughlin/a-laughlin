@@ -7,8 +7,8 @@
   "license": "ISC",
   "module": "fp-utils.js",
   "main": "fp-utils.cjs.js",
-  "dependencies": {
-    "lodash": "^4.17.11"
+  "peerDependencies": {
+    "lodash": "^4.17.15"
   },
   "scripts":{
     "test":"jest --no-watch"

@@ -7,8 +7,8 @@
   "license": "ISC",
   "module": "style-string-to-object.js",
   "main": "style-string-to-object.cjs.js",
-  "dependencies": {
-    "lodash": "^4.17.11"
+  "peerDependencies": {
+    "lodash": "^4.17.15"
   },
   "scripts":{
     "test":""
