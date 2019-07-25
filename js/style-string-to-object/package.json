@@ -1,0 +1,16 @@
+{
+  "name": "@a-laughlin/style-string-to-object",
+  "version": "0.0.0",
+  "description": "functional programming utils",
+  "author": "Adam Laughlin <adam.laughlin@gmail.com>",
+  "homepage": "",
+  "license": "ISC",
+  "module": "style-string-to-object.js",
+  "main": "style-string-to-object.cjs.js",
+  "dependencies": {
+    "lodash": "^4.17.11"
+  },
+  "scripts":{
+    "test":""
+  }
+}

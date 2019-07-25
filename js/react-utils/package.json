@@ -1,0 +1,17 @@
+{
+  "name": "@a-laughlin/react-utils",
+  "version": "0.0.0",
+  "description": "react utils",
+  "author": "Adam Laughlin <adam.laughlin@gmail.com>",
+  "homepage": "",
+  "license": "ISC",
+  "module": "react-utils.js",
+  "main": "react-utils.cjs.js",
+  "scripts":{
+    "test":""
+  },
+  "peerDependencies":{
+    "@a-laughlin/fp-utils":"*",
+    "lodash":"^4.17.11"
+  }
+}

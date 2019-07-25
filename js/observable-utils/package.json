@@ -1,0 +1,16 @@
+{
+  "name": "@a-laughlin/observable-utils",
+  "version": "0.0.0",
+  "description": "functional reactive programming utils (aka streams,observables)",
+  "author": "Adam Laughlin <adam.laughlin@gmail.com>",
+  "homepage": "",
+  "license": "ISC",
+  "module": "observable-utils.js",
+  "main": "observable-utils.cjs.js",
+  "dependencies": {
+    "xstream": "^11.2.0"
+  },
+  "scripts":{
+    "test":"jest --no-watch"
+  }
+}

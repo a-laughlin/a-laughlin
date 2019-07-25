@@ -1,0 +1,25 @@
+{
+  "name": "root",
+  "private": true,
+  "devDependencies": {
+    "@babel/cli": "^7.4.4",
+    "@babel/core": "^7.4.5",
+    "@babel/preset-env": "^7.4.5",
+    "babel-jest": "^24.8.0",
+    "jest": "^24.8.0",
+    "lerna": "^3.14.1",
+    "rollup": "^1.12.4",
+    "rollup-plugin-babel": "^4.3.2",
+    "rollup-plugin-node-resolve": "^5.0.0"
+  },
+  "workspaces": [
+    "js/*",
+    "py/*"
+  ],
+  "dependencies": {},
+  "scripts": {
+    "build": "babel src/** -d dist",
+    "test": "jest --no-cache --no-watch ./src/fp-utils",
+    "dev": "jest --watch"
+  }
+}
