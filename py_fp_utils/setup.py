@@ -8,5 +8,6 @@ setup(name='py_fp_utils',
       author_email='',
       url='https://github.com/a-laughlin/a-laughlin',
       packages=find_packages(),
+      py_modules=['fp_utils2'],
       license='LICENSE.txt',
     )
