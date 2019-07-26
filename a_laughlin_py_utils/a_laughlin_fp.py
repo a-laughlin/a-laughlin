@@ -146,7 +146,7 @@ def write_json_file(filepath,data):
   with open(filepath,'w') as f: f.write(json.dumps(data));
 
 def read_json_url(url):
-  return load(urlopen(Request(url)));
+  return json.load(urlopen(Request(url)));
 
 import csv
 @autocurry
@@ -159,4 +159,9 @@ def iterable2d_to_csv_file(filepath="output.csv",cols=[],iterable2d=[[],[]]):
 @autocurry
 def csv_file_to_iterable(filepath,**reader_args):
   """csv_file_to_iterable(**reader_args,open('input.csv'))"""
+  #   if filepath.startswith('http'):
+  #     csv_iterable=csv.reader(urlopen(csv_path).iter_lines())
   return csv.reader(open(filepath,'r',newline=''), **reader_args);
+
+def read_json_url(url):
+  return load(urlopen(Request(url)));
