@@ -143,7 +143,7 @@ def read_json_file(filepath):
 
 @autocurry
 def write_json_file(filepath,data):
-  with open(filepath,'w') as f: f.write(json.dumps(data));
+  json.dump(data,open(filepath,'w'),separators=(',', ':'))
 
 def read_json_url(url):
   return json.load(urlopen(Request(url)));
