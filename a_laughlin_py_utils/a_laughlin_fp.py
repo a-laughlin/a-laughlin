@@ -19,10 +19,12 @@ stub_False = lambda *x,**kw: False
 stub_list = lambda *x,**kw: list()
 stub_dict = lambda *x,**kw: dict()
 blank_class = lambda *x,**kw:x[0].__class__()
-
+from functools import partial
 # fn utils
-curry2 = lambda fn:curry(fn,2)
-curry3 = lambda fn:curry(fn,3)
+# versions of curry that truncate to correct number of positional args
+curryn = lambda n,fn:lambda *a,**kw:fn(*a,**kw) if len(a)>=n else curryn(n-len(a),lambda *b,**kwb:fn(*a,*b,**kw,**kwb))
+curry2 = lambda fn:curryn(2,lambda *a,**kw:fn(a[0],a[1],**kw))
+curry3 = lambda fn:curryn(3,lambda *a,**kw:fn(a[0],a[1],a[2],**kw))
 ensureListArg = lambda fn:lambda *args,**kw:fn(args[0],**kw) if (len(args)==1) else fn(args,**kw);
 
 #function manipulation
@@ -51,28 +53,28 @@ rx = reduce_to(lambda x:x.__class__())
 
 
 # map_to ... different syntax for each
-mdv = curry2(lambda fn,coll:{k:fn(v,k) for k,v in get_kv_iter(coll)})
-mdk = curry2(lambda fn,coll:{fn(v,k):v for k,v in get_kv_iter(coll)})
-ml = curry2(lambda fn,coll:[fn(v,k) for k,v in get_kv_iter(coll)])
-mg = curry2(lambda fn,coll:(fn(v,k) for k,v in get_kv_iter(coll)))
-mt = curry2(lambda fn,coll:tuple(fn(v,k) for k,v in get_kv_iter(coll)))
+mdv = curry2(lambda fn,coll:{k:fn(v,k,coll) for k,v in get_kv_iter(coll)})
+mdk = curry2(lambda fn,coll:{fn(v,k,coll):v for k,v in get_kv_iter(coll)})
+ml = curry2(lambda fn,coll:[fn(v,k,coll) for k,v in get_kv_iter(coll)])
+mg = curry2(lambda fn,coll:(fn(v,k,coll) for k,v in get_kv_iter(coll)))
+mt = curry2(lambda fn,coll:tuple(fn(v,k,coll) for k,v in get_kv_iter(coll)))
 
 # flatmap_to
-flatml = curry2(lambda fn,coll:[v for a in (fn(xi) for xi in coll) for v in a])
-flatmg = curry2(lambda fn,coll:(v for a in (fn(xi) for xi in coll) for v in a))
-flatmt = curry2(lambda fn,coll:tuple(v for a in (fn(xi) for xi in coll) for v in a))
+flatml = curry2(lambda fn,coll:[v for a in (fn(x,xi,coll) for xi,x in get_kv_iter(coll)) for v in a])
+flatmg = curry2(lambda fn,coll:(v for a in (fn(x,xi,coll) for xi,x in get_kv_iter(coll)) for v in a))
+flatmt = curry2(lambda fn,coll:tuple(v for a in (fn(x,xi,coll) for xi,x in get_kv_iter(coll)) for v in a))
 
 # filter_to
-fd = curry2(lambda fn,coll:{k:v for k,v in get_kv_iter(coll) if fn(v,k)})
-fl = curry2(lambda fn,coll:[v for k,v in get_kv_iter(coll) if fn(v,k)])
-fg = curry2(lambda fn,coll:(v for k,v in get_kv_iter(coll) if fn(v,k)))
-ft = curry2(lambda fn,coll:tuple(v for k,v in get_kv_iter(coll) if fn(v,k)))
+fd = curry2(lambda fn,coll:{k:v for k,v in get_kv_iter(coll) if fn(v,k,coll)})
+fl = curry2(lambda fn,coll:[v for k,v in get_kv_iter(coll) if fn(v,k,coll)])
+fg = curry2(lambda fn,coll:(v for k,v in get_kv_iter(coll) if fn(v,k,coll)))
+ft = curry2(lambda fn,coll:tuple(v for k,v in get_kv_iter(coll) if fn(v,k,coll)))
 
 # omit_to
-od = curry2(lambda fn,coll:{k:v for k,v in get_kv_iter(coll) if not fn(v,k)})
-ol = curry2(lambda fn,coll:[v for k,v in get_kv_iter(coll) if not fn(v,k)])
-og = curry2(lambda fn,coll:(v for k,v in get_kv_iter(coll) if not fn(v,k)))
-ot = curry2(lambda fn,coll:tuple(v for k,v in get_kv_iter(coll) if not fn(v,k)))
+od = curry2(lambda fn,coll:{k:v for k,v in get_kv_iter(coll) if not fn(v,k,coll)})
+ol = curry2(lambda fn,coll:[v for k,v in get_kv_iter(coll) if not fn(v,k,coll)])
+og = curry2(lambda fn,coll:(v for k,v in get_kv_iter(coll) if not fn(v,k,coll)))
+ot = curry2(lambda fn,coll:tuple(v for k,v in get_kv_iter(coll) if not fn(v,k,coll)))
 
 #logic
 @ensureListArg
@@ -87,14 +89,14 @@ ifElse = lambda predicate,fnTrue,fnFalse: lambda *a,**kw: fnTrue(*a,**kw) if pre
 
 
 # predicates
-lt = curry2(lambda x,y: y < x)
-lte = curry2(lambda x,y: y <= x)
-gt = curry2(lambda x,y: y > x)
-gte = curry2(lambda x,y: y >= x)
-eq = curry2(lambda x,y: y == x)
-ne = curry2(lambda x,y: y != x)
-is_ = curry2(lambda x,y: y is x)
-is_not = curry2(lambda x,y: y is not x)
+lt = curry2(lambda *x: x[1]<x[0])
+lte = curry2(lambda *x: x[1] <= x[0])
+gt = curry2(lambda *x: x[1] > x[0])
+gte = curry2(lambda *x: x[1] >= x[0])
+eq = curry2(lambda *x: x[1] == x[0])
+ne = curry2(lambda *x: x[1] != x[0])
+is_ = curry2(lambda *x: x[1] is x[0])
+is_not = curry2(lambda *x: x[1] is not x[0])
 
 #debugging
 plog = lambda *args: print(*args) or args[0]
@@ -106,15 +108,15 @@ def logFn(fn,name=""):
 
 
 #math
-def len_minus1(collection): return len(collection) - 1
-add = curry2(lambda x,y:y+x)
-sub = curry2(lambda x,y:y-x)
-mul = curry2(lambda x,y:y*x)
-truediv = curry2(lambda x,y:y/x)
-floordiv = curry2(lambda x,y:y//x)
-pow = curry2(lambda x,y:y**x)
-mod = curry2(lambda x,y:y % x)
-divisibleBy = curry2(lambda a,b:b%a==0)
+len_minus1 = lambda *x:len(x[0])-1
+add = curry2(lambda *x:x[1]+x[0])
+sub = curry2(lambda *x:x[1]-x[0])
+mul = curry2(lambda *x:x[1]*x[0])
+truediv = curry2(lambda *x:x[1]/x[0])
+floordiv = curry2(lambda *x:x[1]//x[0])
+pow = curry2(lambda *x:x[1]**x[0])
+mod = curry2(lambda *x:x[1] % x[0])
+divisibleBy = curry2(lambda *x:x[1]%x[0]==0)
 
 
 
