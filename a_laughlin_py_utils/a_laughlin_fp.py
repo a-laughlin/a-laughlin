@@ -1,37 +1,100 @@
 
 # from toolz.functoolz import curry,partial,compose,flip,pipe as datapipe
-from fn import _,F
+from fn import _ as __,F
 
-from funcy import autocurry, ljuxt, rcompose as pipe, merge,lmapcat,lmap,get_in,set_in,identity,flatten,pluck;
-
-def fp_utils():
-  pass
+from funcy import curry, ljuxt, rcompose as pipe, merge,lmapcat,lmap,get_in,set_in,identity,flatten,pluck;
+from toolz.curried import map as toolzmap
+from toolz.curried import mapcat as flatmap
 
 # misc utils
-identity=lambda *x:x[0]
-noop = lambda *x: None
-constant = lambda x: lambda *ignored: x
+identity=lambda *a,**kw:a[0]
+noop = lambda *a,**kw: None
+constant = lambda x: lambda *a,**kw: x
+
+
+# stubs
+stub_0 = constant(0)
+stub_True = lambda *x,**kw: True
+stub_False = lambda *x,**kw: False
+stub_list = lambda *x,**kw: list()
+stub_dict = lambda *x,**kw: dict()
+blank_class = lambda *x,**kw:x[0].__class__()
+
+# fn utils
+curry2 = lambda fn:curry(fn,2)
+curry3 = lambda fn:curry(fn,3)
+ensureListArg = lambda fn:lambda *args,**kw:fn(args[0],**kw) if (len(args)==1) else fn(args,**kw);
+
+#function manipulation
+
+compose = lambda *fns :pipe(*reversed(fns))
+fmap = lambda fn: lambda data: (fn(d) for d in data)
+mapPipe = compose(fmap,pipe)
+spread = lambda fn : lambda iterableArg : fn(*iterableArg)
+
+nthArg = lambda argNum: lambda *args: args[argNum]
+negate = lambda fn: lambda *args,**kwargs:not fn(*args,**kwargs)
+over = lambda fns: lambda *args,**kwargs: tuple(f(*args,**kwargs) for f in fns)
+forkjoin = lambda *fns: lambda data:fns[-1](*[fn(data) for fn in fns[0:-2]])
+
+get_kv_iter=lambda x:x.items() if hasattr(x,'items') else enumerate(x)
+
+@curry3
+def reduce_to(get_result,fn,coll):
+  result = get_result(coll)
+  for k,v in get_kv_iter(coll):
+    fn(result,v,k,coll)
+  return result
+rl = reduce_to(stub_list)
+rd = reduce_to(stub_dict)
+rx = reduce_to(lambda x:x.__class__())
+
+
+# map_to ... different syntax for each
+mdv = curry2(lambda fn,coll:{k:fn(v,k) for k,v in get_kv_iter(coll)})
+mdk = curry2(lambda fn,coll:{fn(v,k):v for k,v in get_kv_iter(coll)})
+ml = curry2(lambda fn,coll:[fn(v,k) for k,v in get_kv_iter(coll)])
+mg = curry2(lambda fn,coll:(fn(v,k) for k,v in get_kv_iter(coll)))
+mt = curry2(lambda fn,coll:tuple(fn(v,k) for k,v in get_kv_iter(coll)))
+
+# flatmap_to
+flatml = curry2(lambda fn,coll:[v for a in (fn(xi) for xi in coll) for v in a])
+flatmg = curry2(lambda fn,coll:(v for a in (fn(xi) for xi in coll) for v in a))
+flatmt = curry2(lambda fn,coll:tuple(v for a in (fn(xi) for xi in coll) for v in a))
+
+# filter_to
+fd = curry2(lambda fn,coll:{k:v for k,v in get_kv_iter(coll) if fn(v,k)})
+fl = curry2(lambda fn,coll:[v for k,v in get_kv_iter(coll) if fn(v,k)])
+fg = curry2(lambda fn,coll:(v for k,v in get_kv_iter(coll) if fn(v,k)))
+ft = curry2(lambda fn,coll:tuple(v for k,v in get_kv_iter(coll) if fn(v,k)))
+
+# omit_to
+od = curry2(lambda fn,coll:{k:v for k,v in get_kv_iter(coll) if not fn(v,k)})
+ol = curry2(lambda fn,coll:[v for k,v in get_kv_iter(coll) if not fn(v,k)])
+og = curry2(lambda fn,coll:(v for k,v in get_kv_iter(coll) if not fn(v,k)))
+ot = curry2(lambda fn,coll:tuple(v for k,v in get_kv_iter(coll) if not fn(v,k)))
 
 #logic
+@ensureListArg
 def cond(predicateFnMatrix):
-  def condInner(*args):
+  def condInner(*args,**kw):
     for (predicate,fn) in predicateFnMatrix:
-      if predicate(*args):
-        return fn(*args)
+      if predicate(*args,**kw):
+        return fn(*args,**kw);
   return condInner
 all = lambda *fns: lambda *args,**kwargs: reduce((lambda truth,fn:(fn(*args,**kwargs) if truth else truth)),fns,True)
 ifElse = lambda predicate,fnTrue,fnFalse: lambda *a,**kw: fnTrue(*a,**kw) if predicate(*a,**kw) else fnFalse(*a,**kw)
 
 
 # predicates
-lt = autocurry(lambda x,y: y < x)
-lte = autocurry(lambda x,y: y <= x)
-gt = autocurry(lambda x,y: y > x)
-gte = autocurry(lambda x,y: y >= x)
-eq = autocurry(lambda x,y: y == x)
-ne = autocurry(lambda x,y: y != x)
-is_ = autocurry(lambda x,y: x is y)
-is_not = autocurry(lambda x,y: x is not y)
+lt = curry2(lambda x,y: y < x)
+lte = curry2(lambda x,y: y <= x)
+gt = curry2(lambda x,y: y > x)
+gte = curry2(lambda x,y: y >= x)
+eq = curry2(lambda x,y: y == x)
+ne = curry2(lambda x,y: y != x)
+is_ = curry2(lambda x,y: y is x)
+is_not = curry2(lambda x,y: y is not x)
 
 #debugging
 plog = lambda *args: print(*args) or args[0]
@@ -44,50 +107,16 @@ def logFn(fn,name=""):
 
 #math
 def len_minus1(collection): return len(collection) - 1
-add = autocurry(lambda x,y:y+x)
-sub = autocurry(lambda x,y:y-x)
-mul = autocurry(lambda x,y:y*x)
-truediv = autocurry(lambda x,y:y/x)
-floordiv = autocurry(lambda x,y:y//x)
-pow = autocurry(lambda x,y:y**x)
-mod = autocurry(lambda x,y: y % x)
-divisibleBy = lambda x: pipe(mod(x), eq(0))
-
-#function manipulation
-
-compose = lambda *fns :pipe(*reversed(fns))
-fmap = lambda fn: lambda data: (fn(d) for d in data)
-mapPipe = compose(fmap,pipe)
-spread = lambda fn : lambda iterableArg : fn(*iterableArg)
-forkjoin = lambda *fns,mergefn: lambda data:mergefn(*[fn(data) for fn in fns])
-nthArg = lambda argNum: lambda *args: args[argNum]
-negate = lambda fn: lambda *args,**kwargs:not fn(*args,**kwargs)
-over = lambda fns: lambda *args,**kwargs: [f(*args,**kwargs) for f in fns]
-def to_transformer(fn,acc):
-  def inner(acc,v,k,c):
-    fn(acc,v,k,c)
-    return acc
-  return inner
-
-from functools import reduce
-transformTo = autocurry(lambda stubFn,fn,coll:reduce(to_transformer(fn),coll,stubFn()))
-transToDict = transformTo(dict)
-@autocurry
-def reduce_to(resultclass,fn,coll):
-  result = resultclass()
-  iter = coll.items() if isinstance(coll,dict) else enumerate(coll)
-  for k,v in iter:
-    fn(result,v,k)
-  return result
-reduce_to_list= reduce_to(list)
-reduce_to_dict= reduce_to(dict)
+add = curry2(lambda x,y:y+x)
+sub = curry2(lambda x,y:y-x)
+mul = curry2(lambda x,y:y*x)
+truediv = curry2(lambda x,y:y/x)
+floordiv = curry2(lambda x,y:y//x)
+pow = curry2(lambda x,y:y**x)
+mod = curry2(lambda x,y:y % x)
+divisibleBy = curry2(lambda a,b:b%a==0)
 
 
-# stubs
-stub_0 = constant(0)
-stub_True = lambda *x: True
-stub_False = lambda *x: False
-stub_List = lambda *x: list()
 
 
 # dicts
@@ -138,30 +167,24 @@ def analyze_graph(get_adjacent_vertices,collection):
 import json
 from urllib.request import urlopen,Request
 
-def read_json_file(filepath):
-  with open(filepath) as f: return json.load(f);
+def read_json_file(filepath):return json.load(open(filepath,'r'));
 
-@autocurry
-def write_json_file(filepath,data):
-  json.dump(data,open(filepath,'w'),separators=(',', ':'))
+@curry2
+def write_json_file(filepath,data): return json.dump(data,open(filepath,'w'),separators=(',', ':'));
 
-def read_json_url(url):
-  return json.load(urlopen(Request(url)));
+def read_json_url(url):return json.load(urlopen(Request(url)));
 
 import csv
-@autocurry
+@curry3
 def iterable2d_to_csv_file(filepath="output.csv",cols=[],iterable2d=[[],[]]):
   """arr2d_to_csv_file("output.csv",iterable2d=[[],[]])"""
   w = csv.writer(open(filepath, "w",newline=''),quoting=csv.QUOTE_MINIMAL)
   if cols: w.writerow(cols);
   for row in iterable2d: w.writerow(row);
 
-@autocurry
+@curry2
 def csv_file_to_iterable(filepath,**reader_args):
   """csv_file_to_iterable(**reader_args,open('input.csv'))"""
   #   if filepath.startswith('http'):
   #     csv_iterable=csv.reader(urlopen(csv_path).iter_lines())
   return csv.reader(open(filepath,'r',newline=''), **reader_args);
-
-def read_json_url(url):
-  return load(urlopen(Request(url)));
