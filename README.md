@@ -1,4 +1,4 @@
-Experimental monorepo to develop/build/test/package/publish/import multi-langugage personal utilities. Currently functional-programming-focused JS and Python, plus a few experimental post-hooks-release React utils.
+Experimental monorepo to develop/build/test/package/publish/import multi-langugage personal utilities. Currently includes functional-programming-focused JS and Python, plus a few experimental post-hooks-release React utils.
 
 Tech: Lerna, Yarn Workspaces, React, Jest, XStream, and PyUnit.
 
