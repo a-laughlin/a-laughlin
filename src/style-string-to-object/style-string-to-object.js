@@ -1,8 +1,8 @@
-import merge from 'lodash/merge'
-import pipe from 'lodash/flow'
+import merge from 'lodash/merge';
+import pipe from 'lodash/flow';
 
 export const styleStringToObj = (()=>{
-  const styleMatcher = /^([a-z]+)([A-Z0-9.:#+-]+)(.*)$/;
+  const styleMatcher = /^([a-z]+)([A-Z0-9.:#+-]+)?(.*)$/;
   const valSetterFactory = fn=>(...keys)=>pipe(fn,sz=>keys.reduce((o,k)=>{o[k]=sz;return o;},{}));
   const parseColor = (num,unit)=>{
     if (num==='T') return 'transparent';
@@ -16,12 +16,19 @@ export const styleStringToObj = (()=>{
   const getSizeVal = (num,unit)=>`${num}${units[unit]}`;
   const getSizeObj = valSetterFactory(getSizeVal);
   const getColorObj = valSetterFactory(parseColor);
+  const getGridTemplateVal = (num='A',unit)=>{
+    if (num==='A') return 'auto';
+    if (num==='M') return `minmax(${unit})`;
+    if (num==='F') return `fit-content(${unit})`;
+    if (num==='R') return `repeat(${unit})`;
+    return `${num}${unit}`.replace(nestedSplitter,' ');
+  };
   const parser = (str)=>{
     try{
       const [_,prefix,num,unit]=str.match(styleMatcher) // eslint-disable-line no-unused-vars
       return prefixes[prefix](num,unit)
     } catch(e){
-      global.console && console.warn(`invalid style: "${str}". See style-string-to-obj.test.js for correct syntax.`);
+      global.console && console.warn(`invalid style: "${str}". See style-string-to-object.test.js for correct syntax.`);
       return {};
     }
   };
@@ -76,6 +83,10 @@ export const styleStringToObj = (()=>{
     strkdsh:getSizeObj('strokeDasharray'),
     transx:pipe(getSizeVal,sz=>({transform:`translateX(${sz})`})),
     transy:pipe(getSizeVal,sz=>({transform:`translateY(${sz})`})),
+    gtc:(num,unit)=>({ display:'grid', gridTemplateColumns:getGridTemplateVal(num,unit)}),
+    gtr:(num,unit)=>({ display:'grid', gridTemplateRows:getGridTemplateVal(num,unit)}),
+    vl:(num,unit)=>({display:'grid', gridTemplateColumns:'100%',gridTemplateRows:getGridTemplateVal(num,unit)}),
+    hl:(num,unit)=>({display:'grid', gridTemplateRows:'100%',gridTemplateColumns:getGridTemplateVal(num,unit)}),
     /* pseudoclasses: requires some lib (e.g., styletron) that converts styles to an actual stylesheet */
     nth:(num,unit)=>({[`:nth-child(${num})`]:parseNested(unit)}),
     // select = 6 nth6
@@ -104,6 +115,9 @@ export const styleStringToObj = (()=>{
     em:'em',
     p:'px',
     px:'px',
+    f:'fr',
+    c:'ch',
+
   };
   const cache = {
     // lists
@@ -194,6 +208,7 @@ export const styleStringToObj = (()=>{
     dN:{display:'none'},
     dIF:{display:'inline-flex'},
     dI:{display:'inline'},
+    dG:{display:'grid'},
 
     // visibility
     vV:{visibility:'visible'},
@@ -239,6 +254,26 @@ export const styleStringToObj = (()=>{
     alignItems:'flex-start',
   };
   cache.fg = {
+    ...cache.fh,
+    flexWrap:'wrap',
+    alignItems:'flex-start',
+    justifyContent:'space-evenly',
+  };
+
+  cache.h = {
+    display:'grid',
+    gridTemplateColumns:'auto',
+    alignItems:'center',
+    alignContent:'flex-start',
+    justifyContent:'flex-start',
+    flexWrap:'nowrap',
+  };
+  cache.v = {
+    ...cache.fh,
+    flexDirection:'column',
+    alignItems:'flex-start',
+  };
+  cache.g = {
     ...cache.fh,
     flexWrap:'wrap',
     alignItems:'flex-start',

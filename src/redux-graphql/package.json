@@ -1,0 +1,16 @@
+{
+  "name": "redux-graphql",
+  "version": "0.0.1",
+  "description": "query redux with a graphql schema",
+  "author": "Adam Laughlin <adam.laughlin@gmail.com>",
+  "homepage": "",
+  "license": "ISC",
+  "type": "module",
+  "main": "redux-graphql.js",
+  "browser": "redux-graphql.js",
+  "module": "redux-graphql.js",
+  "dependencies": {
+    "graphql": "^15.0.0",
+    "graphql-tag": "^2.10.3"
+  }
+}

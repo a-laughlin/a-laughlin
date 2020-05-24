@@ -56,16 +56,52 @@ import intersection from 'lodash/fp/intersection'
 import nth from 'lodash/fp/nth'
 import first from 'lodash/fp/first'
 import last from 'lodash/fp/last'
+import clone from 'lodash/fp/clone';
 
 
 import merge from 'lodash/merge'
 import mergeWith from 'lodash/mergeWith'
 import {default as _set} from 'lodash/set'
 
-
 const [transform,filter,map,mapValues,reduce,flatMap] = [
   transformFP,filterFP,mapFP,mapValuesFP,reduceFP,flatMapFP].map(fn=>fn.convert({cap:false}));
 
+// curry/compose/pipe, for later fns
+let curry,compose,pipe;
+if (process.env.NODE_ENV !== 'production') {
+  // debugging versions
+  const fToString = fn => fn.name ? fn.name : fn.toString();
+  curry =(fn) => {
+    const f1 = (...args) => {
+      if (args.length >= fn.length) { return fn(...args) };
+      const f2 = (...more) => f1(...args, ...more);
+      f2.toString = () => `${fToString(fn)}(${args.join(', ')})`;
+      return Object.defineProperty(f2, `name`, { value: `${fToString(fn)}(${args.join(', ')})` });
+    };
+    f1.toString = () => fToString(fn);
+    return Object.defineProperty(f1, `name`, { value: fToString(fn) });
+  };
+
+  // based on https://dev.to/ascorbic/creating-a-typed-compose-function-in-typescript-3-351i
+  compose = (...fns) => {
+    const composed = (x) => fns.reduceRight((acc, f) => f(acc), x);
+    composed.toString = () => `compose(${fns.map(fToString).join(', ')})`;
+    return composed;
+  };
+  pipe = (...fns) => {
+    const piped = (x) => fns.reduce((acc, f) => f(acc), x);
+    piped.toString = () => `pipe(${fns.reverse().map(fToString).join(', ')})`;
+    return piped;
+  };
+} else {
+  // eslint-disable-next-line
+  curry = fn => (...args) => args.length >= fn.length ? fn(...args) : curry(fn.bind(null, ...args));
+  // eslint-disable-next-line
+  compose = (...fns) => (arg) => fns.reduceRight((acc, f) => f(acc), arg);
+  // eslint-disable-next-line
+  pipe = (...fns) => (arg) => fns.reduce((acc, f) => f(acc), arg);
+}
+export { curry, compose, pipe };
 
 
 // stubs
@@ -87,7 +123,6 @@ export const isFalsy = arg=>!arg;
 export const isTruthy = arg=>!!arg;
 export const is = val1=>val2=>val1===val2;
 export const isUndefOrNull = val => val == undefined; // eslint-disable-line
-export const isPromise = x=>!isUndefOrNull(x) && typeof x.then == 'function';
 export const len = num=>({length})=>length===num;
 export const len0 = len(0);
 export const len1 = len(1);
@@ -99,16 +134,16 @@ export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
 
 // flow
 export {once,over};
-export const pipe = (fn=identity,...fns)=>(arg1,...args)=>{
-  let nextfn;
-  let result = fn(arg1,...args);
-  for (nextfn of fns){
-    result=nextfn(result);
-  }
-  return result;
-}
+// export const pipe = (fn=identity,...fns)=>(arg1,...args)=>{
+//   let nextfn;
+//   let result = fn(arg1,...args);
+//   for (nextfn of fns){
+//     result=nextfn(result);
+//   }
+//   return result;
+// }
 export const dpipe = (data,...args)=>pipe(...args)(data);
-export const compose = (...fns)=>pipe(...fns.reverse());
+// export const compose = (...fns)=>pipe(...fns.reverse());
 
 // functions
 export {spread,rest,identity}
@@ -206,7 +241,7 @@ export const groupByValues = ro((o,item,k,c)=>{
 
 
 // Objects
-export {values,keys}
+export {values,keys,clone}
 export const renameProps = obj=>target=>{
   let newKey,oldKey,targetCopy = {...target};
   for (newKey in obj){
@@ -235,3 +270,84 @@ export const objToUrlParams = objStringifierFactory({
 
 // content
 export {uniqueId}
+
+
+
+
+
+export const isPromise = x=>typeof x?.then==='function';
+
+export const transduce = (acc, combiner , transducer, collection) =>{
+  let k,l;
+  const reducer = transducer(combiner);
+  if (Array.isArray(collection))
+    for (k=-1, l = collection.length;++k < l;)
+      (acc=isPromise(acc)
+        ? acc.then(a=>reducer(a, collection[k], k, collection))
+        : reducer(acc, collection[k], k, collection));
+  else if (typeof collection === 'object')
+    for (k in collection)
+      (acc=isPromise(acc)
+        ? acc.then(a=>reducer(a, collection[k], k, collection))
+        : reducer(acc, collection[k], k, collection));
+  return acc;
+}
+
+export const appendArrayReducer = (acc,v)=>{acc[acc.length]=v;return acc;}
+export const appendObjectReducer = (acc,v,k)=>{acc[k]=v;return acc;}
+export const tdToArray = transducer=>collection=>transduce([], appendArrayReducer, transducer, collection);
+export const tdToObject = transducer=>collection=>transduce(({}), appendObjectReducer, transducer, collection);
+export const tdToSame = transducer=>collection=>(Array.isArray(collection)?tdToArray:tdToObject)(transducer)(collection);
+export const tdToInitial = transducer=>initial=>transduce(initial, identity, transducer, [initial]);
+
+export const tdMap = (mapper) => (nextReducer) => (a,v,k,c) => nextReducer(a,mapper(v,k,c),k,c);
+export const tdFilter = (pred) => (nextReducer) => (a,v,k,c) => pred(v,k,c) ? nextReducer(a,v,k,c) : a;
+export const tdOmit = (pred) => (nextReducer) => (a,v,k,c) => pred(v,k,c) ? a: nextReducer(a,v,k,c);
+export const tdReduce = (reducer) => (nextReducer) => (a,v,k,c) =>nextReducer(reducer(a,v,k,c),v,k,c);
+export const tdTrans = (reducer) => (nextReducer) => (a,v,k,c)=>{
+  reducer(a,v,k,c);
+  nextReducer(a,v,k,c);
+  return a;
+};
+export const tdOver = (...reducers) => (nextReducer) => (a,v,k,c) => {
+  return nextReducer(reducers.reduce((aa,r,i)=>aa[aa.length]=r(aa,v,i,c),k,c,[]),v,k,c);
+};
+export const tdFlat = tdReduce((a) => {
+  return a.reduce((acc,subArr)=>{for (let s of subArr)acc[acc.length]=s;return acc;},[]);
+});
+
+export const transduceRecursive = transducer=>{
+  const walkReducer = tdToSame(compose(
+    transducer,
+    tdMap(v=>typeof v==='object'?walkReducer(v):v)
+  ));
+  return walkReducer;
+}
+// lodash equivalents
+export const memoize = (fn, by = identity) => {
+  const mFn = (...x) => { const k = by(...x); return fn(...(mFn.cache.has(k) ? mFn.cache.get(k) : (mFn.cache.set(k, x) && x))) };
+  mFn.cache = new WeakMap(); // eslint-disable-line
+  return mFn;
+};
+// export const tdKeyBy = (by = x => x.id) => tdToObject(next=>(o,v,k,c)=>next(o,v,by(v,k,c),c))
+
+export const diffObjs = (a={},b={}) => {
+  // returns subsets and changed values for object properties
+  // a !in b, b !in a, a union b, a intersection b (a[x] and b[x] exist), and changed intersections (i.e. a[x]!==b[x])
+  // works with objects, and object-based collections already keyed by their ids
+  const anb = {}, bna = {}, aib = {}, aub = {}, changed = {};
+  let k, anbc = 0, bnac = 0, aibc = 0, changedc = 0;
+  for (k in a) k in b ?
+    (aibc += aub[k] = aib[k] = (a[k] === b[k] ? 1 : (changedc += changed[k] = 1)))
+    : (anbc += aub[k] = anb[k] = 1);
+  for (k in b) k in a
+    ? ((k in aib)
+      ? (aub[k] = aib[k] = 1)
+      : (aibc += aub[k] = aib[k] = (a[k] === b[k] ? 1 : (changedc += changed[k] = 1))))
+    : (bnac += aub[k] = bna[k] = 1);
+  return { anb, anbc, bna, bnac, aib, aibc, aub, aubc: anbc + bnac + aibc, changed, changedc, a, b };
+};
+
+// TODO decide behavior when collections are arrays and no "by" key to diff them by
+export const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);
+

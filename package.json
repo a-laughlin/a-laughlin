@@ -1,25 +1,62 @@
 {
-  "name": "root",
+  "name": "a-laughlin",
   "private": true,
-  "devDependencies": {
-    "@babel/cli": "^7.4.4",
-    "@babel/core": "^7.4.5",
-    "@babel/preset-env": "^7.4.5",
-    "babel-jest": "^24.8.0",
-    "jest": "^24.8.0",
-    "lerna": "^3.14.1",
-    "rollup": "^1.12.4",
-    "rollup-plugin-babel": "^4.3.2",
-    "rollup-plugin-node-resolve": "^5.0.0"
-  },
+  "root": true,
+  "//main": "webpack.config.js",
+  "//browser": "webpack.config.js",
+  "//module": "webpack.config.js",
+  "//type": "module",
+  "//setting type module on root breaks things with jest": "module",
   "workspaces": [
-    "js/*",
-    "py/*"
+    "src/*"
   ],
+  "// all the babel stuff is only for jest":"https://github.com/facebook/jest/issues/9430",
+  "devDependencies": {
+    "@babel/core": "^7.9.6",
+    "@babel/preset-env": "^7.9.6",
+    "babel-jest": "^26.0.1",
+    "jest": "^26.0.1",
+    "lerna": "^3.21.0",
+    "lodash": "*",
+    "webpack": "^5.0.0-beta.16",
+    "webpack-cli": "^3.3.11",
+    "webpack-dev-server": "^3.11.0",
+    "eslint":"^7.1.0",
+    "eslint-plugin-react":"^7.20.0",
+    "eslint-plugin-import":"^2.20.2",
+    "eslint-plugin-jest":"^23.13.1",
+    "eslint-plugin-prettier":"^3.1.3",
+    "eslint-plugin-jsx-a11y":"^6.2.3"
+  },
+  "// more workarounds for modules in jest config": "moduleNameMapper",
+  "// also some hoops to ignore webpack imports like images": "moduleNameMapper",
+  "// moduleNameMapper": {"^.*(jpe?g|png).*$": "./jestAssetsTransformer.js"},
+  "// jestAssetsTransformer.js would contain":"module.exports = { process() {} };",
+  "jest": {
+    "moduleDirectories": [
+      "./node_modules",
+      "node_modules",
+      "src"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs",
+      "cjs"
+    ],
+    "transform": {
+      "^.+\\.[t|j]sx?$": "babel-jest"
+    }
+  },
+  "//webpack-node-externals": "latest",
+  "//@babel/cli": "^7.4.4",
   "dependencies": {},
   "scripts": {
-    "build": "babel src/** -d dist",
-    "test": "jest --no-cache --no-watch ./src/fp-utils",
-    "dev": "jest --watch"
+    "story": "",
+    "jest:nowatch": "jest --no-cache --no-watch ./src/**/*.test.js",
+    "watch": "webpack --watch",
+    "start": "webpack-dev-server --open",
+    "server": "node server.js",
+    "build": "webpack",
+    "test": "jest"
   }
 }

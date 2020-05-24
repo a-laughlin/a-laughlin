@@ -5,10 +5,12 @@
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
   "license": "ISC",
+  "type":"module",
+  "main": "fp-utils.js",
   "module": "fp-utils.js",
-  "main": "fp-utils.cjs.js",
+  "browser": "fp-utils.js",
   "peerDependencies": {
-    "lodash": ">=4.17.15"
+    "lodash": "^4.17.15"
   },
   "scripts": {
     "test": "jest --no-watch"

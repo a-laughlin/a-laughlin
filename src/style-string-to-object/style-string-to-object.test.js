@@ -1,4 +1,4 @@
-import {styleStringToObj as s} from '@a-laughlin/style-string-to-obj'
+import s from './style-string-to-object'
 
 it("converts a string to a styles object", () => {
   expect(s('w100px h100px')).toEqual({width:'100px',height:'100px'});
@@ -17,7 +17,7 @@ it("warns on invalid strings", () => {
   global.console.warn = jest.fn();
   s('wwwww100px');
   expect(global.console.warn).toHaveBeenCalledWith(
-    'invalid style: "wwwww100px". See style-string-to-obj.test.js for correct syntax.')
+    'invalid style: "wwwww100px". See style-string-to-object.test.js for correct syntax.')
   global.console.warn = global.console._warn_temp;
   delete global.console._warn_temp;
 });
@@ -57,30 +57,49 @@ const prefixes ={
   brad:'borderRadius',
   lh:'lineHeight',
 }
-
-// let u,prefix;
-for (const u in units){
-  for (const prefix in prefixes){
-    expect(s(`${prefix}1${u}`)).toEqual({[prefixes[prefix]]:`1${units[u]}`})
-    // expect(s`${prefix}1${u}`).toEqual(s(`${prefix}1${u}`))
+it('correctly transforms all unit and prefix combos',()=>{
+  // let u,prefix;
+  for (const u in units){
+    for (const prefix in prefixes){
+      expect(s(`${prefix}1${u}`)).toEqual({[prefixes[prefix]]:`1${units[u]}`})
+      // expect(s`${prefix}1${u}`).toEqual(s(`${prefix}1${u}`))
+    }
   }
-}
+})
 
-expect(s`transx1`).toEqual({transform:'translateX(1%)'});
-expect(s`transy1`).toEqual({transform:'translateY(1%)'});
-expect(s('m1')).toEqual({marginTop:'1%',marginRight:'1%',marginBottom:'1%',marginLeft:'1%'})
-expect(s('p1')).toEqual({paddingTop:'1%',paddingRight:'1%',paddingBottom:'1%',paddingLeft:'1%'})
-expect(s('b1')).toEqual({borderTopWidth:'1%',borderRightWidth:'1%',borderBottomWidth:'1%',borderLeftWidth:'1%'})
+it('transforms translateX,translateY correctly',()=>{
+  expect(s`transx1`).toEqual({transform:'translateX(1%)'});
+  expect(s`transy1`).toEqual({transform:'translateY(1%)'});
+})
 
-expect(s('t1e')).toEqual({fontSize:'1em',lineHeight:`${(1+0.4).toFixed(1)}em`});
-expect(s('bgc000')).toEqual({backgroundColor:'#000'})
-expect(s('bg000')).toEqual({backgroundColor:'#000'})
-expect(s('z1')).toEqual({zIndex:'1'})
+it('transforms m1,p1,b1 to four margins,paddings,borders with appropriate units',()=>{
+  expect(s('m1')).toEqual({marginTop:'1%',marginRight:'1%',marginBottom:'1%',marginLeft:'1%'})
+  expect(s('p1')).toEqual({paddingTop:'1%',paddingRight:'1%',paddingBottom:'1%',paddingLeft:'1%'})
+  expect(s('b1')).toEqual({borderTopWidth:'1%',borderRightWidth:'1%',borderBottomWidth:'1%',borderLeftWidth:'1%'})
+})
+it('transforms backgroundColor with appropriate units',()=>{
+  expect(s('bgc000')).toEqual({backgroundColor:'#000'});
+  expect(s('bg000')).toEqual({backgroundColor:'#000'});
+});
+it('transforms grid templates correctly',()=>{
+  expect(s`gtcA`).toEqual({display:'grid', gridTemplateColumns:'auto'});
+  expect(s`gtrA`).toEqual({display:'grid', gridTemplateRows:'auto'});
+  expect(s`vl`).toEqual({display:'grid', gridTemplateRows:'auto',gridTemplateColumns:'100%'});
+  expect(s`hl`).toEqual({display:'grid', gridTemplateColumns:'auto',gridTemplateRows:'100%'});
+});
 
 
-expect(s('z1')).toEqual({zIndex:'1'})
-expect(s('above800_w1')).toEqual({'@media (min-width: 799px)':{width:'1%'}});
-expect(s('below800_w1')).toEqual({'@media (max-width: 800px)':{width:'1%'}});
+it('transforms z-index without units',()=>{
+  expect(s('z1')).toEqual({zIndex:'1'});
+});
+it('transforms text t correctly',()=>{
+  expect(s('t1e')).toEqual({fontSize:'1em',lineHeight:`${(1+0.4).toFixed(1)}em`});
+});
+
+it('transforms media queries correctly correctly',()=>{
+  expect(s('above800_w1')).toEqual({'@media (min-width: 799px)':{width:'1%'}});
+  expect(s('below800_w1')).toEqual({'@media (max-width: 800px)':{width:'1%'}});
+});
 
 /* pseudoclasses: requires some lib (e.g., styletron) that converts styles to an actual stylesheet */
 // nth:(num,unit)=>({[`:nth-child(${num})`]:parseNested(unit)}),

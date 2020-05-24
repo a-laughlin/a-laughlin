@@ -5,12 +5,15 @@
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
   "license": "ISC",
+  "type":"module",
   "module": "react-utils.js",
-  "main": "react-utils.cjs.js",
+  "main": "react-utils.js",
+  "browser": "react-utils.js",
   "scripts": {
-    "test": ""
+    "test": "jest --no-watch"
   },
   "peerDependencies": {
-    "@a-laughlin/fp-utils": "*"
+    "@a-laughlin/fp-utils": "*",
+    "react": ">=16.9"
   }
 }

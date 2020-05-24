@@ -5,8 +5,10 @@
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
   "license": "ISC",
+  "type":"module",
+  "main": "observable-utils.js",
   "module": "observable-utils.js",
-  "main": "observable-utils.cjs.js",
+  "browser": "observable-utils.js",
   "dependencies": {
     "xstream": "^11.2.0"
   },
