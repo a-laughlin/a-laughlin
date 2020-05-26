@@ -4,3 +4,4 @@ a_laughlin_py_utils/**
 a_laughlin_py_utils
 **/a_laughlin_py_utils
 .vscode
+*.log
