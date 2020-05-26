@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	// shared settings (personal settings stored in .vscode/settings.json)
+	"settings": {
+		"eslint.packageManager": "yarn"
+	}
+}

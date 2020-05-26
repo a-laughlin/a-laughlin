@@ -1,6 +1,6 @@
 import {
   acceptArrayOrArgs,identity,condNoExec,
-  cond,stubTrue,stubFalse,groupByKeys,groupByValues} from './fp-utils'
+  cond,stubTrue,stubFalse,groupByKeys,groupByValues,tdKeyBy,tdToObject} from './fp-utils'
 
 describe("acceptArrayOrArgs", () => {
   const testFn = acceptArrayOrArgs(identity);
@@ -68,3 +68,9 @@ describe("groupByValues", () => {
 // groupByKey('d')(oColl) // {d:[{d:[1,2]},{d:[2]},{d:[1,3]}]}
 // groupByValues(aColl) // {1: [{a:[1,2]},{c:[1,3]}], 2: [{a:[1,2]},{b:[2]}], 3: [{c:[1,3]}]}
 // groupByValues(aColl) // {1:[{d:[1,2]},{d:[1,3]}], 2:[{d:[1,2]},{d:[2]}], 3:[{d:[1,3]}]}
+describe("tdKeyBy", () => {
+  it("should generate a key for each item",()=>{
+    expect(tdToObject(tdKeyBy(x=>x.id))([{id:'a'},{id:'b'}]))
+    .toEqual({a:{id:'a'},b:{id:'b'}});
+  });
+})

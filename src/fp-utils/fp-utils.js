@@ -57,7 +57,7 @@ import nth from 'lodash/fp/nth'
 import first from 'lodash/fp/first'
 import last from 'lodash/fp/last'
 import clone from 'lodash/fp/clone';
-
+import groupBy from 'lodash/fp/groupBy'
 
 import merge from 'lodash/merge'
 import mergeWith from 'lodash/mergeWith'
@@ -114,6 +114,9 @@ export const stubTrue = ()=>true;
 export const stubFalse = ()=>false;
 export const noop = ()=>{};
 
+// const stubs
+export const frozenEmptyArray = Object.freeze([]);
+export const frozenEmptyObject = Object.freeze(Object.create(null));
 
 
 // predicates
@@ -134,16 +137,7 @@ export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
 
 // flow
 export {once,over};
-// export const pipe = (fn=identity,...fns)=>(arg1,...args)=>{
-//   let nextfn;
-//   let result = fn(arg1,...args);
-//   for (nextfn of fns){
-//     result=nextfn(result);
-//   }
-//   return result;
-// }
 export const dpipe = (data,...args)=>pipe(...args)(data);
-// export const compose = (...fns)=>pipe(...fns.reverse());
 
 // functions
 export {spread,rest,identity}
@@ -159,9 +153,10 @@ export const converge = (arg)=>(isArray(arg)?over:overObj)(arg);
 export {constant};
 export const ensureArray = (val=[])=>isArray(val) ? val : [val];
 export const ensureFunction = (arg)=>typeof arg==='function'?arg:constant(arg);
-export const ensurePropExists = fn=>(obj,key)=>obj.hasOwnProperty(key) ? obj[key] : (obj[key]=fn());
-export const ensurePropIsArray = ensurePropExists(stubArray);
-export const ensurePropIsObject = ensurePropExists(stubObject);
+export const ensureProp = (obj,key,val)=>{obj.hasOwnProperty(key) ? obj[key] : (obj[key]=val);return obj;};
+export const ensurePropWith = fn=>(obj,key,val)=>ensureProp(obj,key,fn(obj,key,val));
+export const ensurePropIsArray = ensurePropWith(stubArray);
+export const ensurePropIsObject = ensurePropWith(stubObject);
 
 // logic
 export const not = negate;
@@ -217,7 +212,7 @@ export const partition = ifElse(isArray,partitionArray,partitionObject);
 
 
 // getters
-export {get,set,_set,unset,nth,first,last,keyBy};
+export {get,set,_set,unset,nth,first,last,keyBy,groupBy};
 export const pget = cond(
   [isString,str=>{
     str=str.split('.');
@@ -228,12 +223,13 @@ export const pget = cond(
   [stubTrue,identity], // handles the function case
 );
 export const groupByKeys = ro((o,item,ik,c)=>{
-  for (const k in item){ensurePropIsArray(o,k).push(item)}
+  for (const k in item){ensurePropIsArray(o,k)[k].push(item)}
 })
 export const groupByValues = ro((o,item,k,c)=>{
   for (const k in item){
     for (const v of ensureArray(item[k])){
-      ensurePropIsArray(o,`${v}`).push(item);
+      const key=`${v}`;
+      ensurePropIsArray(o,key)[key].push(item);
     }
   }
 });
@@ -275,7 +271,7 @@ export {uniqueId}
 
 
 
-export const isPromise = x=>typeof x?.then==='function';
+export const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';;
 
 export const transduce = (acc, combiner , transducer, collection) =>{
   let k,l;
@@ -329,7 +325,7 @@ export const memoize = (fn, by = identity) => {
   mFn.cache = new WeakMap(); // eslint-disable-line
   return mFn;
 };
-// export const tdKeyBy = (by = x => x.id) => tdToObject(next=>(o,v,k,c)=>next(o,v,by(v,k,c),c))
+export const tdKeyBy = (by = x => x.id) => next=>(o,v,k,c)=>next(o,v,by(v,k,c),c)
 
 export const diffObjs = (a={},b={}) => {
   // returns subsets and changed values for object properties

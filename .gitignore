@@ -1,6 +1,6 @@
 node_modules
-__pycache__
-**node_modules/**
 coverage
+a_laughlin_py_utils/**
 a_laughlin_py_utils
+**/a_laughlin_py_utils
 .vscode

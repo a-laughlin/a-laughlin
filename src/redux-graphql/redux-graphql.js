@@ -1,283 +1,118 @@
-import {keyBy,transduce,tdToObject,tdMap,omit} from 'fp-utils';
-
-const astReducers={
-  Document:({definitions=[]})=>definitions,
-  OperationDefinition:({selectionSet:{selections=[]}={}}={})=>selections,
-  Field:({selectionSet:{selections=[]}={}}={})=>selections,
-};
-// get rid of the transducers for the recursive stuff
-const queryReducer=(rArg,fn)=>{
-  fn(rArg);
-  for (const c of astReducers[rArg.astNode.kind](rArg.astNode))
-    queryReducer(fn,makeResolverArg({parent:rArg,astNode:c}));
-  return rArg;
-};
-
-export const makeAstKindTransducers=(key,reader,writer)=>{
-  const titledKey=key[0].toUpperCase()+key.slice(1);
-  const result={};
-  reader && (result['read'+titledKey] = nextReducer=>(parent,ra)=>{
-    reader(parent,ra);
-    ra.outputArray[ra.outputArray.length]=ra.context[key];
-    nextReducer(parent,ra);
-    return parent;
-  });
-  writer && (result['write'+titledKey] = nextReducer=>(parent,ra)=>{
-    writer(parent,ra);
-    nextReducer(parent,ra);
-    return parent;
-  });
-  return result;
-}
-
-export const readData = nextReducer=>(parent,ra)=>{
-  if(ra===parent) {
-    parent.context.data=parent.data;
-  } else {
-    parent.context.data[ra.nameValue]||(parent.context.data[ra.nameValue]={});
-    ra.context.data=parent.context.data[ra.nameValue];
-  }
-  // if(ra.nameValue in (parent.context.data)){
-  //   ra.context.data=parent.context.data[ra.nameValue];
-  //   ra.outputArray[ra.outputArray.length]=ra.context.data;
-  // } else {
-  //   parent.context.data[ra.nameValue]=ra.context.data={};
-  // }
-  nextReducer(parent,ra);
-  return parent;
-}
-export const writeData = nextReducer=>(parent,ra)=>{
-  if (parent===ra){
-    ra.data=ra.context.data||{};
-  }
-  if (ra.outputArray.length){
-    ra.context.data=ra.outputArray[ra.outputArray.length-1]
-  }
-  if (ra.context.data){
-    if(ra!==parent){
-      parent.context.data||(parent.context.data={});
-      parent.context.data[ra.nameValue]=ra.context.data;
-    } else {
-      parent.data=parent.context.data;
-    }
-  }
-  nextReducer(parent,ra);
-  return parent;
-};
-
-export const stateTransducersFactory = (initialState={})=>{
-  let state = {...initialState};
-  return makeAstKindTransducers('state',
-    (parent,ra)=>{
-      if (ra===parent){
-        ra.context.state = parent.context.state = state;
-      } else {
-        ra.context.state=parent.context.state[ra.nameValue]??parent.context.state;
-      }
-        // ? state
-        // : parent.context.state[ra.nameValue];
-      return parent;
-    },
-    (parent,ra)=>{
-      parent===ra
-        ? (state!==ra.context.state && (state=ra.context.state))
-        : (ra.context.state=ra.outputArray[ra.outputArray.length-1]);
-      return parent;
-    },
-  );
-};
-
-export const schemaToResolverMap=(schema)=>{
-  const definitionsByName={
-    ...keyBy(s=>s)(
-      'ID,Int,Float,String,Boolean'
-        .split(',')
-        .map(s=>({[s]:{kind:"ScalarTypeDefinition",name:{value:s}}}))
-    ),
-    ...keyBy(d=>d.name.value)(schema.definitions)
-  };
-  const kindTransducers={
-    ScalarTypeDefinition:nextReducer=>ra=>nextReducer(ra),
-    // queryReducer(makeResolverArg({astNode:c,parent:resolverArg}))
-    ObjectTypeDefinition:nextReducer=>ra=>transduce(ra,kindTransducers.FieldDefinition,nextReducer,ra.astNode.fields),
-    FieldDefinition:nextReducer=>ra=>transduce(ra,kindTransducers[ra.type.kind],nextReducer,ra.astNode.fields),
-    NonNullType:nextReducer=>ra=>transduce(ra,kindTransducers[ra.type.kind],nextReducer,{...ra.astNode,type:ra.astNode.type.type}),
-    ListType:nextReducer=>ra=>transduce(ra,kindTransducers[ra.type.kind],nextReducer,ra.astNode.fields),
-    NamedType:nextReducer=>ra=>{
-      console.log(`definitionsByName[ra.astNode.name.value].kind`, definitionsByName[ra.astNode.name.value].kind);
-      if (namedTransducers[ra.astNode.name.value]===undefined)
-        namedTransducers[ra.astNode.name.value] = kindTransducers[definitionsByName[ra.astNode.name.value].kind];
-      return transduce(ra,namedTransducers[ra.astNode.name.value],nextReducer,ra);
-    },
-  };
-  const namedTransducers  = tdToObject(tdMap(({kind})=>kindTransducers[kind]))(definitionsByName);
-  return namedTransducers;
-}
-
-
-const getNamedType=fieldDefinition=>{
+import {frozenEmptyArray, ensureArray,ensurePropIsObject} from '@a-laughlin/fp-utils';
+// import omit from 'lodash/fp/omit';
+import keyBy from 'lodash/fp/keyBy';
+// import mapValues from 'lodash/mapValues';
+const getDefName=schemaDefinition=>schemaDefinition.name.value;
+const getDefKind=schemaDefinition=>schemaDefinition.kind;
+const getDefFields=schemaDefinition=>schemaDefinition.fields??frozenEmptyArray;
+const getDefCollectionName=schemaDefinition=>`${d.name.value}s`;
+const getFieldTypeName=fieldDefinition=>{
   let type=fieldDefinition.type;
   while(type.kind!=='NamedType')type=type.type;
   return type.name.value;
 }
+const isListField=fieldDefinition=>{
+  const type=fieldDefinition.type;
+  return (type.kind==='NonNullType'?type.type.kind:type.kind)==='ListType';
+}
 
-export const getDenormalizingQueryReducer=(schema,store)=>{
-  const definitionsByName={
-    ...'ID,Int,Float,String,Boolean'.split(',').map(s=>({kind:'ScalarTypeDefinition',name:{value:s},type:{kind:'NamedType'}})),
-    ...keyBy(d=>d.name.value)(schema.definitions)
-  };
-  const idKeysForNamedTypes=schema.definitions.reduce((acc,d)=>{
-    if (d.kind!=='ObjectTypeDefinition')return acc;
-    const idPropName = d.fields.find(f=>getNamedType(f)==='ID')?.name?.value;
-    if (idPropName) acc[d.name.value]=idPropName;
-    return acc;
-  },{});
 
-  const ensureAssigned=(acc,key,fn)=>{acc[key]||(acc[key]=fn);return acc;}
-  const getReducersByNamedType=(acc,def)=>{
-    if(def.kind==='ScalarTypeDefinition') return ensureAssigned(acc,def.name.value,(state,parent)=>parent[def.name.value]??state[def.name.value]);
-    if(def.kind==='UnionTypeDefinition') return ensureAssigned(acc,def.name.value,(state,parent)=>parent[def.name.value]??state[def.name.value]);
-    if(def.kind==='EnumTypeDefinition') return ensureAssigned(acc,def.name.value,(state,parent)=>parent[def.name.value]??state[def.name.value]);
-    if(def.kind==='InterfaceTypeDefinition') return ensureAssigned(acc,def.name.value,(state,parent)=>parent[def.name.value]??state[def.name.value]);
-    if(def.kind==='ObjectTypeDefinition') {
-      const fieldReducers=def.fields.reduce((facc,f)=>{
-        let type=f.type;
-        let isList;
-        if (type.kind==='NonNullType'){type=type.type;};
-        if (type.kind==='ListType'){type=type.type; isList=true; };
-        if (type.kind==='NonNullType'){type=type.type;};
-        if (type.kind!=='NamedType')console.error(`incorrect type.kind on ${f.name.value}`,f);
-        if (acc===undefined){console.log('ACC IS UNDEFINED')}
-        const itemReducer = acc[type.name.value]||((state,parent,action)=>acc[type.name.value](state,parent[type.name.value],action));
-        facc[f.name.value]=itemReducer;
-        return facc;
-      },{});
-      return ensureAssigned(acc,def.name.value,(state,parent,queryField,action)=>{
-        let changed;
-        let result={};
-        for (const f in queryField.selectionSet?.selections||[]){
-          const k = f.name.value;
-          console.log(`f`, f);
-          result[k]=fieldReducers[k](state,parent[k],f,action);
-          if (result[k]!==parent[k]) changed=true;
+
+export const schemaToMutationReducerMapMiddleware = schema=>{};
+export const schemaToSubscriptionReducerMapMiddleware = schema=>{};
+export const queryReducerMapToQuerySelector=()=>{};
+export const useQuery=()=>{};
+const indexSchema=schema=>{
+  const definitions=ensureArray(schema.definitions).filter(d=>/^(Query|Mutation|Subscription)$/.test(d.name.value)===false);
+  const builtInDefinitions=['ID','Int','Float','String','Boolean']
+    .map(value=>({kind:'ScalarTypeDefinition',name:{value}}));
+  const allDefs=builtInDefinitions.concat(definitions);
+  const definitionsByKind=allDefs.reduce((acc,d)=>{ensurePropIsObject(acc,d.kind)[d.kind][d.name.value]=d;return acc},{});
+  const objectDefs=Object.values(definitionsByKind.ObjectTypeDefinition);
+  return {
+    ...definitionsByKind,
+    definitions:allDefs,
+    definitionsByName:keyBy(getDefName,allDefs),
+    objectFieldMeta:Object.values(definitionsByKind.ObjectTypeDefinition).reduce((acc,d)=>{
+      const dName=getDefName(d);
+      const m=acc[dName]={collectionTypes:{},collectionNames:{},isListType:{},idKey:undefined};
+      for (const f of d.fields){
+        const [fName,fTypeName]=[getDefName(f),getFieldTypeName(f)];
+        if (fTypeName==='ID') m.idKey=fName;
+        m.isListType[fName]=isListField(f);
+        if  (fTypeName in definitionsByKind.ObjectTypeDefinition) {
+          m.collectionTypes[fName]=fTypeName;
+          m.collectionNames[fName]=`${fTypeName}s`;
         }
-        return changed? result:parent;
-      });
-    }
-    console.log('UNRECOGNIZED TYPE ',def);
-    return acc;
-  }
-  const reducersByNamedType = Object.values(definitionsByName).reduce(getReducersByNamedType,{});
-
-  const queryReducer=(state,parent,Field,vars)=>{
-    let changed=false;
-    const result={};
-    // if (reducersByNamedType[Field.name.value]){
-    // }
-    return reducersByNamedType(state,parent,Field,vars);
-    // return changed?result:parent;
-  };
-  return (queryDoc,vars={})=>{// memoize
-    const state=store.getState();
-    queryDoc.definitions[0].selectionSet.selections.reduce((acc,Field)=>{
-      acc[Field.name.value]=queryReducer(
-        state,
-        state,
-        Field,
-        vars
-      );
+      }
       return acc;
-    },{});
-  };
+    },{})
+  }
+};
+export const propsChanged=(checkChangedIn={},toCheck={})=>{
+  let key;
+  for (key in toCheck) if (toCheck[key]!==checkChangedIn[key]) return true;
+  return false;
 }
-// export const getUseQuery=(store,queryReducer)=>{
-//   return (query,vars)=>{
-//     const [state,setState]=useState(queryReducer(store.getState(),query,vars));
-//     useEffect(()=>{
-//       lastResult;
-//       return store.subscribe(()=>{
-//         const result=query.definitions[0].selectionSet.selections.reduce(queryReducer,store.getState())
-//         if (result!==lastResult){
-//           lastResult=result;
-//           setState(result);
-//         }
-//       }).bind(store);
-//     },[vars]);
-//   }
-// }
-export const schemaToReducerMap=(schema)=>{
-  const definitionsByName={
-    ...'ID,Int,Float,String,Boolean'.split(',').map(s=>({kind:'ScalarTypeDefinition',name:{value:s},type:{kind:'NamedType'}})),
-    ...keyBy(d=>d.name.value)(schema.definitions)
-  };
-  const idKeysForNamedTypes=schema.definitions.reduce((acc,d)=>{
-    if (d.kind!=='ObjectTypeDefinition')return acc;
-    const idPropName = d.fields.find(f=>getNamedType(f)==='ID')?.name?.value;
-    if (idPropName) acc[d.name.value]=idPropName;
+export const schemaToQueryReducerMap=( schema = gql('type DefaultType {id:ID!}') )=>{
+  return Object.entries(indexSchema(schema).objectFieldMeta).reduce((acc,[dName,{idKey}])=>{
+    const collectionName=`${dName}s`;
+    const NAME=dName.toUpperCase();
+    const [UNION,INTERSECTION,ADD,SUBTRACT,SET]=['UNION','INTERSECTION','ADD','SUBTRACT','SET']
+      .map(OP=>`${OP}_${NAME}S`);
+    const collDiffer=diffBy(idKey);
+    const keyByID=keyBy(idKey);
+    acc[collectionName]=(prevState,action={type:'NONE',payload:{}})=>{
+      if (typeof action==='function')return action(prevState);
+      if (action.type==='NONE') return prevState;
+      let {type,payload}=action;
+      if (idKey in payload) payload={[payload[idKey]]:payload};
+      if (type===SET) return payload;
+      if (type===ADD) return {...prevState,...payload};
+      const diff = collDiffer([prevState,payload]);
+      let nextState={},k;
+      if (type===SUBTRACT) {
+        if (diff.aibc===diff.aubc) return nextState; // overlapping payload
+        if (diff.anbc===diff.aubc) return prevState; // empty payload
+        for (k in diff.anb)nextState[k]=prevState[k];
+        return nextState;
+      }
+      if (type===UNION){
+        for (k in diff.aub)nextState[k]=payload[k]??prevState[k];
+        return diff.changedc===0?prevState:nextState;
+      }
+      if (type===INTERSECTION){
+        for (k in diff.aib)nextState[k]=payload[k];
+        return diff.changedc===0?prevState:nextState;
+      }
+      nextState = new Error(`type ${type} does not exist in ${dName} reducer map`);
+      console.error(nextState);
+      return nextState;
+    };
     return acc;
   },{});
-  const ensureAssigned=(acc,key,fn)=>{acc[key]||(acc[key]=fn);return acc;}
-  const getReducersByNamedType=(acc,def)=>{
-    if(def.kind==='ScalarTypeDefinition') return ensureAssigned(acc,def.name.value,(state,parent)=>parent[def.name.value]??state[def.name.value]);
-    if(def.kind==='UnionTypeDefinition') return ensureAssigned(acc,def.name.value,(state,parent)=>parent[def.name.value]??state[def.name.value]);
-    if(def.kind==='EnumTypeDefinition') return ensureAssigned(acc,def.name.value,(state,parent)=>parent[def.name.value]??state[def.name.value]);
-    if(def.kind==='InterfaceTypeDefinition') return ensureAssigned(acc,def.name.value,(state,parent)=>parent[def.name.value]??state[def.name.value]);
-    if(def.kind==='ObjectTypeDefinition') {
-      // const NAME=def.name.value;
-      // const[CREATE,READ,UPDATE,DELETE]='CREATE,READ,UPDATE,DELETE'.split(',').map(S=>`${NAME}_${S}`);
-      // const listWrapper = (itemReducer,name)=>(parent,action){
-      //   return acc[name]
-      //
-      // }
-      // const listWrapper = itemReducer=>(prev,action)=>{
-      //   if (action.type===READ)
-      //     return prev;
-      //   if (action.type===DELETE)
-      //     return diffObjs(prev,action.payload).anb;
-      //   if (action.type===UPDATE)
-      //     return {...prev,...action.payload};
-      //   if (action.type===CREATE)
-      //     return {...prev,...action.payload};
-      // }
-      const fieldReducers=def.fields.reduce((facc,f)=>{
-        let type=f.type;
-        let isList;
-        if (type.kind==='NonNullType'){type=type.type;};
-        if (type.kind==='ListType'){type=type.type; isList=true; };
-        if (type.kind==='NonNullType'){type=type.type;};
-        if (type.kind!=='NamedType')console.error(`incorrect type.kind on ${f.name.value}`,f);
-        if (acc===undefined){console.log('ACC IS UNDEFINED')}
-        const itemReducer = acc[type.name.value]||((state,parent,action)=>acc[type.name.value](state,parent[type.name.value],action));
-        facc[f.name.value]=itemReducer;
-        return facc;
-      },{});
-      return ensureAssigned(acc,def.name.value,(state,parent,action)=>{
-        if (def.name.value in state){
-          return state[def.name.value];
+};
+export const getUseQuery=(store,queryReducer)=>{
+  return (query,vars)=>{
+    const [state,setState]=useState(queryReducer(store.getState(),query,vars));
+    useEffect(()=>{
+      lastResult;
+      return store.subscribe(()=>{
+        const result=query.definitions[0].selectionSet.selections.reduce(queryReducer,store.getState())
+        if (result!==lastResult){
+          lastResult=result;
+          setState(result);
         }
-        let changed;
-        let result={};
-        for (const key in fieldReducers){
-          console.log(`key`, parent,key,fieldReducers[key]);
-          result[key]=fieldReducers[key](state,parent[key],action);
-          if (result[key]!==parent[key]) changed=true;
-        }
-        return changed? result:parent;
-      });
-    }
-    console.log('UNRECOGNIZED TYPE ',def);
-    return acc;
+      }).bind(store);
+    },[vars]);
   }
-  return Object.values(definitionsByName).reduce(getReducersByNamedType,{});
 }
-
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /*
  * General Utils
  */
 // import-free equivalent-lodash-function-named one-liners for-bundle-size
 // see https://lodash.com/docs/ for descriptions and repl
-export const identity = x => x;
 // export const isArray = Array.isArray;
 // export const isFunction = x => typeof x === 'function';
 // export const stubArray = () => [];
@@ -291,6 +126,7 @@ export const identity = x => x;
 // // @ts-ignore: tslint dislikes these
 // export const flow = (fn = identity, ...fns) => (...args) => { const l = fns.length; let i = -1, a = fn(...args); while (++i < l) (a = fns[i](a)); return a; }
 // // @ts-ignore: tslint dislikes these
+const identity = x => x;
 export const memoize = (fn, by = identity) => {
   const mFn = (...x) => { const k = by(...x); return fn(...(mFn.cache.has(k) ? mFn.cache.get(k) : (mFn.cache.set(k, x) && x))) };
   mFn.cache = new WeakMap();
@@ -368,39 +204,6 @@ export const mapToPossiblePromise = (array, fn) => {
 
 
 
-const STOP = 'STOP';
-export const getDotArray = memoize(s => s.split('.'));
-export const getterSetterFactory = ({
-  root = x => x,
-  branch = (x, k) => x[k],
-  leaf = (x, k, d) => x[k] } = {}
-) => path => (x, data) => {
-  const pathArray = getDotArray(path);
-  let xSub = root(x, path, data);
-  if (xSub === STOP) { return x; }
-  const l = pathArray.length - 1;
-  let i = -1;
-  while (++i < l) {
-    xSub = branch(xSub, pathArray[i], data);
-    if (xSub === undefined) { return undefined; }
-  }
-  return leaf(xSub, pathArray[i], data);
-}
-
-export const get = getterSetterFactory();
-export const setMutable = getterSetterFactory({
-  branch: (x, k) => x[k] === undefined ? Object.create(null) : x[k],
-  leaf: (x, k, d) => x[k] = d
-});
-export const set = getterSetterFactory({
-  root: (x, path, data) => get(path)(x) === data ? STOP : blankx(x),
-  branch: (x, k) => x[k] === undefined ? Object.create(null) : blankx(x[k]),
-  leaf: (x, k, d) => x[k] = d
-});
-
-
-
-
 
 
 
@@ -440,6 +243,7 @@ export const transDiff = (fn = identity, { by = x => x.id, subset = 'aub', ret }
 
 
 
+
 const utilityFactory = ({ setop = 'aub', inputTarget = 'child', changeTarget = 'root' }) => { }
 mapx(child => filterx())
 // omitChildrenByChildrenIndex
@@ -461,18 +265,21 @@ export const diffObjs = ([a, b] = [{}, {}]) => {
   const anb = {}, bna = {}, aib = {}, aub = {}, changed = {};
   let k, anbc = 0, bnac = 0, aibc = 0, changedc = 0;
   for (k in a) k in b ?
-    (aibc += aub[k] = aib[k] = (a[k] === b[k] ? 1 : (changedc += changed[k] = 1)))
-    : (anbc += aub[k] = anb[k] = 1);
+    (aibc += (aub[k] = aib[k] = (a[k] === b[k] ? 1 : (changedc += changed[k] = 1))))
+    : (anbc += (aub[k] = anb[k] = 1));
   for (k in b) k in a
     ? ((k in aib)
       ? (aub[k] = aib[k] = 1)
-      : (aibc += aub[k] = aib[k] = (a[k] === b[k] ? 1 : (changedc += changed[k] = 1))))
-    : (bnac += aub[k] = bna[k] = 1);
+      : (aibc += (aub[k] = aib[k] = (a[k] === b[k] ? 1 : (changedc += changed[k] = 1)))))
+    : (++changedc,(bnac += aub[k] = bna[k] = changed[k] = 1));
   return { anb, anbc, bna, bnac, aib, aibc, aub, aubc: anbc + bnac + aibc, changed, changedc, a, b };
 };
 
 // TODO decide behavior when collections are arrays and no "by" key to diff them by
-export const diffBy = (by, args = []) => by ? diffObjs(args.map(keyBy(by))) : diffObjs(args);
+export const diffBy = (keyByArg='id')=>{
+  keyByArg=keyBy(keyByArg)
+  return (args = []) =>diffObjs(args.map(a=>Array.isArray?keyByArg(a):a));
+}
 
 
 // export const diffBy = (by, reducer) => (args = []) => {
@@ -523,36 +330,150 @@ export const diffBy = (by, args = []) => by ? diffObjs(args.map(keyBy(by))) : di
 // a third graph while walking. The derived graph's nodes are pairs of [ANode,BNode]
 // TODO more efficient (i.e. non-array resizing) queue implementation
 // some initial research led to https://github.com/invertase/denque
-const noopGraphReducer = (acc, currentNode, addNextNode = (nodes = []) => []) => acc;
-export const reduceGraphBF = (reducer = noopGraphReducer, startNodes = []) => {
-  const queue = [...startNodes];
-  const addNextNode = node => { queue[queue.length] = node; }
-  let acc, node;
-  while (node = queue.shift()) (acc = reducer(acc, node, addNextNode));
-  return acc;
-};
+// const noopGraphReducer = (acc, currentNode, addNextNode = (nodes = []) => []) => acc;
+// export const reduceGraphBF = (reducer = noopGraphReducer, startNodes = []) => {
+//   const queue = [...startNodes];
+//   const addNextNode = node => { queue[queue.length] = node; }
+//   let acc, node;
+//   while (node = queue.shift()) (acc = reducer(acc, node, addNextNode));
+//   return acc;
+// };
 
-export const EitherValueOrError = fn => resolverArg => {
-  try { return fn(resolverArg) }
-  catch (e) {
-    return { ...resolverArg }
-  };
-  if (arg instanceof Error) return fn(arg)
-}
-export const EitherValuePromiseOrWonkaStream = (arg, fn) => {
-  if (typeof arg === 'function') return toPromise(arg).then(fn, fn);
-  if (typeof arg === 'object' && typeof arg.then === 'function') return arg.then(fn, fn);
-  return fn(arg);
-  try { return fn(arg) }
-  catch (e) { return catcher(e) };
-}
-const EitherValuePromiseOrStream = (fn) => {
-  if (typeof arg === 'object' && typeof arg.then === 'function') return arg.then(fn, catcher);
-  if (typeof arg === 'function') return toPromise(arg).then(fn, catcher);
-  if (typeof arg === 'object' && typeof arg.then === 'function') return arg.then(fn, catcher);
-  try { return fn(arg) }
-  catch (e) { return catcher(e) };
-}
+// export const EitherValueOrError = fn => resolverArg => {
+//   try { return fn(resolverArg) }
+//   catch (e) {
+//     return { ...resolverArg }
+//   };
+//   if (arg instanceof Error) return fn(arg)
+// }
+// export const EitherValuePromiseOrWonkaStream = (arg, fn) => {
+//   if (typeof arg === 'function') return toPromise(arg).then(fn, fn);
+//   if (typeof arg === 'object' && typeof arg.then === 'function') return arg.then(fn, fn);
+//   return fn(arg);
+//   try { return fn(arg) }
+//   catch (e) { return catcher(e) };
+// }
+// const EitherValuePromiseOrStream = (fn) => {
+//   if (typeof arg === 'object' && typeof arg.then === 'function') return arg.then(fn, catcher);
+//   if (typeof arg === 'function') return toPromise(arg).then(fn, catcher);
+//   if (typeof arg === 'object' && typeof arg.then === 'function') return arg.then(fn, catcher);
+//   try { return fn(arg) }
+//   catch (e) { return catcher(e) };
+// }
+
+// const astReducers={
+//   Document:({definitions=[]})=>definitions,
+//   OperationDefinition:({selectionSet:{selections=[]}={}}={})=>selections,
+//   Field:({selectionSet:{selections=[]}={}}={})=>selections,
+// };
+// // get rid of the transducers for the recursive stuff
+// const queryReducer=(rArg,fn)=>{
+//   fn(rArg);
+//   for (const c of astReducers[rArg.astNode.kind](rArg.astNode))
+//     queryReducer(fn,makeResolverArg({parent:rArg,astNode:c}));
+//   return rArg;
+// };
+
+// export const makeAstKindTransducers=(key,reader,writer)=>{
+//   const titledKey=key[0].toUpperCase()+key.slice(1);
+//   const result={};
+//   reader && (result['read'+titledKey] = nextReducer=>(parent,ra)=>{
+//     reader(parent,ra);
+//     ra.outputArray[ra.outputArray.length]=ra.context[key];
+//     nextReducer(parent,ra);
+//     return parent;
+//   });
+//   writer && (result['write'+titledKey] = nextReducer=>(parent,ra)=>{
+//     writer(parent,ra);
+//     nextReducer(parent,ra);
+//     return parent;
+//   });
+//   return result;
+// }
+
+// export const readData = nextReducer=>(parent,ra)=>{
+//   if(ra===parent) {
+//     parent.context.data=parent.data;
+//   } else {
+//     parent.context.data[ra.nameValue]||(parent.context.data[ra.nameValue]={});
+//     ra.context.data=parent.context.data[ra.nameValue];
+//   }
+//   // if(ra.nameValue in (parent.context.data)){
+//   //   ra.context.data=parent.context.data[ra.nameValue];
+//   //   ra.outputArray[ra.outputArray.length]=ra.context.data;
+//   // } else {
+//   //   parent.context.data[ra.nameValue]=ra.context.data={};
+//   // }
+//   nextReducer(parent,ra);
+//   return parent;
+// }
+// export const writeData = nextReducer=>(parent,ra)=>{
+//   if (parent===ra){
+//     ra.data=ra.context.data||{};
+//   }
+//   if (ra.outputArray.length){
+//     ra.context.data=ra.outputArray[ra.outputArray.length-1]
+//   }
+//   if (ra.context.data){
+//     if(ra!==parent){
+//       parent.context.data||(parent.context.data={});
+//       parent.context.data[ra.nameValue]=ra.context.data;
+//     } else {
+//       parent.data=parent.context.data;
+//     }
+//   }
+//   nextReducer(parent,ra);
+//   return parent;
+// };
+
+// export const stateTransducersFactory = (initialState={})=>{
+//   let state = {...initialState};
+//   return makeAstKindTransducers('state',
+//     (parent,ra)=>{
+//       if (ra===parent){
+//         ra.context.state = parent.context.state = state;
+//       } else {
+//         ra.context.state=parent.context.state[ra.nameValue]??parent.context.state;
+//       }
+//         // ? state
+//         // : parent.context.state[ra.nameValue];
+//       return parent;
+//     },
+//     (parent,ra)=>{
+//       parent===ra
+//         ? (state!==ra.context.state && (state=ra.context.state))
+//         : (ra.context.state=ra.outputArray[ra.outputArray.length-1]);
+//       return parent;
+//     },
+//   );
+// };
+
+// export const schemaToResolverMap=(schema)=>{
+//   const definitionsByName={
+//     ...keyBy(s=>s)(
+//       'ID,Int,Float,String,Boolean'
+//         .split(',')
+//         .map(s=>({[s]:{kind:"ScalarTypeDefinition",name:{value:s}}}))
+//     ),
+//     ...keyBy(d=>d.name.value)(schema.definitions)
+//   };
+//   const kindTransducers={
+//     ScalarTypeDefinition:nextReducer=>ra=>nextReducer(ra),
+//     // queryReducer(makeResolverArg({astNode:c,parent:resolverArg}))
+//     ObjectTypeDefinition:nextReducer=>ra=>transduce(ra,kindTransducers.FieldDefinition,nextReducer,ra.astNode.fields),
+//     FieldDefinition:nextReducer=>ra=>transduce(ra,kindTransducers[ra.type.kind],nextReducer,ra.astNode.fields),
+//     NonNullType:nextReducer=>ra=>transduce(ra,kindTransducers[ra.type.kind],nextReducer,{...ra.astNode,type:ra.astNode.type.type}),
+//     ListType:nextReducer=>ra=>transduce(ra,kindTransducers[ra.type.kind],nextReducer,ra.astNode.fields),
+//     NamedType:nextReducer=>ra=>{
+//       console.log(`definitionsByName[ra.astNode.name.value].kind`, definitionsByName[ra.astNode.name.value].kind);
+//       if (namedTransducers[ra.astNode.name.value]===undefined)
+//         namedTransducers[ra.astNode.name.value] = kindTransducers[definitionsByName[ra.astNode.name.value].kind];
+//       return transduce(ra,namedTransducers[ra.astNode.name.value],nextReducer,ra);
+//     },
+//   };
+//   const namedTransducers  = tdToObject(tdMap(({kind})=>kindTransducers[kind]))(definitionsByName);
+//   return namedTransducers;
+// }
 //
 // export const maybePromise = (arg, onSuccess) => {
 //   if (typeof arg==='object'&&arg.then) return arg.then(onSuccess);

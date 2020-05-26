@@ -1,12 +1,11 @@
 // /*eslint-disable no-unused-vars */
 // /* globals jest:false,describe:false,it:false,expect:false */
 import gql from 'graphql-tag';
-import {
-  keyBy
-} from '@a-laughlin/fp-utils';
+import keyBy from 'lodash/fp/keyBy';
+import omit from 'lodash/fp/omit';
 
 import {
-  schemaToReducerMap,
+  schemaToQueryReducerMap,
   getDenormalizingQueryReducer,
 } from './redux-graphql';
 
@@ -22,126 +21,196 @@ type Hobby {
   name:String
   users:[User]
 }
-`
 
-describe("tdKeyBy", () => {
-  it("should generate a key for each item",()=>{
-    expect(keyBy(x=>x.id)([{id:'a'},{id:'b'}]))
-    .toEqual({a:{id:'a'},b:{id:'b'}});
-  });
-})
+type Query{
+  READ_USER(id: ID): User # returns state.Users[id]
+  READ_USERS(predicate: Predicate): [User!]! # returns state.Users
+}
+type Mutation{
+  CREATE_USERS(users:[User!]!): [User]!
+  CREATE_USER(user:User!): User!
+  UPDATE_USERS(users:[User!]!): [User]!
+  UPDATE_USER(user:User!): User!
+  DELETE_USERS(ids:[ID!]!): Boolean!
+  DELETE_USER(id:ID!): Boolean!
+}
+`;
 
-describe("schemaToReducerMap", () => {
+
+
+describe("schemaToQueryReducerMap", () => {
   it("should generate a key for each type,plus scalars",()=>{
-    expect(Object.keys(schemaToReducerMap(schema)).sort())
-    .toEqual( ['ID','Int','Float','String','Boolean','User','Hobby'].sort());
+    const schema = gql`
+    type User {
+      id:ID
+      name:String
+      primaryHobby:Hobby
+      hobbies:[Hobby]
+    }
+    type Hobby {
+      id:ID
+      name:String
+      users:[User]
+    }
+    `;
+    expect(Object.keys(schemaToQueryReducerMap(schema)).sort())
+    .toEqual( [ 'Users', 'Hobbys' ].sort());
   });
-  it("should return the original if unchanged",()=>{
+  it("should read values as default",()=>{
     const schema=gql`
       type A{id:ID,name:String}
     `
     const state={
-      A:{
-        a:{id:'a',name:'A'},
-        b:{id:'b',name:'B'}
-      },
-      B:{
-        aa:{id:'aa',name:'AA'},
-        bb:{id:'bb',name:'BB'}
-      }
+      As:{ a:{id:'a',name:'A'}, b:{id:'b',name:'B'} },
+      Bs:{ aa:{id:'aa',name:'AA'}, bb:{id:'bb',name:'BB'} }
     };
-    const r = schemaToReducerMap(schema);
-    expect(r.A(state,state.A,{payload:{}})).toBe(state.A);
+    const r = schemaToQueryReducerMap(schema);
+    expect(r.As(state.As)).toBe(state.As);
   });
-  it("should work on recursively defined objects",()=>{
-      const schema=gql`
-        type Person{id:ID,best:Person,friends:[Person]}
-      `
-      const state={
-        Person:{
-          a:{id:'a',best:'b',friends:['b','c']},
-          b:{id:'b',best:'a',friends:['a'],pets:[]},
-          c:{id:'c',best:'a',friends:['a'],pets:[]},
-        },
-      };
-      // const result={...state,Person:{
-      //   ...Object.values(state.person).reduce((o,v)=>{
-      //     o[v.id]={
-      //       id:v.id,
-      //       best:state.Person[v.best],
-      //       friends:v.friends.map(id=>state.Person[id])
-      //     };
-      //     return o;
-      //   },{})
-      // }};
-      // state.Person.a.friends=state.Person.a.friends.map(ltr=>state.Person[ltr]);
-    const r = schemaToReducerMap(schema);
-    expect(r.Person(state,state.Person,{payload:{}})).toBe(state.Person);
+  it("should not read values not defined on the schema",()=>{
+    const schema=gql(`type A{id:ID,name:String}`);
+    expect(schemaToQueryReducerMap(schema).Bs).toBeUndefined();;
   });
-  it("should work on many to one and many to many relationships",()=>{
-      const schema=gql`
-        type Person{id:ID,best:Person,friends:[Person],pets:[Pet]}
-        type Pet{id:ID,owner:Person}
-      `
-      const state={
-        Person:{
-          a:{id:'a',best:'b',friends:['b','c'],pets:['e']},
-          b:{id:'b',best:'a',friends:['a'],pets:[]},
-          c:{id:'c',best:'a',friends:[],pets:[]},
-        },
-        Pet:{
-          e:{id:'e',owner:'a'},
-        }
-      };
-      // const result={
-      //   ...state,
-      //   Person:{
-      //     ...state.Person,
-      //     a:{
-      //       ...state.Person.a,
-      //       best:state.Person[state.Person.a.best],
-      //       friends:state.Person.a.friends.map(id=>state.Person[id]),
-      //       pets:state.Person.a.pets.map(id=>state.Pet[id])
-      //     },
-      //     b:{...state.Person.b,best:state.Person.a},
-      //     c:{...state.Person.c,best:state.Person.a},
-      //   },
-      //   Pet:{
-      //     e:{...state.Pet.e,owner:state.Person[state.Pet.e.owner]}
-      //   }
-      // }
-      // state.Person.a.friends=state.Person.a.friends.map(ltr=>state.Person[ltr]);
-    const r = schemaToReducerMap(schema);
-    expect(r.Person(state,state.Person,{payload:{}})).toEqual(state.Person);
-  });
-});
-describe("getDenormalizingQueryReducer", () => {
-  it("should work on recursively defined objects",()=>{
+  it("should enable deletions from a collection",()=>{
     const schema=gql`
       type Person{id:ID,best:Person,friends:[Person]}
     `
     const state={
-      Person:{
+      Persons:{
         a:{id:'a',best:'b',friends:['b','c']},
-        b:{id:'b',best:'a',friends:['a']},
-        c:{id:'c',best:'a',friends:['a']},
+        b:{id:'b',best:'a',friends:['a'],pets:[]},
+        c:{id:'c',best:'a',friends:['a'],pets:[]},
       },
     };
-    const result={Person:{
-      ...Object.values(state.Person).reduce((o,v)=>{
-        o[v.id]={
-          id:v.id,
-          best:state.Person[v.best],
-          friends:v.friends.map(id=>state.Person[id])
-        };
-        return o;
-      },{})
-    }};
-    // state.Person.a.friends=state.Person.a.friends.map(ltr=>state.Person[ltr]);
-    const store={getState:()=>state};
-    const reduceQuery = getDenormalizingQueryReducer(store,schemaToReducerMap(schema));
-    expect(reduceQuery(gql`{Person{id,best,friends}}`)).toEqual(result);
+    const reducer = schemaToQueryReducerMap(schema).Persons;
+    const result = reducer(state.Persons,{type:'SUBTRACT_PERSONS',payload:{c:{id:'c'}}});
+    expect(result).not.toBe(state.Persons);
+    expect(result.a).toBe(state.Persons.a);
+    expect(result.b).toBe(state.Persons.b);
+    expect(result).toEqual(omit(['c'],state.Persons));
   });
+  it("should return the original if nothing to delete",()=>{
+    const schema=gql`
+      type Person{id:ID,best:Person,friends:[Person]}
+    `;
+    const state={
+      Persons:{
+        a:{id:'a',best:'b',friends:['b','c']},
+        b:{id:'b',best:'a',friends:['a'],pets:[]},
+        c:{id:'c',best:'a',friends:['a'],pets:[]},
+      },
+    };
+    const reducer = schemaToQueryReducerMap(schema).Persons;
+    const result = reducer(state.Persons,{type:'SUBTRACT_PERSONS',payload:{id:'d'}});
+    expect(result).not.toBe(state.Persons);
+  });
+
+  it("should enable creations|unions",()=>{
+    const schema=gql`
+      type Person{id:ID,best:Person,friends:[Person]}
+    `;
+    const state={Persons:{
+      a:{id:'a',best:'b',friends:['b','c']},
+      b:{id:'b',best:'a',friends:['a'],pets:[]},
+    }};
+    const c={id:'c',best:'a',friends:['a'],pets:[]};
+    const reducer = schemaToQueryReducerMap(schema).Persons;
+    const result = reducer(state.Persons,{type:'UNION_PERSONS',payload:{c}});
+    expect(result).toEqual({...state.Persons,c});
+    expect(result).not.toBe(state.Persons);
+  });
+
+  
+  
+  // it("should return ids on recursively defined objects",()=>{
+  //     const schema=gql`
+  //       type Person{id:ID,best:Person,friends:[Person]}
+  //     `
+  //     const state={
+  //       Persons:{
+  //         a:{id:'a',best:'b',friends:['b','c']},
+  //         b:{id:'b',best:'a',friends:['a'],pets:[]},
+  //         c:{id:'c',best:'a',friends:['a'],pets:[]},
+  //       },
+  //     };
+  //     // const result={...state,Person:{
+  //     //   ...Object.values(state.person).reduce((o,v)=>{
+  //     //     o[v.id]={
+  //     //       id:v.id,
+  //     //       best:state.Person[v.best],
+  //     //       friends:v.friends.map(id=>state.Person[id])
+  //     //     };
+  //     //     return o;
+  //     //   },{})
+  //     // }};
+  //     // state.Person.a.friends=state.Person.a.friends.map(ltr=>state.Person[ltr]);
+  //   const r = schemaToQueryReducerMap(schema);
+  //   expect(r.Persons(state.Persons,{type:'DELETE_PERSONS',payload:{}})).toBe(state.Person);
+  // });
+  // it("should work on many to one and many to many relationships",()=>{
+  //     const schema=gql`
+  //       type Person{id:ID,best:Person,friends:[Person],pets:[Pet]}
+  //       type Pet{id:ID,owner:Person}
+  //     `
+  //     const state={
+  //       Person:{
+  //         a:{id:'a',best:'b',friends:['b','c'],pets:['e']},
+  //         b:{id:'b',best:'a',friends:['a'],pets:[]},
+  //         c:{id:'c',best:'a',friends:[],pets:[]},
+  //       },
+  //       Pet:{
+  //         e:{id:'e',owner:'a'},
+  //       }
+  //     };
+  //     // const result={
+  //     //   ...state,
+  //     //   Person:{
+  //     //     ...state.Person,
+  //     //     a:{
+  //     //       ...state.Person.a,
+  //     //       best:state.Person[state.Person.a.best],
+  //     //       friends:state.Person.a.friends.map(id=>state.Person[id]),
+  //     //       pets:state.Person.a.pets.map(id=>state.Pet[id])
+  //     //     },
+  //     //     b:{...state.Person.b,best:state.Person.a},
+  //     //     c:{...state.Person.c,best:state.Person.a},
+  //     //   },
+  //     //   Pet:{
+  //     //     e:{...state.Pet.e,owner:state.Person[state.Pet.e.owner]}
+  //     //   }
+  //     // }
+  //     // state.Person.a.friends=state.Person.a.friends.map(ltr=>state.Person[ltr]);
+  //   const r = schemaToQueryReducerMap(schema);
+  //   expect(r.Person(state,state.Person,{payload:{}})).toEqual(state.Person);
+  // });
+});
+// describe("getDenormalizingQueryReducer", () => {
+//   it("should work on recursively defined objects",()=>{
+//     const schema=gql`
+//       type Person{id:ID,best:Person,friends:[Person]}
+//     `
+//     const state={
+//       Person:{
+//         a:{id:'a',best:'b',friends:['b','c']},
+//         b:{id:'b',best:'a',friends:['a']},
+//         c:{id:'c',best:'a',friends:['a']},
+//       },
+//     };
+//     const result={Person:{
+//       ...Object.values(state.Person).reduce((o,v)=>{
+//         o[v.id]={
+//           id:v.id,
+//           best:state.Person[v.best],
+//           friends:v.friends.map(id=>state.Person[id])
+//         };
+//         return o;
+//       },{})
+//     }};
+//     // state.Person.a.friends=state.Person.a.friends.map(ltr=>state.Person[ltr]);
+//     const store={getState:()=>state};
+//     const reduceQuery = getDenormalizingQueryReducer(schema,store);
+//     expect(reduceQuery(gql`{Person{id,best,friends}}`)).toEqual(result);
+//   });
   // it("should work on many to one and many to many relationships",()=>{
   //     const schema=gql`
   //       type Person{id:ID,best:Person,friends:[Person],pets:[Pet]}
@@ -178,7 +247,7 @@ describe("getDenormalizingQueryReducer", () => {
   //   const r = schemaToReducerMap(schema);
   //   expect(r.Person(state,state.Person,{payload:{}})).toEqual(state.Person);
   // });
-});
+// });
 // describe("getQueryReducer", () => {
 //   it("should return the original if unchanged",()=>{
 //     const prev={a:{id:'a'},b:{id:'b'}};

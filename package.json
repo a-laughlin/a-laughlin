@@ -53,10 +53,10 @@
   "scripts": {
     "story": "",
     "jest:nowatch": "jest --no-cache --no-watch ./src/**/*.test.js",
-    "watch": "webpack --watch",
-    "start": "webpack-dev-server --open",
+    "watch": "webpack --mode='development' --watch",
+    "start": "webpack-dev-server --mode='development' --open",
     "server": "node server.js",
-    "build": "webpack",
+    "build": "webpack --mode='production'",
     "test": "jest"
   }
 }
