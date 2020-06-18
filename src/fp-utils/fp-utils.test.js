@@ -1,11 +1,63 @@
 import {
-  acceptArrayOrArgs,identity,condNoExec,
-  cond,stubTrue,stubFalse,groupByKeys,groupByValues,tdKeyBy,tdToObject} from './fp-utils'
+  acceptArrayOrArgs,
+  identity,
+  condNoExec,
+  cond,
+  stubTrue,
+  stubFalse,
+  groupByKeys,
+  groupByValues,
+  tdKeyBy,
+  tdToObject,
+  transToArray,
+  transToObject,
+} from './fp-utils'
 
 describe("acceptArrayOrArgs", () => {
   const testFn = acceptArrayOrArgs(identity);
   it('should convert args to an array', () =>expect(testFn(1,2,3)).toEqual([1,2,3]));
   it('should keep an array', () =>expect(testFn([1,2,3])).toEqual([1,2,3]));
+});
+describe('transToArray',()=>{
+  it('should reduce an array or object to an array, ignoring return value', () =>{
+    let coll=['a'], a, v, k, c, result=transToArray((aa,vv,kk,cc)=>{a=aa,v=vv,k=kk,c=cc;aa[aa.length]=true;})(coll);
+    expect(a).toBe(result);
+    expect(Array.isArray(result)).toBe(true);
+    expect(v).toBe('a');
+    expect(result[0]).toBe(true);
+    expect(k).toBe(0);
+    expect(c).toBe(coll);
+    
+    coll={a:{id:'a'}};
+    result=transToArray((aa,vv,kk,cc)=>{a=aa,v=vv,k=kk,c=cc;aa[aa.length]=true;})(coll);
+    expect(a).toBe(result);
+    expect(Array.isArray(result)).toBe(true);
+    expect(v).toBe(coll.a);
+    expect(result[0]).toBe(true);
+    expect(k).toBe('a');
+    expect(c).toBe(coll);
+  });
+});
+describe('transToObject',()=>{
+  it('should reduce an array or object to an object, ignoring return value', () =>{
+    let coll=['a'],a,v,k,c;
+    let result=transToObject((aa,vv,kk,cc)=>{a=aa,v=vv,k=kk,c=cc;aa[kk]=true;})(coll);
+    expect(a).toBe(result);
+    expect(Array.isArray(result)).toBe(false);
+    expect(v).toBe('a');
+    expect(k).toBe(0);
+    expect(c).toBe(coll);
+    expect(result['0']).toBe(true);
+    
+    coll={a:{id:'a'}};
+    result=transToObject((aa,vv,kk,cc)=>{a=aa,v=vv,k=kk,c=cc;aa[kk]=true;})(coll);
+    expect(a).toBe(result);
+    expect(Array.isArray(result)).toBe(false);
+    expect(v).toBe(coll.a);
+    expect(k).toBe('a');
+    expect(c).toBe(coll);
+    expect(result['a']).toBe(true);
+  });
 });
 
 describe("condNoExec", () => {

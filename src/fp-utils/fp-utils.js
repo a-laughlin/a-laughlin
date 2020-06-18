@@ -23,7 +23,6 @@ import flattenDeep from 'lodash/fp/flattenDeep'
 import over from 'lodash/fp/over'
 import identity from 'lodash/fp/identity'
 import difference from 'lodash/fp/difference'
-import isArray from 'lodash/fp/isArray'
 import isInteger from 'lodash/fp/isInteger'
 import isError from 'lodash/fp/isError'
 import isNumber from 'lodash/fp/isNumber'
@@ -44,7 +43,6 @@ import set from 'lodash/fp/set'
 import unset from 'lodash/fp/unset'
 import once from 'lodash/fp/once'
 import sortBy from 'lodash/fp/sortBy'
-import keyBy from 'lodash/fp/keyBy'
 import every from 'lodash/fp/every'
 import values from 'lodash/fp/values'
 import keys from 'lodash/fp/keys'
@@ -53,11 +51,8 @@ import unzip from 'lodash/fp/unzip'
 import union from 'lodash/fp/union'
 import conforms from 'lodash/fp/conforms'
 import intersection from 'lodash/fp/intersection'
-import nth from 'lodash/fp/nth'
-import first from 'lodash/fp/first'
-import last from 'lodash/fp/last'
+import nth from 'lodash/fp/nth';
 import clone from 'lodash/fp/clone';
-import groupBy from 'lodash/fp/groupBy'
 
 import merge from 'lodash/merge'
 import mergeWith from 'lodash/mergeWith'
@@ -120,8 +115,9 @@ export const frozenEmptyObject = Object.freeze(Object.create(null));
 
 
 // predicates
-export {isArray,isError,isInteger,isNumber,isObjectLike,hasIn,has,isWeakMap,isWeakSet,isMap,
+export {isError,isInteger,isNumber,isObjectLike,hasIn,has,isWeakMap,isWeakSet,isMap,
   isSet,isEmpty,isString,isPlainObject,isFunction,isNull,isUndefined,every,conforms}
+export const isArray = Array.isArray.bind(Array);
 export const isFalsy = arg=>!arg;
 export const isTruthy = arg=>!!arg;
 export const is = val1=>val2=>val1===val2;
@@ -131,6 +127,19 @@ export const len0 = len(0);
 export const len1 = len(1);
 export const isProductionEnv = ()=>process.env.NODE_ENV === 'production';
 export const matches = arg=>matchesFP(arg);
+export const isDeepEqual=(a,b)=>{ // decently fast check on objects and arrays
+  if (a===b)return true;
+  if (typeof a !== 'object')return a===b;
+  if (Array.isArray(a)){
+    if (Array.isArray(b)===false||a.length!==b.length)return false;
+    let key=-1,L=toCheck.length;
+    while (++key<L) if (isCached(a[key],b[key])===false) return false;
+    return true;
+  }
+  let key;
+  for (key in toCheck) if (isCached(a[key],b[key])===false) return false;
+  return true;
+}
 
 // debugging
 export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
@@ -152,6 +161,7 @@ export const converge = (arg)=>(isArray(arg)?over:overObj)(arg);
 // casting
 export {constant};
 export const ensureArray = (val=[])=>isArray(val) ? val : [val];
+export const ensureString = (val)=>isString(val) ? val : `${val}`;
 export const ensureFunction = (arg)=>typeof arg==='function'?arg:constant(arg);
 export const ensureProp = (obj,key,val)=>{obj.hasOwnProperty(key) ? obj[key] : (obj[key]=val);return obj;};
 export const ensurePropWith = fn=>(obj,key,val)=>ensureProp(obj,key,fn(obj,key,val));
@@ -160,8 +170,8 @@ export const ensurePropIsObject = ensurePropWith(stubObject);
 
 // logic
 export const not = negate;
+export const ifElseUnary = (pred,T,F=identity)=>arg=>pred(arg)?T(arg):F(arg);
 export const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
-export const ife = ifElse;
 export const and = rest(overEvery);
 export const or = rest(overSome);
 export const none = not(or);
@@ -181,38 +191,97 @@ export const sort = sortBy(null)
 
 
 // collections
+export {reduce,merge,mergeWith,flatMap,flattenDeep,flatten};
+const makeCollectionFn=(arrayFn,objFn)=>fn=>{
+  const aFn=arrayFn(fn);
+  const oFn=objFn(fn);
+  return coll=>isArray(coll)?aFn(coll):oFn(coll);
+}
+const transArrayToObject = fn => (coll=[]) => {
+  const l = coll.length, acc = Object.create(null);
+  let k = -1;
+  while (++k < l) fn(acc, coll[k], k, coll);
+  return acc;
+}
+const transArrayToArray = fn => (coll=[]) => {
+  const l = coll.length, acc = [];
+  let k = -1;
+  while (++k < l) fn(acc, coll[k], k, coll);
+  return acc;
+}
+const transObjectToObject = fn => (coll={}) => {
+  let k, acc = Object.create(null);
+  for (k in coll) fn(acc, coll[k], k, coll);
+  return acc;
+}
+const transObjectToArray = fn => (coll={}) => {
+  let k, acc = [];
+  for (k in coll) fn(acc, coll[k], k, coll);
+  return acc;
+}
+export const immutableTransObjectToObject = fn => (coll={}) => {
+  let k, acc = {},changed=false;
+  for (k in coll) {
+    fn(acc, coll[k], k, coll);
+    if (acc[k]!==coll[k]) changed=true;
+  }
+  return changed===false?coll:acc;
+}
+export const immutableFilterObjectToObject = (pred=(v,k,c)=>true) => (coll={}) => {
+  let k, acc = {},changed=false;
+  for (k in coll)
+    pred(coll[k], k, coll)
+      ? (acc[k]=coll[k])
+      : (changed=true);
+  return changed===true?acc:coll;
+}
+export const transX = makeCollectionFn(transArrayToArray,transObjectToObject);
+export const transToObject = makeCollectionFn(transArrayToObject,transObjectToObject);
+export const transToArray = makeCollectionFn(transArrayToArray,transObjectToArray);
+
+
+// backwards compat
 // shortcuts for the most common collection operations
 // prefixes = r,m,f,o,fm = reduce,map,filter,omit,filter+map
 // suffixes = o,a,x = toObject,toArray,toX (where X is the same type as input)
-export {reduce,merge,mergeWith,flatMap,flattenDeep,flatten};
-export const ro=fn=>(...args)=>transform(fn,{})(...args);
-export const ra=fn=>(...args)=>transform(fn,[])(...args);
-export const ma=map;
-export const mo=fn=>ifElse(isArray,ro((acc,v,i,c)=>{acc[i]=fn(v,i,c);}),mapValues)(fn);
-export const fa=filter;
-export const fo = cond(
-  [isArray,pred=>ife(isArray,ro((o,v,i,c)=>{if(pred.includes(v)){o[i]=v;}}), pick(pred))],
-  [isFunction,pred=>ife(isArray,ro((o,v,i,c)=>{if(pred(v,i,c)){o[i]=v;}}),pickBy(pred))],
-  [isString,pipe(ensureArray,pred=>fo(pred))],
-);
-export const oa=pipe(not,fa);
-export const oo = cond(
-  [isFunction,pred=>ife(isArray,fo(not(pred)),omitBy(pred))],
-  [isArray,pred=>ife(isArray,ro((o,v,i,c)=>{if(!pred.includes(v)){o[i]=v;}}), omit(pred)) ],
-  [isString,pipe(ensureArray,pred=>oo(pred))],
-);
-export const fma=(pred,fn)=>ra((a,v,k,c)=>{if(pred(v,k,c)){a[a.length]=fn(v,k,c);}});
-export const fmo=(pred,fn)=>ro((o,v,k,c)=>{if(pred(v,k,c)){o[k]=fn(v,k,c);}});
+export const ro=transToObject; 
+export const ra=transToArray; // backwards compat
+export const ma=fn=>transToArray((a,v,k)=>a[a.length]=fn(v,k)); // _ equiv map
+export const mo=fn=>transToObject((a,v,k)=>a[k]=fn(v,k)); // _ equiv mapValues
+export const fa=pred=>transToArray((a,v,k)=>pred(v,k)&&(a[a.length]=v)); // _ equiv filter
+export const fo=pred=>transToObject((a,v,k)=>pred(v,k)&&(a[k]=v)); // _ equiv pickBy
+export const oa=pred=>transToArray((a,v,k)=>!pred(v,k)&&(a[a.length]=v)); // _ equiv withoutBy
+export const oo=pred=>transToObject((a,v,k)=>!pred(v,k)&&(a[k]=v)); // _ equiv pickBy
+
 // partionObject((v,k)=>k=='a',(v,k)=>k!='a')({a:1,b:2,c:3}) =>[{a:1},{b:1,c:2}]
 // partionObject((v,k)=>v==1,(v,k)=>v!=1)({a:1,b:2,c:3}) =>[{a:1,b:1},{c:2}]
 // partionObject((v,k)=>v==1)({a:1,b:2,c:3}) =>[{a:1,b:1},{c:2}]
 const partitionObject = (...preds)=>over([...(preds.map(fo)),fo(none(preds))]);
 const partitionArray = (...preds)=>over([...(preds.map(fa)),fa(none(preds))]);
-export const partition = ifElse(isArray,partitionArray,partitionObject);
+export const partition = makeCollectionFn(partitionArray,partitionObject);
+
+
+
+
+// indexers
+export const keyBy = ifElseUnary(isString,
+  (id='id')=>transToObject((o,v,k)=>{o[v[id]]=v;}),
+  (fn=x=>x.id)=>transToObject((o,v,k)=>{o[fn(v,k)]=v;})
+);
+const pushToArray=(a=[],v)=>{a[a.length]=v;return a;};
+const pushToArrayProp=(acc={},v,k)=>{acc[k]=pushToArray(acc[k],v);return acc;}
+export const groupBy = fn=>transToObject((o,v,k,c)=>pushToArrayProp(o,v,fn(v,k)));
+export const groupByKeys = transToObject((o,v,k)=>{for (k in v)pushToArrayProp(o,v,k)});
+export const groupByValues = transToObject((o,v)=>{
+  let k,vv;
+  for (k in v)
+    for (vv of ensureArray(v[k]))
+      pushToArrayProp(o,v,ensureString(vv));
+});
 
 
 // getters
-export {get,set,_set,unset,nth,first,last,keyBy,groupBy};
+export {get,set,_set,unset,nth};
 export const pget = cond(
   [isString,str=>{
     str=str.split('.');
@@ -222,17 +291,14 @@ export const pget = cond(
   [isPlainObject, obj=>target=>mo(f=>pget(f)(target))(obj)],
   [stubTrue,identity], // handles the function case
 );
-export const groupByKeys = ro((o,item,ik,c)=>{
-  for (const k in item){ensurePropIsArray(o,k)[k].push(item)}
-})
-export const groupByValues = ro((o,item,k,c)=>{
-  for (const k in item){
-    for (const v of ensureArray(item[k])){
-      const key=`${v}`;
-      ensurePropIsArray(o,key)[key].push(item);
-    }
-  }
-});
+export const first = c=>{
+  if (isArray(c)) return c[i];
+  for (const k in c)return c[k];
+}
+export const last = c =>{
+  c=isArray(c)?c:Object.values(c);
+  return c[c.length-1];
+}
 
 
 

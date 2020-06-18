@@ -6,7 +6,7 @@ import omit from 'lodash/fp/omit';
 
 import {
   schemaToQueryReducerMap,
-  getDenormalizingQueryReducer,
+  getStateDenormalizingMemoizedQuery,
 } from './redux-graphql';
 
 const schema = gql`
@@ -54,70 +54,70 @@ describe("schemaToQueryReducerMap", () => {
     }
     `;
     expect(Object.keys(schemaToQueryReducerMap(schema)).sort())
-    .toEqual( [ 'Users', 'Hobbys' ].sort());
+    .toEqual( [ 'User', 'Hobby' ].sort());
   });
   it("should read values as default",()=>{
     const schema=gql`
       type A{id:ID,name:String}
     `
     const state={
-      As:{ a:{id:'a',name:'A'}, b:{id:'b',name:'B'} },
-      Bs:{ aa:{id:'aa',name:'AA'}, bb:{id:'bb',name:'BB'} }
+      A:{ a:{id:'a',name:'A'}, b:{id:'b',name:'B'} },
+      B:{ aa:{id:'aa',name:'AA'}, bb:{id:'bb',name:'BB'} }
     };
     const r = schemaToQueryReducerMap(schema);
-    expect(r.As(state.As)).toBe(state.As);
+    expect(r.A(state.A)).toBe(state.A);
   });
   it("should not read values not defined on the schema",()=>{
     const schema=gql(`type A{id:ID,name:String}`);
-    expect(schemaToQueryReducerMap(schema).Bs).toBeUndefined();;
+    expect(schemaToQueryReducerMap(schema).B).toBeUndefined();;
   });
   it("should enable deletions from a collection",()=>{
     const schema=gql`
       type Person{id:ID,best:Person,friends:[Person]}
     `
     const state={
-      Persons:{
+      Person:{
         a:{id:'a',best:'b',friends:['b','c']},
         b:{id:'b',best:'a',friends:['a'],pets:[]},
         c:{id:'c',best:'a',friends:['a'],pets:[]},
       },
     };
-    const reducer = schemaToQueryReducerMap(schema).Persons;
-    const result = reducer(state.Persons,{type:'SUBTRACT_PERSONS',payload:{c:{id:'c'}}});
-    expect(result).not.toBe(state.Persons);
-    expect(result.a).toBe(state.Persons.a);
-    expect(result.b).toBe(state.Persons.b);
-    expect(result).toEqual(omit(['c'],state.Persons));
+    const reducer = schemaToQueryReducerMap(schema).Person;
+    const result = reducer(state.Person,{type:'SUBTRACT_PERSON',payload:{c:{id:'c'}}});
+    expect(result).not.toBe(state.Person);
+    expect(result.a).toBe(state.Person.a);
+    expect(result.b).toBe(state.Person.b);
+    expect(result).toEqual(omit(['c'],state.Person));
   });
   it("should return the original if nothing to delete",()=>{
     const schema=gql`
       type Person{id:ID,best:Person,friends:[Person]}
     `;
     const state={
-      Persons:{
+      Person:{
         a:{id:'a',best:'b',friends:['b','c']},
         b:{id:'b',best:'a',friends:['a'],pets:[]},
         c:{id:'c',best:'a',friends:['a'],pets:[]},
       },
     };
-    const reducer = schemaToQueryReducerMap(schema).Persons;
-    const result = reducer(state.Persons,{type:'SUBTRACT_PERSONS',payload:{id:'d'}});
-    expect(result).not.toBe(state.Persons);
+    const reducer = schemaToQueryReducerMap(schema).Person;
+    const result = reducer(state.Person,{type:'SUBTRACT_PERSON',payload:{id:'d'}});
+    expect(result).not.toBe(state.Person);
   });
 
   it("should enable creations|unions",()=>{
     const schema=gql`
       type Person{id:ID,best:Person,friends:[Person]}
     `;
-    const state={Persons:{
+    const state={Person:{
       a:{id:'a',best:'b',friends:['b','c']},
       b:{id:'b',best:'a',friends:['a'],pets:[]},
     }};
     const c={id:'c',best:'a',friends:['a'],pets:[]};
-    const reducer = schemaToQueryReducerMap(schema).Persons;
-    const result = reducer(state.Persons,{type:'UNION_PERSONS',payload:{c}});
-    expect(result).toEqual({...state.Persons,c});
-    expect(result).not.toBe(state.Persons);
+    const reducer = schemaToQueryReducerMap(schema).Person;
+    const result = reducer(state.Person,{type:'UNION_PERSON',payload:{c}});
+    expect(result).toEqual({...state.Person,c});
+    expect(result).not.toBe(state.Person);
   });
 
   
@@ -127,7 +127,7 @@ describe("schemaToQueryReducerMap", () => {
   //       type Person{id:ID,best:Person,friends:[Person]}
   //     `
   //     const state={
-  //       Persons:{
+  //       Person:{
   //         a:{id:'a',best:'b',friends:['b','c']},
   //         b:{id:'b',best:'a',friends:['a'],pets:[]},
   //         c:{id:'c',best:'a',friends:['a'],pets:[]},
@@ -145,7 +145,7 @@ describe("schemaToQueryReducerMap", () => {
   //     // }};
   //     // state.Person.a.friends=state.Person.a.friends.map(ltr=>state.Person[ltr]);
   //   const r = schemaToQueryReducerMap(schema);
-  //   expect(r.Persons(state.Persons,{type:'DELETE_PERSONS',payload:{}})).toBe(state.Person);
+  //   expect(r.Person(state.Person,{type:'DELETE_PERSONS',payload:{}})).toBe(state.Person);
   // });
   // it("should work on many to one and many to many relationships",()=>{
   //     const schema=gql`
@@ -184,33 +184,86 @@ describe("schemaToQueryReducerMap", () => {
   //   expect(r.Person(state,state.Person,{payload:{}})).toEqual(state.Person);
   // });
 });
-// describe("getDenormalizingQueryReducer", () => {
-//   it("should work on recursively defined objects",()=>{
-//     const schema=gql`
-//       type Person{id:ID,best:Person,friends:[Person]}
-//     `
-//     const state={
-//       Person:{
-//         a:{id:'a',best:'b',friends:['b','c']},
-//         b:{id:'b',best:'a',friends:['a']},
-//         c:{id:'c',best:'a',friends:['a']},
-//       },
-//     };
-//     const result={Person:{
-//       ...Object.values(state.Person).reduce((o,v)=>{
-//         o[v.id]={
-//           id:v.id,
-//           best:state.Person[v.best],
-//           friends:v.friends.map(id=>state.Person[id])
-//         };
-//         return o;
-//       },{})
-//     }};
-//     // state.Person.a.friends=state.Person.a.friends.map(ltr=>state.Person[ltr]);
-//     const store={getState:()=>state};
-//     const reduceQuery = getDenormalizingQueryReducer(schema,store);
-//     expect(reduceQuery(gql`{Person{id,best,friends}}`)).toEqual(result);
-//   });
+describe("queryToDenormalizedState", () => {
+  it("should work on lists, like Query{Person:[Person]}",()=>{});
+  it("should query collections",()=>{
+    const schema=gql`
+      type Person{id:ID,best:Person,friends:[Person]}
+    `;
+    const query = gql`
+      {Person{id}}
+    `;
+    const state={
+      Person:{
+        a:{id:'a',best:'b',friends:['b','c']},
+        b:{id:'b',best:'a',friends:['a']},
+        c:{id:'c',best:'a',friends:['a']},
+      },
+    };
+    expect(getStateDenormalizingMemoizedQuery(schema)(state,query)).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+  });
+  it("should query single items",()=>{
+    const schema=gql`
+      type Person{id:ID,best:Person,friends:[Person]}
+    `;
+    const query = gql`
+      {Person(id:$id){id}}
+    `;
+    const state={
+      Person:{
+        a:{id:'a',best:'b',friends:['b','c']},
+        b:{id:'b',best:'a',friends:['a']},
+        c:{id:'c',best:'a',friends:['a']},
+      },
+    };
+    
+    expect(getStateDenormalizingMemoizedQuery(schema)(state,query,{id:'a'})).toEqual({Person:{a:{id:'a'}}});
+  });
+  it("should denormalize collections",()=>{
+    const schema=gql`
+      type Person{id:ID,best:Person,friends:[Person]}
+    `;
+    // const query = gql`
+    //   {Person(id:$id){best{id}}}
+    // `;
+    const query = gql`
+      {Person{best{id}}}
+    `;
+    const state={
+      Person:{
+        a:{id:'a',best:'b',friends:['b','c']},
+        b:{id:'b',best:'a',friends:['a']},
+        c:{id:'c',best:'a',friends:['a']},
+      },
+    };
+    
+    expect(getStateDenormalizingMemoizedQuery(schema)(state,query)).toEqual({
+      Person:{
+        a:{best:{id:'b'}},
+        b:{best:{id:'a'}},
+        c:{best:{id:'a'}}
+      }
+    });
+    // expect(getStateDenormalizingMemoizedQuery(schema)(state,query,{id:'a'})).toEqual({Person:{a:{best:{id:'b'}}}});
+  });
+  // it("should work on basic objects",()=>{
+  //   const schema=gql`
+  //     type Person{id:ID,best:Person,friends:[Person]}
+  //   `;
+  //   const query = gql`
+  //     {Person{best{id}}}
+  //   `;
+  //   const state={
+  //     Person:{
+  //       a:{id:'a',best:'b',friends:['b','c']},
+  //       b:{id:'b',best:'a',friends:['a']},
+  //       c:{id:'c',best:'a',friends:['a']},
+  //     },
+  //   };
+  //   expect(getStateDenormalizingMemoizedQuery(schema)(query,{id:'a'})).toEqual({best:{id:'b'}});
+  // });
+});
+
   // it("should work on many to one and many to many relationships",()=>{
   //     const schema=gql`
   //       type Person{id:ID,best:Person,friends:[Person],pets:[Pet]}
@@ -247,7 +300,6 @@ describe("schemaToQueryReducerMap", () => {
   //   const r = schemaToReducerMap(schema);
   //   expect(r.Person(state,state.Person,{payload:{}})).toEqual(state.Person);
   // });
-// });
 // describe("getQueryReducer", () => {
 //   it("should return the original if unchanged",()=>{
 //     const prev={a:{id:'a'},b:{id:'b'}};

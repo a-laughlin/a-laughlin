@@ -1,71 +1,25 @@
-import {frozenEmptyArray, ensureArray,ensurePropIsObject} from '@a-laughlin/fp-utils';
 // import omit from 'lodash/fp/omit';
-import keyBy from 'lodash/fp/keyBy';
+import indexSchema from './indexSchema'
 // import mapValues from 'lodash/mapValues';
-const getDefName=schemaDefinition=>schemaDefinition.name.value;
-const getDefKind=schemaDefinition=>schemaDefinition.kind;
-const getDefFields=schemaDefinition=>schemaDefinition.fields??frozenEmptyArray;
-const getDefCollectionName=schemaDefinition=>`${d.name.value}s`;
-const getFieldTypeName=fieldDefinition=>{
-  let type=fieldDefinition.type;
-  while(type.kind!=='NamedType')type=type.type;
-  return type.name.value;
-}
-const isListField=fieldDefinition=>{
-  const type=fieldDefinition.type;
-  return (type.kind==='NonNullType'?type.type.kind:type.kind)==='ListType';
-}
-
-
-
-export const schemaToMutationReducerMapMiddleware = schema=>{};
-export const schemaToSubscriptionReducerMapMiddleware = schema=>{};
-export const queryReducerMapToQuerySelector=()=>{};
-export const useQuery=()=>{};
-const indexSchema=schema=>{
-  const definitions=ensureArray(schema.definitions).filter(d=>/^(Query|Mutation|Subscription)$/.test(d.name.value)===false);
-  const builtInDefinitions=['ID','Int','Float','String','Boolean']
-    .map(value=>({kind:'ScalarTypeDefinition',name:{value}}));
-  const allDefs=builtInDefinitions.concat(definitions);
-  const definitionsByKind=allDefs.reduce((acc,d)=>{ensurePropIsObject(acc,d.kind)[d.kind][d.name.value]=d;return acc},{});
-  const objectDefs=Object.values(definitionsByKind.ObjectTypeDefinition);
-  return {
-    ...definitionsByKind,
-    definitions:allDefs,
-    definitionsByName:keyBy(getDefName,allDefs),
-    objectFieldMeta:Object.values(definitionsByKind.ObjectTypeDefinition).reduce((acc,d)=>{
-      const dName=getDefName(d);
-      const m=acc[dName]={collectionTypes:{},collectionNames:{},isListType:{},idKey:undefined};
-      for (const f of d.fields){
-        const [fName,fTypeName]=[getDefName(f),getFieldTypeName(f)];
-        if (fTypeName==='ID') m.idKey=fName;
-        m.isListType[fName]=isListField(f);
-        if  (fTypeName in definitionsByKind.ObjectTypeDefinition) {
-          m.collectionTypes[fName]=fTypeName;
-          m.collectionNames[fName]=`${fTypeName}s`;
-        }
-      }
-      return acc;
-    },{})
-  }
+import {isDeepEqual, mo,immutableTransObjectToObject,keyBy} from '@a-laughlin/fp-utils';
+const identity = x => x;
+export const memoize = (fn, by = identity) => {
+  const mFn = (...x) => { const k = by(...x); return fn(...(mFn.cache.has(k) ? mFn.cache.get(k) : (mFn.cache.set(k, x) && x))) };
+  mFn.cache = new WeakMap();
+  return mFn;
 };
-export const propsChanged=(checkChangedIn={},toCheck={})=>{
-  let key;
-  for (key in toCheck) if (toCheck[key]!==checkChangedIn[key]) return true;
-  return false;
-}
+
 export const schemaToQueryReducerMap=( schema = gql('type DefaultType {id:ID!}') )=>{
   return Object.entries(indexSchema(schema).objectFieldMeta).reduce((acc,[dName,{idKey}])=>{
-    const collectionName=`${dName}s`;
+    const collectionName=dName;
     const NAME=dName.toUpperCase();
-    const [UNION,INTERSECTION,ADD,SUBTRACT,SET]=['UNION','INTERSECTION','ADD','SUBTRACT','SET']
-      .map(OP=>`${OP}_${NAME}S`);
+    const [UNION,INTERSECTION,ADD,SUBTRACT,SET,GET]=['UNION','INTERSECTION','ADD','SUBTRACT','SET','GET']
+      .map(OP=>`${OP}_${NAME}`);
     const collDiffer=diffBy(idKey);
-    const keyByID=keyBy(idKey);
-    acc[collectionName]=(prevState,action={type:'NONE',payload:{}})=>{
-      if (typeof action==='function')return action(prevState);
-      if (action.type==='NONE') return prevState;
+    acc[collectionName]=(prevState,action={type:GET,payload:{}})=>{
       let {type,payload}=action;
+      if (action.type===GET) return prevState;
+      if (typeof type==='function')return type(prevState,payload);
       if (idKey in payload) payload={[payload[idKey]]:payload};
       if (type===SET) return payload;
       if (type===ADD) return {...prevState,...payload};
@@ -92,21 +46,121 @@ export const schemaToQueryReducerMap=( schema = gql('type DefaultType {id:ID!}')
     return acc;
   },{});
 };
-export const getUseQuery=(store,queryReducer)=>{
-  return (query,vars)=>{
-    const [state,setState]=useState(queryReducer(store.getState(),query,vars));
-    useEffect(()=>{
-      lastResult;
-      return store.subscribe(()=>{
-        const result=query.definitions[0].selectionSet.selections.reduce(queryReducer,store.getState())
-        if (result!==lastResult){
-          lastResult=result;
-          setState(result);
-        }
-      }).bind(store);
-    },[vars]);
-  }
+
+const getVarsKey = vars=>{
+  const keys=Object.keys(vars).sort();
+  return keys.join(',') + keys.map(k=>JSON.stringify(vars[k])).join(',');
+};
+export const propsChanged=(checkChangedIn={},toCheck={})=>{
+  if (checkChangedIn===toCheck)return true;
+  let key;
+  for (key in toCheck) if (toCheck[key]!==checkChangedIn[key]) return true;
+  return false;
 }
+export const schemaToMutationReducerMapMiddleware = schema=>{};
+export const schemaToSubscriptionReducerMapMiddleware = schema=>{};
+const autoGenerateSchemaQueriesAndMutations=()=>{}
+
+export const getStateDenormalizingMemoizedQuery=(schema)=>{
+  const {objectFieldMeta}=indexSchema(schema);
+  const reducerMap = schemaToQueryReducerMap(schema);
+  // no, the arrays will need to update when changed in norm
+  // I don't even need to memoize a string. I can just memoize the collection, since it will change.
+  // it will break when the args change
+  
+  // queryCollection(prevRootNorm,prevRootCollectionsDenorm,nextDenorm): memoized: collection unchanged and arguments(not vars) names/values unchanged, return collection result
+  // Invariants:
+  // If tree unchanged, collections unchanged
+  // If collection unchanged props unchanged
+  
+  // queryNestedCollection: just memoizes nested collection outputs: key collectionName, collectionIdArray, arguments;
+  // Invariants:
+  // If idList unchanged, collection unchanged
+  
+  // queryNestedCollectionSubset: just memoizes nested collection outputs: key collectionName, collectionIdArray, arguments;
+  // let normPrevRootState;
+  // let denormPrevRootState;
+  // Invariants:
+  // If idList unchanged, and args.sort.tostring is unchanged, collection subset unchanged
+  // // useQuery, memoize at point of use at point of use?
+  // const {objectFieldMeta,definitionsByKind} = indexSchema(schema);
+  // const reducerMap = schemaToQueryReducerMap(schema);
+  // const {getState} = store;
+  
+  
+  // will the relationships auto-update on mutation since denorm is by reference?
+  const matches = args=>v=>{
+    for (const arg in args)
+      if(v[arg]!==args[arg])
+        return false;
+    return true;
+  };
+  const collectionFieldNameToCollectionName=(cName,fName)=>{
+    reducerMap
+  }
+  const populateArgsFromVars = (args=[],vars={})=>{
+    let result={},name,kind;
+    for (const arg of args){
+      name=arg.name.value;
+      kind=arg.value.kind;
+      if(kind==='Variable') result[name]=vars[name];
+      else result[name]=arg[name]
+    }
+    return result;
+  };
+  const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=>{
+    let vars = {},name,defaultValue;
+    // default per spec is returning only what's in variableDefinitions, but this eliminates the duplicate definitions just to pass a variable for less boilerplate.  Can always change it to the more verbose version and add validation.
+    if (variableDefinitions.length===0)return passedVariables;
+    for ({name:{value:name},defaultValue} of variableDefinitions)
+      vars[name]=passedVariables[name]!==undefined?passedVariables[name]:defaultValue?.value;
+      // may need to de-null and de-list here.
+    return vars;
+  };
+  const queryCollectionItem = /* memoize */((item,selections,vars,itemFieldMeta,rootState)=>{
+    let s,sName,scName,idKey,newItem={};
+    for (s of selections){
+      sName=s.name.value;
+      scName=itemFieldMeta.collectionNames[sName]
+      idKey=itemFieldMeta.idKey
+      if (scName){
+        newItem[sName]=queryCollection(
+          {[item[sName]]:rootState[scName][item[sName]]},
+          scName,
+          s,
+          vars,
+          rootState
+        )[item[sName]];
+        // if isArray
+      } else {
+        newItem[sName]=item[sName];
+      }
+    }
+    return newItem;
+  });
+  const queryCollection = /* memoize */((normedCollection,collectionName,Field,vars,rootState)=>{
+    let selections=(Field.selectionSet||{selections:[]}).selections;
+    if (selections.length===0)console.error(new Error('selections length is 0'));
+    const itemFieldMeta=objectFieldMeta[collectionName];
+    const args = populateArgsFromVars(Field.arguments,vars)
+    const matchesArgs = matches(args);
+    return immutableTransObjectToObject((a,item,id)=>{
+      const isMatch = matchesArgs(item);
+      if (isMatch===false) return;
+      a[id]=queryCollectionItem(item,selections,vars,itemFieldMeta,rootState);
+    })(normedCollection);
+  });
+
+  return  /* memoize */((rootState,operation,passedVariables={})=>{
+    return operation.definitions.reduce((result,op)=>{
+      const vars = variableDefinitionsToObject(op.variableDefinitions,passedVariables);
+      for (const s of op.selectionSet.selections||[])
+        result[s.name.value]=queryCollection(rootState[s.name.value],s.name.value,s,vars,rootState);
+      return result;
+    },{});
+  });
+}
+
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /*
  * General Utils
@@ -126,12 +180,7 @@ export const getUseQuery=(store,queryReducer)=>{
 // // @ts-ignore: tslint dislikes these
 // export const flow = (fn = identity, ...fns) => (...args) => { const l = fns.length; let i = -1, a = fn(...args); while (++i < l) (a = fns[i](a)); return a; }
 // // @ts-ignore: tslint dislikes these
-const identity = x => x;
-export const memoize = (fn, by = identity) => {
-  const mFn = (...x) => { const k = by(...x); return fn(...(mFn.cache.has(k) ? mFn.cache.get(k) : (mFn.cache.set(k, x) && x))) };
-  mFn.cache = new WeakMap();
-  return mFn;
-};
+
 // export const pick = keys => o => { let i = -1; const l = keys.length, acc = Object.create(null); while (++i < l) (acc[keys[i]] = o[keys[i]]); return acc; }
 
 
@@ -158,15 +207,12 @@ export const reducex = fn => coll => {
   return acc;
 }
 // equivalent to lodash transform(coll,isArray(coll)[]?{},fn)
-export const transArrayToObj = fn => coll => {
-  const l = coll.length, acc = Object.create(null);
-  let k = -1;
-  while (++k < l) fn(acc, coll[k], k, coll);
-  return acc;
-}
 
-export const transx = fn => coll => {
-  let k = -1, acc = Object.create(null);
+
+
+const transx = (fn,getInitial=c=>({})) => coll => {
+  const acc = getInitial(coll);
+  let k = -1;
   if (isArray(coll)) {
     const l = coll.length;
     acc = [];
