@@ -220,15 +220,8 @@ describe("queryToDenormalizedState", () => {
     expect(getStateDenormalizingMemoizedQuery(schema)(state,query,{id:'a'})).toEqual({Person:{a:{id:'a'}}});
   });
   it("should denormalize collections",()=>{
-    const schema=gql`
-      type Person{id:ID,best:Person,friends:[Person]}
-    `;
-    // const query = gql`
-    //   {Person(id:$id){best{id}}}
-    // `;
-    const query = gql`
-      {Person{best{id}}}
-    `;
+    const schema=gql` type Person{id:ID,best:Person,friends:[Person]} `;
+    const query = gql` query {Person{best{id}}} `;
     const state={
       Person:{
         a:{id:'a',best:'b',friends:['b','c']},
@@ -244,24 +237,77 @@ describe("queryToDenormalizedState", () => {
         c:{best:{id:'a'}}
       }
     });
-    // expect(getStateDenormalizingMemoizedQuery(schema)(state,query,{id:'a'})).toEqual({Person:{a:{best:{id:'b'}}}});
   });
-  // it("should work on basic objects",()=>{
-  //   const schema=gql`
-  //     type Person{id:ID,best:Person,friends:[Person]}
-  //   `;
-  //   const query = gql`
-  //     {Person{best{id}}}
-  //   `;
-  //   const state={
-  //     Person:{
-  //       a:{id:'a',best:'b',friends:['b','c']},
-  //       b:{id:'b',best:'a',friends:['a']},
-  //       c:{id:'c',best:'a',friends:['a']},
-  //     },
-  //   };
-  //   expect(getStateDenormalizingMemoizedQuery(schema)(query,{id:'a'})).toEqual({best:{id:'b'}});
-  // });
+  it("should denormalize item subsets with variables",()=>{
+    const schema=gql` type Person{id:ID,best:Person,friends:[Person]} `;
+    const query = gql` query {Person(id:$id){best{id}}} `;
+    const state={
+      Person:{
+        a:{id:'a',best:'b',friends:['b','c']},
+        b:{id:'b',best:'a',friends:['a']},
+        c:{id:'c',best:'a',friends:['a']},
+      },
+    };
+    
+    expect(getStateDenormalizingMemoizedQuery(schema)(state,query,{id:'a'})).toEqual({
+      Person:{
+        a:{best:{id:'b'}}
+      }
+    });
+  });
+  it("should denormalize item subsets with default variables",()=>{
+    const schema=gql` type Person{id:ID,best:Person,friends:[Person]} `;
+    const query = gql`
+      query getPerson($id: ID = "a"){Person(id:$id){best{id}}}
+    `;
+    const state={
+      Person:{
+        a:{id:'a',best:'b',friends:['b','c']},
+        b:{id:'b',best:'a',friends:['a']},
+        c:{id:'c',best:'a',friends:['a']},
+      },
+    };
+    
+    expect(getStateDenormalizingMemoizedQuery(schema)(state,query)).toEqual({
+      Person:{
+        a:{best:{id:'b'}}
+      }
+    });
+  });
+  it("should denormalize item subsets with constants",()=>{
+    const schema=gql` type Person{id:ID,best:Person,friends:[Person]} `;
+    const query = gql` query {Person(id:"a"){best{id}}} `;
+    const state={
+      Person:{
+        a:{id:'a',best:'b',friends:['b','c']},
+        b:{id:'b',best:'a',friends:['a']},
+        c:{id:'c',best:'a',friends:['a']},
+      },
+    };
+    
+    expect(getStateDenormalizingMemoizedQuery(schema)(state,query)).toEqual({
+      Person:{
+        a:{best:{id:'b'}}
+      }
+    });
+  });
+  it("should denormalize single items",()=>{
+    const schema=gql` type Person{id:ID,best:Person,friends:[Person]} `;
+    const query = gql` {Person(id:$id){best{id}}} `;
+    const state={
+      Person:{
+        a:{id:'a',best:'b',friends:['b','c']},
+        b:{id:'b',best:'a',friends:['a']},
+        c:{id:'c',best:'a',friends:['a']},
+      },
+    };
+    
+    expect(getStateDenormalizingMemoizedQuery(schema)(state,query,{id:'a'})).toEqual({
+      Person:{
+        a:{best:{id:'b'}}
+      }
+    });
+  });
 });
 
   // it("should work on many to one and many to many relationships",()=>{

@@ -99,22 +99,20 @@ export const getStateDenormalizingMemoizedQuery=(schema)=>{
     reducerMap
   }
   const populateArgsFromVars = (args=[],vars={})=>{
-    let result={},name,kind;
-    for (const arg of args){
-      name=arg.name.value;
-      kind=arg.value.kind;
-      if(kind==='Variable') result[name]=vars[name];
-      else result[name]=arg[name]
+    let result={},name,valueKind;
+    for (const {name:{value:name},value:{kind,value}} of args){
+      result[name] = kind==='Variable' ? vars[name] : value;
+      // may need to delist and denull here
     }
     return result;
   };
   const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=>{
     let vars = {},name,defaultValue;
     // default per spec is returning only what's in variableDefinitions, but this eliminates the duplicate definitions just to pass a variable for less boilerplate.  Can always change it to the more verbose version and add validation.
-    if (variableDefinitions.length===0)return passedVariables;
-    for ({name:{value:name},defaultValue} of variableDefinitions)
-      vars[name]=passedVariables[name]!==undefined?passedVariables[name]:defaultValue?.value;
-      // may need to de-null and de-list here.
+    if (variableDefinitions.length===0) return passedVariables;
+    for ({variable:{name:{value:name}},defaultValue} of variableDefinitions)
+      vars[name]=passedVariables[name]!==undefined ? passedVariables[name] : defaultValue?.value;
+      // may need to de-null and de-list here.f
     return vars;
   };
   const queryCollectionItem = /* memoize */((item,selections,vars,itemFieldMeta,rootState)=>{
