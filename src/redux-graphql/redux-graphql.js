@@ -1,7 +1,7 @@
 // import omit from 'lodash/fp/omit';
 import indexSchema from './indexSchema'
 // import mapValues from 'lodash/mapValues';
-import {isDeepEqual, mo,immutableTransObjectToObject,keyBy} from '@a-laughlin/fp-utils';
+import {isDeepEqual, mo,immutableTransObjectToObject,transToObject,keyBy,ensureArray} from '@a-laughlin/fp-utils';
 const identity = x => x;
 export const memoize = (fn, by = identity) => {
   const mFn = (...x) => { const k = by(...x); return fn(...(mFn.cache.has(k) ? mFn.cache.get(k) : (mFn.cache.set(k, x) && x))) };
@@ -19,16 +19,16 @@ export const schemaToQueryReducerMap=( schema = gql('type DefaultType {id:ID!}')
     acc[collectionName]=(prevState,action={type:GET,payload:{}})=>{
       let {type,payload}=action;
       if (action.type===GET) return prevState;
-      if (typeof type==='function')return type(prevState,payload);
-      if (idKey in payload) payload={[payload[idKey]]:payload};
+      if (+payload) payload={[payload]:{[idKey]:payload}}; // convert number to collection shape
+      else if (idKey in payload) payload={[payload[idKey]]:payload}; // convert item to collection shape
       if (type===SET) return payload;
       if (type===ADD) return {...prevState,...payload};
       const diff = collDiffer([prevState,payload]);
       let nextState={},k;
       if (type===SUBTRACT) {
-        if (diff.aibc===diff.aubc) return nextState; // overlapping payload
-        if (diff.anbc===diff.aubc) return prevState; // empty payload
-        for (k in diff.anb)nextState[k]=prevState[k];
+        if (diff.aibc===0) return prevState; // no intersection to remove
+        if (diff.aibc===diff.aubc) return nextState; // complete intersection. remove everything
+        for (k in diff.anb)nextState[k]=prevState[k]; // copy non-intersecting collection items to new state
         return nextState;
       }
       if (type===UNION){
@@ -95,12 +95,9 @@ export const getStateDenormalizingMemoizedQuery=(schema)=>{
         return false;
     return true;
   };
-  const collectionFieldNameToCollectionName=(cName,fName)=>{
-    reducerMap
-  }
   const populateArgsFromVars = (args=[],vars={})=>{
-    let result={},name,valueKind;
-    for (const {name:{value:name},value:{kind,value}} of args){
+    let result={},name,kind,value;
+    for ({name:{value:name},value:{kind,value}} of args){
       result[name] = kind==='Variable' ? vars[name] : value;
       // may need to delist and denull here
     }
@@ -115,30 +112,30 @@ export const getStateDenormalizingMemoizedQuery=(schema)=>{
       // may need to de-null and de-list here.f
     return vars;
   };
-  const queryCollectionItem = /* memoize */((item,selections,vars,itemFieldMeta,rootState)=>{
-    let s,sName,scName,idKey,newItem={};
-    for (s of selections){
-      sName=s.name.value;
-      scName=itemFieldMeta.collectionNames[sName]
+  const queryCollectionItem = ((item,selections,vars,itemFieldMeta,rootState)=>{
+    let Field,fName,fValue,fCollName,idKey,newItem={};
+    for (Field of selections){
+      fName=Field.name.value;
+      fValue=item[fName];
+      fCollName=itemFieldMeta.collectionNames[fName]
       idKey=itemFieldMeta.idKey
-      if (scName){
-        newItem[sName]=queryCollection(
-          {[item[sName]]:rootState[scName][item[sName]]},
-          scName,
-          s,
-          vars,
-          rootState
-        )[item[sName]];
-        // if isArray
+      if (fCollName){
+        const collSubset = transToObject((a,id)=>a[id]=rootState[fCollName][id])(ensureArray(fValue));
+        newItem[fName] = Array.isArray(fValue)
+          ? queryCollection( collSubset, fCollName, Field, vars, rootState )
+          : queryCollection( collSubset, fCollName, Field, vars, rootState )[fValue];
       } else {
-        newItem[sName]=item[sName];
+        newItem[fName]=fValue;
       }
     }
     return newItem;
   });
-  const queryCollection = /* memoize */((normedCollection,collectionName,Field,vars,rootState)=>{
+  const queryCollection = ((normedCollection,collectionName,Field,vars,rootState)=>{
     let selections=(Field.selectionSet||{selections:[]}).selections;
-    if (selections.length===0)console.error(new Error('selections length is 0'));
+    if (selections.length===0){
+      if (Field.name.value in rootState) return rootState[Field.name.value]; // scalars
+      else {console.error(new Error('selections length is 0'))};
+    }
     const itemFieldMeta=objectFieldMeta[collectionName];
     const args = populateArgsFromVars(Field.arguments,vars)
     const matchesArgs = matches(args);
@@ -149,7 +146,7 @@ export const getStateDenormalizingMemoizedQuery=(schema)=>{
     })(normedCollection);
   });
 
-  return  /* memoize */((rootState,operation,passedVariables={})=>{
+  return  memoize((rootState,operation,passedVariables={})=>{
     return operation.definitions.reduce((result,op)=>{
       const vars = variableDefinitionsToObject(op.variableDefinitions,passedVariables);
       for (const s of op.selectionSet.selections||[])
