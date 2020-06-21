@@ -1,7 +1,7 @@
 // import omit from 'lodash/fp/omit';
 import indexSchema from './indexSchema'
 // import mapValues from 'lodash/mapValues';
-import {isDeepEqual, mo,immutableTransObjectToObject,transToObject,keyBy,ensureArray} from '@a-laughlin/fp-utils';
+import {isDeepEqual, mo,immutableTransObjectToObject,reduce,transToObject,keyBy,ensureArray} from '@a-laughlin/fp-utils';
 const identity = x => x;
 export const memoize = (fn, by = identity) => {
   const mFn = (...x) => { const k = by(...x); return fn(...(mFn.cache.has(k) ? mFn.cache.get(k) : (mFn.cache.set(k, x) && x))) };
@@ -10,85 +10,62 @@ export const memoize = (fn, by = identity) => {
 };
 
 export const schemaToQueryReducerMap=( schema = gql('type DefaultType {id:ID!}') )=>{
-  return Object.entries(indexSchema(schema).objectFieldMeta).reduce((acc,[dName,{idKey}])=>{
-    const collectionName=dName;
+  const {objectFieldMeta,ObjectTypeDefinition,definitionsByName}=indexSchema(schema)
+  return Object.keys(definitionsByName).reduce((acc,dName)=>{
+    const idKey=objectFieldMeta[dName]?.idKey;
+    
     const NAME=dName.toUpperCase();
     const [UNION,INTERSECTION,ADD,SUBTRACT,SET,GET]=['UNION','INTERSECTION','ADD','SUBTRACT','SET','GET']
       .map(OP=>`${OP}_${NAME}`);
     const collDiffer=diffBy(idKey);
-    acc[collectionName]=(prevState,action={type:GET,payload:{}})=>{
-      let {type,payload}=action;
-      if (action.type===GET) return prevState;
-      if (+payload) payload={[payload]:{[idKey]:payload}}; // convert number to collection shape
-      else if (idKey in payload) payload={[payload[idKey]]:payload}; // convert item to collection shape
+    acc[dName]=(prevState=null,action={type:GET,payload:{}})=>{
+      let {type,payload={}}=action;
+      
+      if (type===GET) return prevState;
+
       if (type===SET) return payload;
+      
+      if(idKey===undefined)return prevState;
+      if (typeof payload !== 'object') payload={[payload]:{[idKey]:payload}}; // convert number to collection shape
+      else if (idKey in payload) payload={[payload[idKey]]:payload}; // convert item to collection shape
+      
       if (type===ADD) return {...prevState,...payload};
+      
       const diff = collDiffer([prevState,payload]);
       let nextState={},k;
+      
       if (type===SUBTRACT) {
         if (diff.aibc===0) return prevState; // no intersection to remove
         if (diff.aibc===diff.aubc) return nextState; // complete intersection. remove everything
         for (k in diff.anb)nextState[k]=prevState[k]; // copy non-intersecting collection items to new state
         return nextState;
       }
+      
       if (type===UNION){
         for (k in diff.aub)nextState[k]=payload[k]??prevState[k];
         return diff.changedc===0?prevState:nextState;
       }
+      
       if (type===INTERSECTION){
         for (k in diff.aib)nextState[k]=payload[k];
         return diff.changedc===0?prevState:nextState;
       }
-      nextState = new Error(`type ${type} does not exist in ${dName} reducer map`);
-      console.error(nextState);
-      return nextState;
+      
+      return prevState;
     };
     return acc;
   },{});
 };
 
-const getVarsKey = vars=>{
-  const keys=Object.keys(vars).sort();
-  return keys.join(',') + keys.map(k=>JSON.stringify(vars[k])).join(',');
-};
-export const propsChanged=(checkChangedIn={},toCheck={})=>{
-  if (checkChangedIn===toCheck)return true;
-  let key;
-  for (key in toCheck) if (toCheck[key]!==checkChangedIn[key]) return true;
-  return false;
-}
-export const schemaToMutationReducerMapMiddleware = schema=>{};
-export const schemaToSubscriptionReducerMapMiddleware = schema=>{};
-const autoGenerateSchemaQueriesAndMutations=()=>{}
 
-export const getStateDenormalizingMemoizedQuery=(schema)=>{
-  const {objectFieldMeta}=indexSchema(schema);
-  const reducerMap = schemaToQueryReducerMap(schema);
-  // no, the arrays will need to update when changed in norm
-  // I don't even need to memoize a string. I can just memoize the collection, since it will change.
-  // it will break when the args change
+
+
+
+
+
+export const getMemoizedObjectQuerier=(schema)=>{
+  const {objectFieldMeta,definitionsByName}=indexSchema(schema);
   
-  // queryCollection(prevRootNorm,prevRootCollectionsDenorm,nextDenorm): memoized: collection unchanged and arguments(not vars) names/values unchanged, return collection result
-  // Invariants:
-  // If tree unchanged, collections unchanged
-  // If collection unchanged props unchanged
-  
-  // queryNestedCollection: just memoizes nested collection outputs: key collectionName, collectionIdArray, arguments;
-  // Invariants:
-  // If idList unchanged, collection unchanged
-  
-  // queryNestedCollectionSubset: just memoizes nested collection outputs: key collectionName, collectionIdArray, arguments;
-  // let normPrevRootState;
-  // let denormPrevRootState;
-  // Invariants:
-  // If idList unchanged, and args.sort.tostring is unchanged, collection subset unchanged
-  // // useQuery, memoize at point of use at point of use?
-  // const {objectFieldMeta,definitionsByKind} = indexSchema(schema);
-  // const reducerMap = schemaToQueryReducerMap(schema);
-  // const {getState} = store;
-  
-  
-  // will the relationships auto-update on mutation since denorm is by reference?
   const matches = args=>v=>{
     for (const arg in args)
       if(v[arg]!==args[arg])
@@ -112,49 +89,97 @@ export const getStateDenormalizingMemoizedQuery=(schema)=>{
       // may need to de-null and de-list here.f
     return vars;
   };
-  const queryCollectionItem = ((item,selections,vars,itemFieldMeta,rootState)=>{
-    let Field,fName,fValue,fCollName,idKey,newItem={};
-    for (Field of selections){
-      fName=Field.name.value;
-      fValue=item[fName];
-      fCollName=itemFieldMeta.collectionNames[fName]
-      idKey=itemFieldMeta.idKey
-      if (fCollName){
-        const collSubset = transToObject((a,id)=>a[id]=rootState[fCollName][id])(ensureArray(fValue));
-        newItem[fName] = Array.isArray(fValue)
-          ? queryCollection( collSubset, fCollName, Field, vars, rootState )
-          : queryCollection( collSubset, fCollName, Field, vars, rootState )[fValue];
-      } else {
-        newItem[fName]=fValue;
+
+  const queryObjectCollection = ( (rootState,collectionName,id,Field,vars)=>{
+    if (Field.selectionSet===undefined){ // leaf
+      if (id===undefined){
+        return (Field.name.value in rootState)
+          ? rootState[Field.name.value] // root scalars
+          : new Error('cannot request collection without selecting fields');
       }
+      if(Field.name.value in objectFieldMeta[collectionName].collectionNames)
+        return new Error('cannot request object without selecting fields');
+      return rootState[collectionName][id][Field.name.value]; // prop scalars
+      // return new Error('just get the property selection')
+    }
+    if (id === undefined){
+      // what if we're filtering the collection
+      if (Field.arguments.length===0)
+      return transToObject(
+        (o,item,k)=>o[k]=queryObjectCollection(rootState,collectionName,k,Field,vars)
+      )(rootState[collectionName]);
+        
+      const args = populateArgsFromVars(Field.arguments,vars);
+      const matchesFn = matches(args);
+      return transToObject(
+        (o,item,k)=>matchesFn(item)&&(o[k]=queryObjectCollection(rootState,collectionName,k,Field,vars))
+      )(rootState[collectionName]);
+    }
+    const {collectionNames,collectionKeysCount}=objectFieldMeta[collectionName];
+
+    if (Array.isArray(id))
+      return transToObject((o,k)=>o[k]=queryObjectCollection(rootState,collectionName,k,Field,vars))(id);
+    
+    let f,fName,newItem={},item=rootState[collectionName][id];
+    for (f of Field.selectionSet.selections){
+      fName=f.name.value;
+      newItem[fName]=(fName in collectionNames)
+        ? queryObjectCollection( rootState, collectionNames[fName], item[fName],f, vars)
+        : item[fName];
     }
     return newItem;
   });
-  const queryCollection = ((normedCollection,collectionName,Field,vars,rootState)=>{
-    let selections=(Field.selectionSet||{selections:[]}).selections;
-    if (selections.length===0){
-      if (Field.name.value in rootState) return rootState[Field.name.value]; // scalars
-      else {console.error(new Error('selections length is 0'))};
-    }
-    const itemFieldMeta=objectFieldMeta[collectionName];
-    const args = populateArgsFromVars(Field.arguments,vars)
-    const matchesArgs = matches(args);
-    return immutableTransObjectToObject((a,item,id)=>{
-      const isMatch = matchesArgs(item);
-      if (isMatch===false) return;
-      a[id]=queryCollectionItem(item,selections,vars,itemFieldMeta,rootState);
-    })(normedCollection);
-  });
 
-  return  memoize((rootState,operation,passedVariables={})=>{
-    return operation.definitions.reduce((result,op)=>{
+  const getVarsKey = vars=>{
+    const keys=Object.keys(vars).sort();
+    return keys.join(',') + keys.map(k=>JSON.stringify(vars[k])).join(',');
+  };
+
+  const queryStateWithOperation = (rootState,operation,passedVariables={})=>
+    operation.definitions.reduce((result,op)=>{
       const vars = variableDefinitionsToObject(op.variableDefinitions,passedVariables);
       for (const s of op.selectionSet.selections||[])
-        result[s.name.value]=queryCollection(rootState[s.name.value],s.name.value,s,vars,rootState);
+        result[s.name.value]=queryObjectCollection(rootState,s.name.value,undefined,s,vars);
       return result;
     },{});
+
+  const getFieldCollectionNames=reduce((acc,{name:{value},selectionSet:{selections=[]}={}},i,c)=>{
+    if (value in definitionsByName) acc.add(value);
+    return getFieldCollectionNames(selections,acc);
   });
+
+  const getQueryCollectionNames = reduce((acc=new WeakSet(),{selectionSet:{selections=[]}={}})=>getFieldCollectionNames(selections,acc));
+  
+  
+  let prevState={};
+  let operations=new WeakSet();
+  let queryResults=new WeakMap();
+  let collectionKeysByQuery=new WeakMap();
+  return (state,operation,vars={})=>{
+    const varsKey=getVarsKey(vars);
+    if (!operations.has(operation)){
+      operations.add(operation);
+      collectionKeysByQuery.set(operation,getQueryCollectionNames(operation.definitions,new Set()));
+      const result = queryStateWithOperation(state,operation,vars);
+      queryResults.set(operation,{[varsKey]:result});
+      prevState=state;
+      return result;
+    }
+
+    if (prevState!==state)
+      for (const k of collectionKeysByQuery.get(operation))
+        if(prevState[k]!==state[k]){
+          prevState=state;
+          return queryResults.get(operation)[varsKey] = queryStateWithOperation(state,operation,vars);
+        }
+    
+    const opResults=queryResults.get(operation);
+    return varsKey in opResults
+      ? opResults[varsKey]
+      : (opResults[varsKey] = querier(state,operation,vars));
+  }
 }
+
 
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /*
@@ -183,83 +208,8 @@ export const getStateDenormalizingMemoizedQuery=(schema)=>{
 //   (acc[k2] || (acc[k2] = {}))[k1] = v2;
 // })(v1))(obj);
 // const getMemoizedLenses = (keys,rw,kind)=>transArrayToObj((o,k)=>lenses[k]&&lenses[k][kind]&&(o[k]=lenses[k][kind][rw]))(keys.split(','))
-const getLenses = (subkeys, lenses) => pick(subKeys.split(','))(lenses);
-const getMemoizedLenses = (() => {
-  // called frequently. Cache lens appliers with Trie for faster dual key lookups than string join.
-  const cache = { read: {}, write: {} };
-  return (rw, subKeys, lenses) => cache[rw][subKeys] || (cache[rw][subKeys] = applyLenses(subKeys, lenses));
-})();
-
-// utility functions that return the same type. For performance, user fn is only call in loop.
-// equivalent to lodash reduce(coll,isArray(coll)[]?{},fn)
-export const reducex = fn => coll => {
-  let k = -1, acc = Object.create(null);
-  if (isArray(coll)) {
-    const l = coll.length;
-    acc = [];
-    while (++k < l) (acc = fn(acc, coll[k], k, coll));
-  } else for (k in coll) (acc = fn(acc, coll[k], k, coll));
-  return acc;
-}
-// equivalent to lodash transform(coll,isArray(coll)[]?{},fn)
 
 
-
-const transx = (fn,getInitial=c=>({})) => coll => {
-  const acc = getInitial(coll);
-  let k = -1;
-  if (isArray(coll)) {
-    const l = coll.length;
-    acc = [];
-    while (++k < l) fn(acc, coll[k], acc.length, coll);
-  } else for (k in coll) fn(acc, coll[k], k, coll);
-  return acc;
-}
-export const filterx = fn => transx((nextx, v, k) => fn(v) === true && (nextx[k] = v));
-export const omitx = fn => transx((nextx, v, k) => fn(v) === false && (nextx[k] = v));
-export const mapx = fn => transx((nextx, v, k) => nextx[k] = fn(v, k));
-export const overx = x => target => mapx(fn => fn(target))(x);
-export const blankx = x => isArray(x) ? [] : Object.create(null);
-
-export const mapValuePromiseOrStream = (
-  mapStream = (handleValue = identity) => arg => toPromise(arg).then(handleValue, handleValue),
-  mapPromise = (handleValue = identity) => arg => arg.then(handleValue, handleValue),
-  mapValue = identity
-) => (arg) => {
-  if (typeof arg === 'function') return mapStream(mapValue)(arg);
-  if (typeof arg === 'object' && arg.then) return mapPromise(mapValue)(arg);
-  return mapValue(arg);
-}
-export const flowPossiblePromises = (...fns) => arg => fns.reduce(maybePromise, arg);
-
-export const mapToPossiblePromise = (array, fn) => {
-  let x, result, hasPromises;
-  const vals = [];
-  for (x of array) {
-    result = maybePromise(x, fn);
-    if (result.then) vals.hasPromises = true;
-    vals[vals.length] = result;
-  }
-  return hasPromises ? Promise.all(vals) : vals;
-}
-
-
-
-
-
-
-// common op. imperative implementation for speed.
-export const transB = fn => ([a, b]) => {
-  if (isArray(b)) {
-    let i = -1, l = b.length, retb = []; // eslint-disable-line prefer-const
-    while (++i < l) fn(retb, a, b[i], i);
-    return retb;
-  } else {
-    let k, retb = Object.create(null);
-    for (k in x) (retb = fn(retb, a, b[k], k));
-    return retb;
-  }
-};
 
 // common op. imperative implementation for speed.
 export const transDiff = (fn = identity, { by = x => x.id, subset = 'aub', ret } = {}) => (collections = []) => {
@@ -281,23 +231,6 @@ export const transDiff = (fn = identity, { by = x => x.id, subset = 'aub', ret }
   }
   return ret;
 }
-
-
-
-
-const utilityFactory = ({ setop = 'aub', inputTarget = 'child', changeTarget = 'root' }) => { }
-mapx(child => filterx())
-// omitChildrenByChildrenIndex
-// addChildrenByChildrenIndex 'anb'
-// transform
-// const setOp = (trans = 'omit', subset = 'aub', target = 'self|children', by = () => { })
-// const setOpFactory = (trans = 'omit', subset = 'aub', target = 'props') => {
-//   // omitA,omitB,omitAuB,omitAuB
-// }
-// root>children
-// root>grandchildren
-
-
 
 export const diffObjs = ([a, b] = [{}, {}]) => {
   // returns subsets and changed values for object properties

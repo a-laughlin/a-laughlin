@@ -1,25 +1,29 @@
 // /*eslint-disable no-unused-vars */
 // /* globals jest:false,describe:false,it:false,expect:false */
 import gql from 'graphql-tag';
-import keyBy from 'lodash/fp/keyBy';
-import omit from 'lodash/fp/omit';
+import { renderHook, act } from '@testing-library/react-hooks'
+import { useState,useEffect, useCallback } from 'react';
+import {createStore,combineReducers} from 'redux';
+import configureStore from 'redux-mock-store';
+
 
 import {
   schemaToQueryReducerMap,
-  getStateDenormalizingMemoizedQuery,
+  getMemoizedObjectQuerier,
 } from './redux-graphql';
 
 describe("schemaToQueryReducerMap", () => {
   let schema,state,reducerMap;
+  schema=gql`
+    type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
+    type Pet{id:ID,name:String}
+    scalar SomeScalar
+  `;
+  reducerMap = schemaToQueryReducerMap(schema);
   beforeEach(()=>{
-    schema=gql`
-      type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
-      type Pet{id:ID,name:String}
-      scalar SomeScalar
-    `;
-    reducerMap = schemaToQueryReducerMap(schema);
     state={
       SomeScalar:1,
+      SomeThingNotInSchema:1,
       Person:{
         a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
         b:{id:'b',name:'B',best:'a',friends:['a']},
@@ -36,14 +40,20 @@ describe("schemaToQueryReducerMap", () => {
   });
   it("should generate a key for each type,plus scalars",()=>{
     expect(Object.keys(reducerMap).sort())
-    .toEqual( [ 'Person', 'Pet' ].sort());
+    .toEqual( [ 'Person', 'Pet','SomeScalar' ].sort());
   });
   it("should read values as default",()=>{
     expect(reducerMap.Person(state.Person))
     .toBe(state.Person);
   });
+  it("should get scalar values",()=>{
+    expect(reducerMap.SomeScalar(state.SomeScalar)).toBe(1);
+  });
+  it("should set scalar values",()=>{
+    expect(reducerMap.SomeScalar(state.SomeScalar,{type:'SET_SOMESCALAR',payload:2})).toBe(2);
+  });
   it("should not read values not defined on the schema",()=>{
-    expect(reducerMap.Foo)
+    expect(reducerMap.SomeThingNotInSchema)
     .toBeUndefined();
   });
   it("should enable deletions from a collection",()=>{
@@ -51,7 +61,9 @@ describe("schemaToQueryReducerMap", () => {
     expect(result).not.toBe(state.Person);
     expect(result.a).toBe(state.Person.a);
     expect(result.b).toBe(state.Person.b);
-    expect(result).toEqual(omit(['c'],state.Person));
+    const expected = {...state.Person};
+    delete expected.c;
+    expect(result).toEqual(expected);
   });
   it("should return the original if nothing to delete",()=>{
     expect(reducerMap.Person(state.Person,{type:'SUBTRACT_PERSON',payload:{d:{id:'d'}}}))
@@ -66,15 +78,18 @@ describe("schemaToQueryReducerMap", () => {
     expect(result).not.toBe(state.Person);
   });
 });
-describe("queryToDenormalizedState", () => {
+
+describe("getMemoizedObjectQuerier", () => {
   let schema,state,querier;
-  
-  beforeEach(()=>{
+  beforeAll(()=>{
     schema=gql`
       type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
       type Pet{id:ID,name:String}
       scalar SomeScalar
     `;
+    querier = getMemoizedObjectQuerier(schema);
+  });
+  beforeEach(()=>{
     state={
       SomeScalar:1,
       Person:{
@@ -87,96 +102,170 @@ describe("queryToDenormalizedState", () => {
         y:{id:'y',name:'Y'},
       },
     };
-    querier = getStateDenormalizingMemoizedQuery(schema);
   });
   afterAll(()=>{
     schema=state=querier=null;
   });
   it("should query collections",()=>{
-    expect(querier(state,gql(`{Person{id}}`)))
-    .toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+    const query=gql(`{Person{id}}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q));
+    expect(result1).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+    expect(result1).toBe(result2);
   });
   it("should denormalize item subsets with variables",()=>{
-    expect(querier(state,gql(`{Person(id:$id){best{id}}}`),{id:'a'}))
-    .toEqual({Person:{a:{best:{id:'b'}}}});
+    const query = gql(`{Person(id:$id){best{id}}}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q,{id:'a'}))
+    expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
+    expect(result2).toBe(result1);
   });
   it("should denormalize item subsets with default variables",()=>{
-    expect(querier(state,gql(`query getPerson($id: ID = "a"){Person(id:$id){best{id}}}`)))
-    .toEqual({Person:{a:{best:{id:'b'}}}});
+    const query = gql(`query getPerson($id: ID = "a"){Person(id:$id){best{id}}}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q));
+    expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
+    expect(result2).toBe(result1);
   });
   it("should denormalize item subsets with constants",()=>{
-    expect(querier(state,gql(`{Person(id:"a"){best{id}}}`)))
-    .toEqual({Person:{a:{best:{id:'b'}}}});
+    const query = gql(`{Person(id:"a"){best{id}}}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q))
+    expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
+    expect(result2).toBe(result1);
   });
 
   it("should query multiple scalar props",()=>{
-    expect(querier(state,gql(`{Person(id:$id){id,name}}`),{id:'a'}))
-    .toEqual({Person:{a:{id:'a',name:'A'}}});
+    const query = gql(`{Person(id:$id){id,name}}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q,{id:'a'}))
+    expect(result1).toEqual({Person:{a:{id:'a',name:'A'}}});
+    expect(result2).toBe(result1);
   });
   it("should query a scalar and object prop",()=>{
-    expect(querier(state,gql(`{Person(id:$id){id,best{id}}}`),{id:'a'}))
-    .toEqual({Person:{a:{id:'a',best:{id:'b'}}}});
+    const query = gql(`{Person(id:$id){id,best{id}}}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q,{id:'a'}))
+    expect(result1).toEqual({Person:{a:{id:'a',best:{id:'b'}}}});
+    expect(result2).toBe(result1);
   });
   it("should query multiple object props",()=>{
-    expect(querier(state,gql(`{Person(id:"a"){best{id},otherbest{id}}}`)))
-    .toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
+    const query = gql(`{Person(id:"a"){best{id},otherbest{id}}}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q))
+    expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
+    expect(result2).toBe(result1);
   });
   it("should query objects deeply",()=>{
-    expect(querier(state,gql(`{Person(id:"a"){best{best{best{best{best{best{best{best{best{best{id}}}}}}}}}}}}`)))
-    .toEqual({Person:{a:{best:{best:{best:{best:{best:{best:{best:{best:{best:{best:{id:'a'}}}}}}}}}}}}});
+    const query = gql(`{Person(id:"a"){best{best{best{best{best{best{best{best{best{best{id}}}}}}}}}}}}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q))
+    expect(result1).toEqual({Person:{a:{best:{best:{best:{best:{best:{best:{best:{best:{best:{best:{id:'a'}}}}}}}}}}}}});
+    expect(result2).toBe(result1);
   });
   it("should query other types",()=>{
-    expect(querier(state,gql(`{Person(id:"a"){pet{id}}}`)))
-    .toEqual({Person:{a:{pet:{id:'x'}}}});
+    const query = gql(`{Person(id:"a"){pet{id}}}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q))
+    expect(result1).toEqual({Person:{a:{pet:{id:'x'}}}});
+    expect(result2).toBe(result1);
   });
   it("should query scalars",()=>{
-    expect(querier(state,gql(`{SomeScalar}`)))
-    .toEqual({SomeScalar:1});
+    const query = gql(`{SomeScalar}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q))
+    expect(result1).toEqual({SomeScalar:1});
+    expect(result2).toBe(result1);
   });
   it("should query scalar lists",()=>{
-    expect(querier(state,gql(`{Person(id:"a"){nicknames}}`)))
-    .toEqual({Person:{a:{nicknames:["AA","AAA"]}}});
+    const query = gql(`{Person(id:"a"){nicknames}}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q))
+    expect(result1).toEqual({Person:{a:{nicknames:["AA","AAA"]}}});
+    expect(result2).toBe(result1);
   });
   it("should query object lists",()=>{
-    expect(querier(state,gql(`{Person(id:"a"){friends{id}}}`)))
-    .toEqual({Person:{a:{friends:{b:{id:'b'},c:{id:'c'}}}}});
+    const query = gql(`{Person(id:"a"){friends{id}}}`);
+    const [result1,result2]=[query,query].map(q=>querier(state,q))
+    expect(result1).toEqual({Person:{a:{friends:{b:{id:'b'},c:{id:'c'}}}}});
+    expect(result2).toBe(result1);
   });
+});
 
+// instead of useMutation, use a built in reducer, or add one
+const getUseQuery=(store,querier)=>{
+  return (query,variables)=>{
+    const [state,setState] = useState(querier(store.getState(),query,variables));
+    useEffect(()=>store.subscribe(()=> { // returns the unsubscribe function
+      const result = querier(store.getState(),query,variables);
+      if (result!==state) setState({...state,...result});
+    }),[]);
+    return state;
+  }
+}
 
-  // it("should denormalize item subsets with constants",()=>{
-  //   const query = gql` query {Person(id:"a"){best{id}}} `;
-  //   const schema=gql` type Person{id:ID,best:Person,friends:[Person]} `;
-  //   const state={
-  //     Person:{
-  //       a:{id:'a',best:'b',friends:['b','c']},
-  //       b:{id:'b',best:'a',friends:['a']},
-  //       c:{id:'c',best:'a',friends:['a']},
-  //     },
-  //   };
-    
-  //   expect(getStateDenormalizingMemoizedQuery(schema)(state,query)).toEqual({
-  //     Person:{
-  //       a:{best:{id:'b'}}
-  //     }
+describe("getUseQuery: integration test React.useState,redux.combineReducers(schemaReducerMap),getMemoizedObjectQuerier(schema)",()=>{
+  let store,useQuery,querier,reducerMap;
+  
+  beforeAll(()=>{
+    const schema = gql`
+      type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
+      type Pet{id:ID,name:String}
+      scalar SomeScalar
+    `
+    querier = getMemoizedObjectQuerier(schema);
+    reducerMap = schemaToQueryReducerMap(schema);
+  });
+  beforeEach(()=>{
+    const rootReducer = combineReducers(reducerMap);
+    store = createStore(rootReducer,{
+      SomeScalar:1,
+      Person:{
+        a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
+        b:{id:'b',name:'B',best:'a',friends:['a']},
+        c:{id:'c',name:'C',best:'a',friends:['a']},
+      },
+      Pet:{
+        x:{id:'x',name:'X'},
+        y:{id:'y',name:'Y'},
+      },
+    });
+    useQuery = getUseQuery(store,querier);
+  });
+  afterAll(()=>{
+    reducerMap=querier=store=useQuery=null;
+  });
+  
+  test('should work on scalars', () => {
+    const query=gql(`{SomeScalar}`)
+    const { result } = renderHook(() =>useQuery(query));
+    expect(result.current).toEqual({SomeScalar:1});
+    const result1=result.current;
+    const prevState = store.getState();
+    act(()=>{store.dispatch({type:'SET_SOMESCALAR',payload:1})});
+    expect(store.getState()).toBe(prevState);
+    expect(result.current).toBe(result1);
+    act(()=>{store.dispatch({type:'SET_SOMESCALAR',payload:2})});
+    expect(result.current.SomeScalar).toBe(2);
+    expect(store.getState()).not.toBe(prevState);
+    expect(store.getState().SomeScalar).toBe(2);
+    expect(store.getState().Person).toBe(prevState.Person);
+  });
+  test('should work on objects', () => {
+    const query=gql(`{Person{id}}`);
+    const { result } = renderHook(() =>useQuery(query));
+    expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+    act(()=>{store.dispatch({type:'SUBTRACT_PERSON',payload:'a'});})
+    expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
+    // const prevState = store.getState();
+    // expect(store.getState()).not.toBe(prevState);
+    // expect(store.getState().SomeScalar).toBe(2);
+    // expect(store.getState().Person).toBe(prevState.Person);
+    // store.dispatch({type:'SET_SOMESCALAR',payload:3});
+    // console.log(`result.current`,result.current)
+    // console.log(`after`,store.getState().SomeScalar)
+    // expect(result.current.SomeScalar).toBe(2);
+    // expect(result.current).toEqual({SomeScalar:2});
+    // expect(result.current).toBe(result1);
+  })
+  // test('should get a result', () => {
+  //   const { result } = renderHook(() =>useQuery(gql(`{Person(id:$id){best{id}}}`),{id:'a'}));
+  //   expect(result.current).toEqual({Person:{a:{best:{id:'b'}}}})
+  //   const result1=result.current;
+  //   act(() => {
+  //     store.dispatch({type:'SET_SOMESCALAR'});
   //   });
-  // });
-  // it("should denormalize single items",()=>{
-  //   const schema=gql` type Person{id:ID,best:Person,friends:[Person]} `;
-  //   const query = gql` {Person(id:$id){best{id}}} `;
-  //   const state={
-  //     Person:{
-  //       a:{id:'a',best:'b',friends:['b','c']},
-  //       b:{id:'b',best:'a',friends:['a']},
-  //       c:{id:'c',best:'a',friends:['a']},
-  //     },
-  //   };
-    
-  //   expect(getStateDenormalizingMemoizedQuery(schema)(state,query,{id:'a'})).toEqual({
-  //     Person:{
-  //       a:{best:{id:'b'}}
-  //     }
-  //   });
-  // });
+  //   expect(result.current).toBe(result1);
+  // })
 });
 
 // // describe("Spec Section 3: Type System", () => {

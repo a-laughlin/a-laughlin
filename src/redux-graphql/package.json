@@ -9,14 +9,21 @@
   "main": "redux-graphql.js",
   "browser": "redux-graphql.js",
   "module": "redux-graphql.js",
-  "devDependencies":{
+  "devDependencies": {
+    "@a-laughlin/fp-utils": "*",
+    "@testing-library/react-hooks": "^3.3.0",
     "graphql": "^15.0.0",
     "graphql-tag": "^2.10.3",
-    "@a-laughlin/fp-utils":"*"
+    "redux-mock-store": "^1.5.4"
   },
   "peerDependencies": {
+    "@a-laughlin/fp-utils": "*",
     "graphql": "^15.0.0",
-    "graphql-tag": "^2.10.3",
-    "@a-laughlin/fp-utils":"*"
+    "graphql-tag": "^2.10.3"
+  },
+  "dependencies": {
+    "react": "^16.13.1",
+    "react-test-renderer": "^16.13.1",
+    "redux": "^4.0.5"
   }
 }

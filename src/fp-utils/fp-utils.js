@@ -1,13 +1,7 @@
 import pick from 'lodash/fp/pick'
-import pickBy from 'lodash/fp/pickBy'
 import get from 'lodash/fp/get'
-import {default as mapFP} from 'lodash/fp/map'
-import {default as transformFP} from 'lodash/fp/transform'
 import flatten from 'lodash/fp/flatten'
 import {default as mapValuesFP} from 'lodash/fp/mapValues'
-import omit from 'lodash/fp/omit'
-import omitBy from 'lodash/fp/omitBy'
-import {default as reduceFP} from 'lodash/fp/reduce'
 import spread from 'lodash/fp/spread'
 import rest from 'lodash/fp/rest'
 import {default as filterFP} from 'lodash/fp/filter'
@@ -58,8 +52,8 @@ import merge from 'lodash/merge'
 import mergeWith from 'lodash/mergeWith'
 import {default as _set} from 'lodash/set'
 
-const [transform,filter,map,mapValues,reduce,flatMap] = [
-  transformFP,filterFP,mapFP,mapValuesFP,reduceFP,flatMapFP].map(fn=>fn.convert({cap:false}));
+const [filter,mapValues,flatMap] = [
+  filterFP,mapValuesFP,flatMapFP].map(fn=>fn.convert({cap:false}));
 
 // curry/compose/pipe, for later fns
 let curry,compose,pipe;
@@ -191,7 +185,7 @@ export const sort = sortBy(null)
 
 
 // collections
-export {reduce,merge,mergeWith,flatMap,flattenDeep,flatten};
+export {merge,mergeWith,flatMap,flattenDeep,flatten};
 const makeCollectionFn=(arrayFn,objFn)=>fn=>{
   const aFn=arrayFn(fn);
   const oFn=objFn(fn);
@@ -238,7 +232,16 @@ export const immutableFilterObjectToObject = (pred=(v,k,c)=>true) => (coll={}) =
 export const transX = makeCollectionFn(transArrayToArray,transObjectToObject);
 export const transToObject = makeCollectionFn(transArrayToObject,transObjectToObject);
 export const transToArray = makeCollectionFn(transArrayToArray,transObjectToArray);
-
+// utility functions that return the same type. For performance, user fn is only call in loop.
+// equivalent to lodash reduce(coll,isArray(coll)[]?{},fn)
+export const reduce = fn => (coll,acc) => {
+  let k = -1;
+  if (isArray(coll)) {
+    const l = coll.length;
+    while (++k < l) (acc = fn(acc, coll[k], k, coll));
+  } else for (k in coll) (acc = fn(acc, coll[k], k, coll));
+  return acc;
+}
 
 // backwards compat
 // shortcuts for the most common collection operations
