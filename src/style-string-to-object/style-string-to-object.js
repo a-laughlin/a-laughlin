@@ -28,7 +28,7 @@ export const styleStringToObj = (()=>{
       const [_,prefix,num,unit]=str.match(styleMatcher) // eslint-disable-line no-unused-vars
       return prefixes[prefix](num,unit)
     } catch(e){
-      global.console && console.warn(`invalid style: "${str}". See style-string-to-object.test.js for correct syntax.`);
+      globalThis.console && console.warn(`invalid style: "${str}". See style-string-to-object.test.js for correct syntax.`);
       return {};
     }
   };

@@ -1,4 +1,5 @@
-import s from './style-string-to-object'
+import s from './style-string-to-object.js'
+
 
 it("converts a string to a styles object", () => {
   expect(s('w100px h100px')).toEqual({width:'100px',height:'100px'});
@@ -13,13 +14,13 @@ it("handles function calls and string templates the same", () => {
   expect(s('w100px h100px')).toBe(s`w100px h100px`);
 });
 it("warns on invalid strings", () => {
-  global.console._warn_temp = global.console.warn;
-  global.console.warn = jest.fn();
+  globalThis.console._warn_temp = globalThis.console.warn;
+  globalThis.console.warn = jest.fn();
   s('wwwww100px');
-  expect(global.console.warn).toHaveBeenCalledWith(
+  expect(globalThis.console.warn).toHaveBeenCalledWith(
     'invalid style: "wwwww100px". See style-string-to-object.test.js for correct syntax.')
-  global.console.warn = global.console._warn_temp;
-  delete global.console._warn_temp;
+    globalThis.console.warn = globalThis.console._warn_temp;
+  delete globalThis.console._warn_temp;
 });
 
 

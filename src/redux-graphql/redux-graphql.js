@@ -1,16 +1,19 @@
-// import omit from 'lodash/fp/omit';
 import indexSchema from './indexSchema'
-// import mapValues from 'lodash/mapValues';
-import {isDeepEqual, mo,immutableTransObjectToObject,reduce,transToObject,keyBy,ensureArray} from '@a-laughlin/fp-utils';
-const identity = x => x;
+import {isDeepEqual,mo,reduce,transToObject,keyBy,ensureArray} from '@a-laughlin/fp-utils';
+
 export const memoize = (fn, by = identity) => {
   const mFn = (...x) => { const k = by(...x); return fn(...(mFn.cache.has(k) ? mFn.cache.get(k) : (mFn.cache.set(k, x) && x))) };
   mFn.cache = new WeakMap();
   return mFn;
 };
 
-export const schemaToQueryReducerMap=( schema = gql('type DefaultType {id:ID!}') )=>{
-  const {objectFieldMeta,ObjectTypeDefinition,definitionsByName}=indexSchema(schema)
+export const schemaToActionCreators=( schema )=>{};
+export const schemaToQueries=( schema )=>{};
+export const schemaToMutations=( schema )=>{};
+export const extendSchemaWithQueryAndMutationDefinitions=( schema )=>{};
+
+export const schemaToReducers=( schema = gql('type DefaultType {id:ID!}') )=>{
+  const {objectFieldMeta,ObjectTypeDefinition,definitionsByName}=indexSchema(schema);
   return Object.keys(definitionsByName).reduce((acc,dName)=>{
     const idKey=objectFieldMeta[dName]?.idKey;
     
@@ -90,37 +93,35 @@ export const getMemoizedObjectQuerier=(schema)=>{
     return vars;
   };
 
-  const queryObjectCollection = ( (rootState,collectionName,id,Field,vars)=>{
+  const queryObjectCollection = ( (rootState,collName,id,Field,vars)=>{
     if (Field.selectionSet===undefined){ // leaf
       if (id===undefined){
         return (Field.name.value in rootState)
           ? rootState[Field.name.value] // root scalars
           : new Error('cannot request collection without selecting fields');
       }
-      if(Field.name.value in objectFieldMeta[collectionName].collectionNames)
+      if(Field.name.value in objectFieldMeta[collName].collectionNames)
         return new Error('cannot request object without selecting fields');
-      return rootState[collectionName][id][Field.name.value]; // prop scalars
+      return rootState[collName][id][Field.name.value]; // prop scalars
       // return new Error('just get the property selection')
     }
     if (id === undefined){
       // what if we're filtering the collection
       if (Field.arguments.length===0)
-      return transToObject(
-        (o,item,k)=>o[k]=queryObjectCollection(rootState,collectionName,k,Field,vars)
-      )(rootState[collectionName]);
+        return transToObject((o,_,k)=>o[k]=queryObjectCollection(rootState,collName,k,Field,vars))(rootState[collName]);
         
       const args = populateArgsFromVars(Field.arguments,vars);
       const matchesFn = matches(args);
       return transToObject(
-        (o,item,k)=>matchesFn(item)&&(o[k]=queryObjectCollection(rootState,collectionName,k,Field,vars))
-      )(rootState[collectionName]);
+        (o,item,k)=>matchesFn(item)&&(o[k]=queryObjectCollection(rootState,collName,k,Field,vars))
+      )(rootState[collName]);
     }
-    const {collectionNames,collectionKeysCount}=objectFieldMeta[collectionName];
+    const {collectionNames,collectionKeysCount}=objectFieldMeta[collName];
 
     if (Array.isArray(id))
-      return transToObject((o,k)=>o[k]=queryObjectCollection(rootState,collectionName,k,Field,vars))(id);
+      return transToObject((o,k)=>o[k]=queryObjectCollection(rootState,collName,k,Field,vars))(id);
     
-    let f,fName,newItem={},item=rootState[collectionName][id];
+    let f,fName,newItem={},item=rootState[collName][id];
     for (f of Field.selectionSet.selections){
       fName=f.name.value;
       newItem[fName]=(fName in collectionNames)

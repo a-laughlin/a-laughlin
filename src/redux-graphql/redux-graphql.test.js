@@ -1,25 +1,24 @@
-// /*eslint-disable no-unused-vars */
+// /* eslint-disable no-unused-vars */
 // /* globals jest:false,describe:false,it:false,expect:false */
 import gql from 'graphql-tag';
 import { renderHook, act } from '@testing-library/react-hooks'
-import { useState,useEffect, useCallback } from 'react';
+import { useState,useEffect } from 'react';
 import {createStore,combineReducers} from 'redux';
-import configureStore from 'redux-mock-store';
+import { schemaToReducers, getMemoizedObjectQuerier } from './redux-graphql';
+// import configureStore from 'redux-mock-store';
 
 
-import {
-  schemaToQueryReducerMap,
-  getMemoizedObjectQuerier,
-} from './redux-graphql';
+const dedent = str=>str.split('\n').map(s=>s.trim()).join('\n');
 
-describe("schemaToQueryReducerMap", () => {
-  let schema,state,reducerMap;
-  schema=gql`
+describe("schemaToReducers", () => {
+  let state;
+  let schema=gql(dedent(`
     type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
     type Pet{id:ID,name:String}
     scalar SomeScalar
-  `;
-  reducerMap = schemaToQueryReducerMap(schema);
+  `));
+  let reducerMap = schemaToReducers(schema);
+  
   beforeEach(()=>{
     state={
       SomeScalar:1,
@@ -203,7 +202,7 @@ describe("getUseQuery: integration test React.useState,redux.combineReducers(sch
       scalar SomeScalar
     `
     querier = getMemoizedObjectQuerier(schema);
-    reducerMap = schemaToQueryReducerMap(schema);
+    reducerMap = schemaToReducers(schema);
   });
   beforeEach(()=>{
     const rootReducer = combineReducers(reducerMap);

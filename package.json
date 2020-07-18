@@ -2,37 +2,31 @@
   "name": "a-laughlin",
   "private": true,
   "root": true,
-  "//main": "webpack.config.js",
-  "//browser": "webpack.config.js",
-  "//module": "webpack.config.js",
-  "//type": "module",
-  "//setting type module on root breaks things with jest": "module",
   "workspaces": [
     "src/*"
   ],
-  "// all the babel stuff is only for jest":"https://github.com/facebook/jest/issues/9430",
+  "// all the babel stuff is only for jest": "https://github.com/facebook/jest/issues/9430",
   "devDependencies": {
     "@babel/core": "^7.9.6",
     "@babel/preset-env": "^7.9.6",
     "babel-jest": "^26.0.1",
+    "eslint": "^7.1.0",
+    "eslint-plugin-import": "^2.20.2",
+    "eslint-plugin-jest": "^23.13.1",
+    "eslint-plugin-jsx-a11y": "^6.2.3",
+    "eslint-plugin-prettier": "^3.1.3",
+    "eslint-plugin-react": "^7.20.0",
     "jest": "^26.0.1",
     "lerna": "^3.21.0",
-    "lodash": "*",
-    "webpack": "^5.0.0-beta.16",
-    "webpack-cli": "^3.3.11",
-    "webpack-dev-server": "^3.11.0",
-    "eslint":"^7.1.0",
-    "eslint-plugin-react":"^7.20.0",
-    "eslint-plugin-import":"^2.20.2",
-    "eslint-plugin-jest":"^23.13.1",
-    "eslint-plugin-prettier":"^3.1.3",
-    "eslint-plugin-jsx-a11y":"^6.2.3"
+    "lodash": "^4"
   },
   "// more workarounds for modules in jest config": "moduleNameMapper",
   "// also some hoops to ignore webpack imports like images": "moduleNameMapper",
-  "// moduleNameMapper": {"^.*(jpe?g|png).*$": "./jestAssetsTransformer.js"},
-  "// jestAssetsTransformer.js would contain":"module.exports = { process() {} };",
-  "jest": {
+  "// moduleNameMapper": {
+    "^.*(jpe?g|png).*$": "./jestAssetsTransformer.js"
+  },
+  "// jestAssetsTransformer.js would contain": "module.exports = { process() {} };",
+  "//jest": {
     "moduleDirectories": [
       "./node_modules",
       "node_modules",
@@ -52,11 +46,14 @@
   "dependencies": {},
   "scripts": {
     "story": "",
-    "jest:nowatch": "jest --no-cache --no-watch ./src/**/*.test.js",
     "watch": "webpack --mode='development' --watch",
     "start": "webpack-dev-server --mode='development' --open",
     "server": "node server.js",
     "build": "webpack --mode='production'",
-    "test": "jest"
+    "test:clearcache": "jest --clear-cache",
+    "test:exp:nowatch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --no-cache --no-watch ./src/**/*.test.js",
+    "test:nowatch": "jest --no-cache --no-watch ./src/**/*.test.js",
+    "test:watch": "jest --watch ./src/**/*.test.js",
+    "test": "jest --watch ./src/**/*.test.js"
   }
 }
