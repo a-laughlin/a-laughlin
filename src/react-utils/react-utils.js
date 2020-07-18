@@ -4,7 +4,7 @@ import {ma,cond,isFunction,isString,isPlainObject,stubTrue,pipe,oo,ensureArray,i
         isArray,pget,over,plog,spread,rest,acceptArrayOrArgs,ensureFunction,ro,get,noop,merge,
         hasIn as has,flattenDeep,flatMap,
       } from './utils'
-import {curryN,concat,flatten,capitalize} from 'lodash/fp'
+import {curryN,concat,flatten,capitalize} from 'lodash-es/fp'
 import {styleStringToObj} from '@a-laughlin/style-string-to-obj'
 
 export const toHookComposer = (component)=>(...hooks)=>{

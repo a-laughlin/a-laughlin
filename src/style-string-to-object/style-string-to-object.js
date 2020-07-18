@@ -1,5 +1,5 @@
-import merge from 'lodash/merge';
-import pipe from 'lodash/flow';
+import merge from 'lodash-es/merge';
+import pipe from 'lodash-es/flow';
 
 export const styleStringToObj = (()=>{
   const styleMatcher = /^([a-z]+)([A-Z0-9.:#+-]+)?(.*)$/;

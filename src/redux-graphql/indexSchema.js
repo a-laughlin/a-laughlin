@@ -1,5 +1,5 @@
 import {frozenEmptyArray, ensureArray,ensurePropIsObject,memoize} from '@a-laughlin/fp-utils';
-import keyBy from 'lodash/fp/keyBy';
+import keyBy from 'lodash-es/fp/keyBy';
 export const getDefName=schemaDefinition=>schemaDefinition.name.value;
 export const getDefKind=schemaDefinition=>schemaDefinition.kind;
 export const getDefFields=schemaDefinition=>schemaDefinition.fields??frozenEmptyArray;

@@ -18,7 +18,7 @@
     "eslint-plugin-react": "^7.20.0",
     "jest": "^26.0.1",
     "lerna": "^3.21.0",
-    "lodash": "^4"
+    "lodash-es": "^4"
   },
   "// more workarounds for modules in jest config": "moduleNameMapper",
   "// also some hoops to ignore webpack imports like images": "moduleNameMapper",

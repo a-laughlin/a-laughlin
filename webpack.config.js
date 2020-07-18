@@ -1,6 +1,6 @@
 const {join} =require('path');
 const {readdirSync,existsSync}=require('fs');
-const merge = require('lodash/merge');
+const merge = require('lodash-es/merge');
 const webpack = require('webpack');
 // const nodeExternals=require("webpack-node-externals")
 // ways to import files across packages
@@ -38,7 +38,7 @@ module.exports = function(env,argv){
       devtool:mode==='production'?false:'source-map',
       externals:{
         lodash:'lodash',
-        'lodash/*':'lodash/*',
+        'lodash-es/*':'lodash-es/*',
         react:'react',
         xstream:'xstream',
         terser:'terser',
