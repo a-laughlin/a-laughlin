@@ -9,12 +9,13 @@ import {join} from 'path';
 const modules = readdirSync('./src').map(p=>join('src',p,`${p}.js`));
 const cjsModules = modules.filter(p=>/observable|react/.test(p))
 const esModules = modules.filter(p=>!/observable|react/.test(p))
+const resolvePluginOptions = {customResolveOptions: {moduleDirectory: 'node_modules'}}
 // console.log(`modules`,modules)
 export default [
   {
     input:esModules,
     external:'lodash-es',
-    plugins:[ resolve()],
+    plugins:[ resolve(resolvePluginOptions)],
     output: {
       dir: 'dist',
       format:'es',
@@ -29,7 +30,7 @@ export default [
   { // observable utils requires commonjs helpers because xstream does
     input:cjsModules,
     external:'lodash-es',
-    plugins:[ commonjs(),resolve() ],
+    plugins:[ commonjs(),resolve(resolvePluginOptions) ],
     output: {
       dir: 'dist',
       format:'es',
