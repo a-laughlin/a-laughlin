@@ -1,12 +1,223 @@
-import indexSchema from './indexSchema'
-import {isDeepEqual,mo,reduce,transToObject,keyBy,ensureArray} from '@a-laughlin/fp-utils';
+import './lodash-es/_listCacheClear.js-e2c31d6d.js';
+import './lodash-es/eq.js-3067b71d.js';
+import './lodash-es/_assocIndexOf.js-9d262dc0.js';
+import './lodash-es/_listCacheDelete.js-73448065.js';
+import './lodash-es/_listCacheGet.js-ab0a3256.js';
+import './lodash-es/_listCacheHas.js-3166b85c.js';
+import './lodash-es/_listCacheSet.js-de9e7743.js';
+import './lodash-es/_ListCache.js-31797373.js';
+import './lodash-es/_stackClear.js-583ff074.js';
+import './lodash-es/_stackDelete.js-51c69537.js';
+import './lodash-es/_stackGet.js-4846d0cd.js';
+import './lodash-es/_stackHas.js-65485a5c.js';
+import './lodash-es/_freeGlobal.js-ac63e052.js';
+import './lodash-es/_root.js-82806f10.js';
+import './lodash-es/_Symbol.js-09c49294.js';
+import './lodash-es/_getRawTag.js-f59ed6e5.js';
+import './lodash-es/_objectToString.js-57a29940.js';
+import './lodash-es/_baseGetTag.js-f3ef6f41.js';
+import './lodash-es/isObject.js-52553cde.js';
+import './lodash-es/isFunction.js-e7b830c1.js';
+import './lodash-es/_coreJsData.js-d0cf551e.js';
+import './lodash-es/_isMasked.js-67721d8e.js';
+import './lodash-es/_toSource.js-b768b872.js';
+import './lodash-es/_baseIsNative.js-c2ce2406.js';
+import './lodash-es/_getValue.js-18c9d5bc.js';
+import './lodash-es/_getNative.js-6ce67c8b.js';
+import './lodash-es/_Map.js-26262f48.js';
+import './lodash-es/_nativeCreate.js-478e8045.js';
+import './lodash-es/_hashClear.js-6690e721.js';
+import './lodash-es/_hashDelete.js-5fa65fee.js';
+import './lodash-es/_hashGet.js-73445d8e.js';
+import './lodash-es/_hashHas.js-896bca19.js';
+import './lodash-es/_hashSet.js-7b0463bb.js';
+import './lodash-es/_Hash.js-f6717b1a.js';
+import './lodash-es/_mapCacheClear.js-10156fde.js';
+import './lodash-es/_isKeyable.js-a6bd7f34.js';
+import './lodash-es/_getMapData.js-6312c74c.js';
+import './lodash-es/_mapCacheDelete.js-01a46502.js';
+import './lodash-es/_mapCacheGet.js-42005c75.js';
+import './lodash-es/_mapCacheHas.js-0989f7fc.js';
+import './lodash-es/_mapCacheSet.js-15b69a11.js';
+import './lodash-es/_MapCache.js-0e911fa6.js';
+import './lodash-es/_stackSet.js-565499c9.js';
+import './lodash-es/_Stack.js-283d3e23.js';
+import './lodash-es/_defineProperty.js-3ce473e1.js';
+import './lodash-es/_baseAssignValue.js-e6945a61.js';
+import './lodash-es/_assignMergeValue.js-4893b41f.js';
+import './lodash-es/_createBaseFor.js-41ed5751.js';
+import './lodash-es/_baseFor.js-abbb37ca.js';
+import './lodash-es/_cloneBuffer.js-fda27ee5.js';
+import './lodash-es/_Uint8Array.js-8616f24c.js';
+import './lodash-es/_cloneArrayBuffer.js-5068fcff.js';
+import './lodash-es/_cloneTypedArray.js-cdcdcc65.js';
+import './lodash-es/_copyArray.js-60683993.js';
+import './lodash-es/_baseCreate.js-1fe7d114.js';
+import './lodash-es/_overArg.js-a472e8ea.js';
+import './lodash-es/_getPrototype.js-30d5af28.js';
+import './lodash-es/_isPrototype.js-28e760ef.js';
+import './lodash-es/_initCloneObject.js-451623ee.js';
+import './lodash-es/isObjectLike.js-bf43cd33.js';
+import './lodash-es/_baseIsArguments.js-ea906a63.js';
+import './lodash-es/isArguments.js-49778255.js';
+import './lodash-es/isArray.js-348c388d.js';
+import './lodash-es/isLength.js-0b7b9fd1.js';
+import './lodash-es/isArrayLike.js-a791d85f.js';
+import './lodash-es/isArrayLikeObject.js-9ec94c2e.js';
+import './lodash-es/stubFalse.js-2cdba8d4.js';
+import './lodash-es/isBuffer.js-b51562a3.js';
+import './lodash-es/isPlainObject.js-f82871af.js';
+import './lodash-es/_baseIsTypedArray.js-94c2af13.js';
+import './lodash-es/_baseUnary.js-6df1a89e.js';
+import './lodash-es/_nodeUtil.js-62848496.js';
+import './lodash-es/isTypedArray.js-5ad2fd2e.js';
+import './lodash-es/_safeGet.js-477e482b.js';
+import './lodash-es/_assignValue.js-85b1adb0.js';
+import './lodash-es/_copyObject.js-85710492.js';
+import './lodash-es/_baseTimes.js-7e32212b.js';
+import './lodash-es/_isIndex.js-75de89e7.js';
+import './lodash-es/_arrayLikeKeys.js-9d4926bb.js';
+import './lodash-es/_nativeKeysIn.js-11dd4ac3.js';
+import './lodash-es/_baseKeysIn.js-94b39114.js';
+import './lodash-es/keysIn.js-a456e211.js';
+import './lodash-es/toPlainObject.js-abc6a198.js';
+import './lodash-es/_baseMergeDeep.js-9ff81186.js';
+import './lodash-es/_baseMerge.js-94b3d7a7.js';
+import './lodash-es/identity.js-ddb76187.js';
+import './lodash-es/_apply.js-367f18b6.js';
+import './lodash-es/_overRest.js-96a11039.js';
+import './lodash-es/constant.js-f1c147da.js';
+import './lodash-es/_baseSetToString.js-0f32ff52.js';
+import './lodash-es/_shortOut.js-db5b33fd.js';
+import './lodash-es/_setToString.js-b1e00eb2.js';
+import './lodash-es/_baseRest.js-7e6e80dd.js';
+import './lodash-es/_isIterateeCall.js-2264efb2.js';
+import './lodash-es/_createAssigner.js-9c754eed.js';
+import './lodash-es/merge.js-442025fa.js';
+import './lodash-es/isSymbol.js-2b98fa01.js';
+import './lodash-es/_isKey.js-20c1b706.js';
+import './lodash-es/memoize.js-169583e3.js';
+import './lodash-es/_memoizeCapped.js-497b94a3.js';
+import './lodash-es/_stringToPath.js-14426231.js';
+import './lodash-es/_arrayMap.js-efbe07df.js';
+import './lodash-es/_baseToString.js-2c117502.js';
+import './lodash-es/toString.js-054ab19d.js';
+import './lodash-es/_castPath.js-23467a97.js';
+import './lodash-es/_toKey.js-00bd10e9.js';
+import './lodash-es/_baseSet.js-1e97817a.js';
+import './lodash-es/_arrayEvery.js-93f9a99b.js';
+import './lodash-es/_setCacheAdd.js-6cf11f54.js';
+import './lodash-es/_setCacheHas.js-077b149c.js';
+import './lodash-es/_SetCache.js-92df99dc.js';
+import './lodash-es/_arraySome.js-648bb11f.js';
+import './lodash-es/_cacheHas.js-aa223a23.js';
+import './lodash-es/_equalArrays.js-15326ddd.js';
+import './lodash-es/_mapToArray.js-1b7d050b.js';
+import './lodash-es/_setToArray.js-daaaf907.js';
+import './lodash-es/_equalByTag.js-5ebaad3d.js';
+import './lodash-es/_arrayPush.js-6ac3b0b0.js';
+import './lodash-es/_baseGetAllKeys.js-d353ff0c.js';
+import './lodash-es/_arrayFilter.js-6c6cb9e4.js';
+import './lodash-es/stubArray.js-a0b52c3f.js';
+import './lodash-es/_getSymbols.js-aee7efbf.js';
+import './lodash-es/_nativeKeys.js-3a24687a.js';
+import './lodash-es/_baseKeys.js-a855521c.js';
+import './lodash-es/keys.js-f4a95bd3.js';
+import './lodash-es/_getAllKeys.js-0b0492cc.js';
+import './lodash-es/_equalObjects.js-37b603d0.js';
+import './lodash-es/_DataView.js-25495e22.js';
+import './lodash-es/_Promise.js-222457f4.js';
+import './lodash-es/_Set.js-0d56afa2.js';
+import './lodash-es/_WeakMap.js-ad7381a2.js';
+import './lodash-es/_getTag.js-9cc934cc.js';
+import './lodash-es/_baseIsEqualDeep.js-05ed3446.js';
+import './lodash-es/_baseIsEqual.js-2081c9b2.js';
+import './lodash-es/_baseIsMatch.js-fe8d464f.js';
+import './lodash-es/_isStrictComparable.js-a9828370.js';
+import './lodash-es/_getMatchData.js-8a722ba0.js';
+import './lodash-es/_matchesStrictComparable.js-d19af892.js';
+import './lodash-es/_baseMatches.js-39913338.js';
+import './lodash-es/_baseGet.js-a279f2a7.js';
+import './lodash-es/get.js-addb1d30.js';
+import './lodash-es/_baseHasIn.js-5eb272a4.js';
+import './lodash-es/_hasPath.js-cb394a0c.js';
+import './lodash-es/hasIn.js-2f0ad596.js';
+import './lodash-es/_baseMatchesProperty.js-5334e4c8.js';
+import './lodash-es/_baseProperty.js-00c82e77.js';
+import './lodash-es/_basePropertyDeep.js-e8318885.js';
+import './lodash-es/property.js-ddd8f638.js';
+import './lodash-es/_baseIteratee.js-718e1a1e.js';
+import './lodash-es/_isFlattenable.js-8ef4abd2.js';
+import './lodash-es/_baseFlatten.js-8b85ebbc.js';
+import './lodash-es/flatten.js-06038df6.js';
+import './lodash-es/_flatRest.js-d229910c.js';
+import './lodash-es/_createOver.js-5e666ff5.js';
+import './lodash-es/overEvery.js-85c2260f.js';
+import './lodash-es/overSome.js-2ada7e25.js';
+import './lodash-es/_baseForOwn.js-f2105544.js';
+import './lodash-es/_createBaseEach.js-2bcc6476.js';
+import './lodash-es/_baseEach.js-f31c688f.js';
+import './lodash-es/_baseMap.js-781eedcf.js';
+import './lodash-es/_baseSortBy.js-2eea9fb7.js';
+import './lodash-es/_compareAscending.js-b327f9ec.js';
+import './lodash-es/_compareMultiple.js-4ef115e3.js';
+import './lodash-es/_baseOrderBy.js-1c53f017.js';
+import './lodash-es/sortBy.js-cfaf310e.js';
+import './lodash-es/isString.js-650ac401.js';
+import './lodash-es/_basePickBy.js-9e8e587d.js';
+import './lodash-es/_basePick.js-4883a589.js';
+import './lodash-es/pick.js-88ae7d68.js';
+import './lodash-es/uniqueId.js-cdc34c97.js';
+import { memoize, ensureArray, ensurePropIsObject, keyBy, transToObject, reduce } from './fp-utils.js';
 
-export const schemaToActionCreators=( schema )=>{};
-export const schemaToQueries=( schema )=>{};
-export const schemaToMutations=( schema )=>{};
-export const extendSchemaWithQueryAndMutationDefinitions=( schema )=>{};
+const getDefName=schemaDefinition=>schemaDefinition.name.value;
+const getFieldTypeName=fieldDefinition=>{
+  let type=fieldDefinition.type;
+  while(type.kind!=='NamedType')type=type.type;
+  return type.name.value;
+};
+const isListField=fieldDefinition=>{
+  const type=fieldDefinition.type;
+  return (type.kind==='NonNullType'?type.type.kind:type.kind)==='ListType';
+};
+var indexSchema = memoize(schema=>{
+  const definitions=ensureArray(schema.definitions).filter(d=>/^(Query|Mutation|Subscription)$/.test(d.name.value)===false);
+  // const builtInDefinitions=['ID','Int','Float','String','Boolean']
+  //   .map(value=>({kind:'ScalarTypeDefinition',name:{value}}));
+  const builtInDefinitions=[];
+  const allDefs=builtInDefinitions.concat(definitions);
+  const definitionsByKind=allDefs.reduce((acc,d)=>{ensurePropIsObject(acc,d.kind)[d.kind][d.name.value]=d;return acc},{});
+  const objectDefs=Object.values(definitionsByKind.ObjectTypeDefinition);
+  return {
+    ...definitionsByKind,
+    definitions:allDefs,
+    definitionsByName:keyBy(allDefs,getDefName),
+    objectFieldMeta:Object.values(definitionsByKind.ObjectTypeDefinition).reduce((acc,d)=>{
+      const dName=getDefName(d);
+      const m=acc[dName]={scalarNames:{},collectionNames:{},collectionKeysCount:0,scalarKeysCount:0,isListType:{},idKey:undefined};
+      for (const f of d.fields){
+        const [fName,fTypeName]=[getDefName(f),getFieldTypeName(f)];
+        if (fTypeName==='ID') m.idKey=fName;
+        m.isListType[fName]=isListField(f);
+        if  (fTypeName in definitionsByKind.ObjectTypeDefinition) {
+          m.collectionNames[fName]=fTypeName;
+          ++m.collectionKeysCount;
+        } else {
+          ++m.scalarKeysCount;
+          m.scalarNames[fName]=fTypeName;
+        }
+      }
+      return acc;
+    },{})
+  }
+});
 
-export const schemaToReducers=( schema = gql('type DefaultType {id:ID!}') )=>{
+const schemaToActionCreators=( schema )=>{};
+const schemaToQueries=( schema )=>{};
+const schemaToMutations=( schema )=>{};
+const extendSchemaWithQueryAndMutationDefinitions=( schema )=>{};
+
+const schemaToReducers=( schema = gql('type DefaultType {id:ID!}') )=>{
   const {objectFieldMeta,ObjectTypeDefinition,definitionsByName}=indexSchema(schema);
   return Object.keys(definitionsByName).reduce((acc,dName)=>{
     const idKey=objectFieldMeta[dName]?.idKey;
@@ -60,7 +271,7 @@ export const schemaToReducers=( schema = gql('type DefaultType {id:ID!}') )=>{
 
 
 
-export const getMemoizedObjectQuerier=(schema)=>{
+const getMemoizedObjectQuerier=(schema)=>{
   const {objectFieldMeta,definitionsByName}=indexSchema(schema);
   
   const matches = args=>v=>{
@@ -173,7 +384,7 @@ export const getMemoizedObjectQuerier=(schema)=>{
       ? opResults[varsKey]
       : (opResults[varsKey] = querier(state,operation,vars));
   }
-}
+};
 
 
 /* eslint-disable @typescript-eslint/no-use-before-define */
@@ -207,7 +418,7 @@ export const getMemoizedObjectQuerier=(schema)=>{
 
 
 // common op. imperative implementation for speed.
-export const transDiff = (fn = identity, { by = x => x.id, subset = 'aub', ret } = {}) => (collections = []) => {
+const transDiff = (fn = identity, { by = x => x.id, subset = 'aub', ret } = {}) => (collections = []) => {
   const diff = diffBy(by, collections);
   if (ret === undefined) (ret = isArray(collections[0]) ? [] : Object.create(null));
   const { anb, bna, aib, aub, changed, a, b, [subset]: sub } = diff;
@@ -225,7 +436,7 @@ export const transDiff = (fn = identity, { by = x => x.id, subset = 'aub', ret }
     fn(ret, a[k], b[k], reused);
   }
   return ret;
-}
+};
 
 // export const diffBy = (by, reducer) => (args = []) => {
 //   const diff = by ? diffObjs(args.map(keyBy(by))) : diffObjs(args);
@@ -708,3 +919,5 @@ export const transDiff = (fn = identity, { by = x => x.id, subset = 'aub', ret }
 //   definition: { read: identity, write: identity },
 //   selection: { read: identity, write: identity },
 // });
+
+export { extendSchemaWithQueryAndMutationDefinitions, getMemoizedObjectQuerier, schemaToActionCreators, schemaToMutations, schemaToQueries, schemaToReducers, transDiff };

@@ -1,10 +1,13 @@
-import {useState,useEffect,createElement} from 'react';
-import {styleStringToObj} from '@a-laughlin/style-string-to-obj'
+import './_commonjsHelpers.js-51d3728a.js';
+import './react-utils/object-assign-d4d6ba91.js';
+import { r as react } from './react-utils/react-a4cb4ace.js';
+import './react-utils/prop-types-f783925b.js';
+import { styleStringToObj } from '@a-laughlin/style-string-to-obj';
 
-export const toHookComposer = (component)=>(...hooks)=>{
+const toHookComposer = (component)=>(...hooks)=>{
   function hookComposer (...props){
     if(!isPlainObject(props[0])) return toHookComposer(component)(...hooks,...props);
-    return createElement(component, pipe(...hooks.map(ife(isString,s=>children(s))))(...props));
+    return react.createElement(component, pipe(...hooks.map(ife(isString,s=>children(s))))(...props));
   }
   hookComposer.isHookComposer=true;
   if (process.env.NODE_ENV !== 'production'){
@@ -14,18 +17,18 @@ export const toHookComposer = (component)=>(...hooks)=>{
     });
   }
   return hookComposer;
-}
+};
 
-export const isHookComposer = fn=>fn.isHookComposer===true;
+const isHookComposer = fn=>fn.isHookComposer===true;
 
-export const [Div,Span,Ul,Ol,Dt,Dd,Dl,Article,P,H1,H2,H3,H4,H5,H6,Li,Input,A,Label,Pre,Textarea] = (
+const [Div,Span,Ul,Ol,Dt,Dd,Dl,Article,P,H1,H2,H3,H4,H5,H6,Li,Input,A,Label,Pre,Textarea] = (
              'div,span,ul,ol,dt,dd,dl,article,p,h1,h2,h3,h4,h5,h6,li,input,a,label,pre,textarea'
              .split(',').map(toHookComposer));
-export const [Button,Img,Header,Svg,G,Path,Polyline,Rect,Line,Circle,Text,Table,Td,Th,Tr] = (
+const [Button,Img,Header,Svg,G,Path,Polyline,Rect,Line,Circle,Text,Table,Td,Th,Tr] = (
              'button,img,header,svg,g,path,polyline,rect,line,circle,text,table,td,th,tr'
              .split(',').map(toHookComposer));
 
-export const style = cond(
+const style = cond(
   [isString,str=>style(styleStringToObj(str))],
   [isFunction,fn=>p=>style(fn(p))(p)],
   [isPlainObject,obj=>p=>merge({},p,{style:obj})],
@@ -33,19 +36,21 @@ export const style = cond(
 );
 
 
-export const eventFactory = evtName => (fn=identity)=>p=>
+const eventFactory = evtName => (fn=identity)=>p=>
   ({...p,[evtName]:evt=>console.log(`p,evtName`, p,evtName)||fn(p,evt)});
 
-export const [onClick,onChange,onKeydown,onKeyup,onKeyPress,onSubmit,onInput] = (
+const [onClick,onChange,onKeydown,onKeyup,onKeyPress,onSubmit,onInput] = (
              'onClick,onChange,onKeydown,onKeyup,onKeyPress,onSubmit,onInput'
              .split(',').map(s=>eventFactory(s)));
 
 
-export const useObservable = (observable, initialValue) => {
-  const [value, setValue] = useState(initialValue);
-  useEffect(()=>{
+const useObservable = (observable, initialValue) => {
+  const [value, setValue] = react.useState(initialValue);
+  react.useEffect(()=>{
     const subscription = observable.subscribe(setValue);
     return subscription.unsubscribe.bind(subscription);
   }, [observable] );
   return value;
 };
+
+export { A, Article, Button, Circle, Dd, Div, Dl, Dt, G, H1, H2, H3, H4, H5, H6, Header, Img, Input, Label, Li, Line, Ol, P, Path, Polyline, Pre, Rect, Span, Svg, Table, Td, Text, Textarea, Th, Tr, Ul, eventFactory, isHookComposer, onChange, onClick, onInput, onKeyPress, onKeydown, onKeyup, onSubmit, style, toHookComposer, useObservable };
