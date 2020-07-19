@@ -26,7 +26,8 @@
     "^.*(jpe?g|png).*$": "./jestAssetsTransformer.js"
   },
   "// jestAssetsTransformer.js would contain": "module.exports = { process() {} };",
-  "//jest": {
+  "jest///testPathIgnorePatterns": [ "/node_modules/" ],
+  "jest": {
     "moduleDirectories": [
       "./node_modules",
       "node_modules",
@@ -37,8 +38,11 @@
       "mjs",
       "cjs"
     ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!(lodash-es)/)"
+    ],
     "transform": {
-      "^.+\\.[t|j]sx?$": "babel-jest"
+      "^.+\\.js$": "babel-jest"
     }
   },
   "//webpack-node-externals": "latest",
@@ -52,6 +56,7 @@
     "build": "webpack --mode='production'",
     "test:clearcache": "jest --clear-cache",
     "test:exp:nowatch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --no-cache --no-watch ./src/**/*.test.js",
+    "test:exp:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --no-cache --watch ./src/**/*.test.js",
     "test:nowatch": "jest --no-cache --no-watch ./src/**/*.test.js",
     "test:watch": "jest --watch ./src/**/*.test.js",
     "test": "jest --watch ./src/**/*.test.js"

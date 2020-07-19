@@ -9,11 +9,8 @@
   "main": "react-hooks.js",
   "module": "react-hooks.js",
   "browser": "react-hooks.js",
-  "peerDependencies": {
-    "fp-utils": "*",
+  "dependencies": {
+    "@a-laughlin/fp-utils": "*",
     "react": ">=16.9"
-  },
-  "scripts": {
-    "test": "jest --no-watch"
   }
 }

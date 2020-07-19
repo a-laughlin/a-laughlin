@@ -1,5 +1,5 @@
 import {frozenEmptyArray, ensureArray,ensurePropIsObject,memoize} from '@a-laughlin/fp-utils';
-import keyBy from 'lodash-es/fp/keyBy';
+import keyBy from 'lodash-es/keyBy';
 export const getDefName=schemaDefinition=>schemaDefinition.name.value;
 export const getDefKind=schemaDefinition=>schemaDefinition.kind;
 export const getDefFields=schemaDefinition=>schemaDefinition.fields??frozenEmptyArray;
@@ -24,7 +24,7 @@ export default memoize(schema=>{
   return {
     ...definitionsByKind,
     definitions:allDefs,
-    definitionsByName:keyBy(getDefName,allDefs),
+    definitionsByName:keyBy(allDefs,getDefName),
     objectFieldMeta:Object.values(definitionsByKind.ObjectTypeDefinition).reduce((acc,d)=>{
       const dName=getDefName(d);
       const m=acc[dName]={scalarNames:{},collectionNames:{},collectionKeysCount:0,scalarKeysCount:0,isListType:{},idKey:undefined};

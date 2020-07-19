@@ -11,8 +11,27 @@ import {
   tdToObject,
   transToArray,
   transToObject,
+  pipe,
+  and
 } from './fp-utils'
-
+describe("and", () => {
+  it('should ensure multiple predicates pass', () =>{
+    const is5=x=>x===5;
+    const not5=x=>x!==5;
+    expect(and(is5,is5)(5)).toBe(true);
+    expect(and(is5,not5)(5)).toBe(false);
+    expect(and(not5,is5)(5)).toBe(false);
+    expect(and(not5,not5)(5)).toBe(false);
+  });
+})
+describe("pipe", () => {
+  const add1=x=>x+1;
+  it('should be equivalent to identity on 0 fns', () =>expect(pipe()(0)).toBe(0));
+  it('should add multiple fns', () =>expect(pipe(add1,add1,add1)(0)).toBe(3));
+  it('should be referentially transparent', () =>expect(pipe(add1,add1,add1)(0)).toBe(pipe(add1,pipe(add1,add1))(0)));
+  const addFIrstARgs=(a,b)=>a+b;
+  it('should pass all args to first fn', () =>expect(pipe(addFIrstARgs)(1,1)).toBe(2));
+});
 describe("acceptArrayOrArgs", () => {
   const testFn = acceptArrayOrArgs(identity);
   it('should convert args to an array', () =>expect(testFn(1,2,3)).toEqual([1,2,3]));

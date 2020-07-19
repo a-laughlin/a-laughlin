@@ -10,6 +10,6 @@
   "module": "fp-utils.js",
   "browser": "fp-utils.js",
   "dependencies": {
-    "lodash": "^4.17.19"
+    "lodash-es": "^4"
   }
 }

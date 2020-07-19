@@ -1,62 +1,16 @@
-import pick from 'lodash-es/fp/pick'
-import get from 'lodash-es/fp/get'
-import flatten from 'lodash-es/fp/flatten'
-import {default as mapValuesFP} from 'lodash-es/fp/mapValues'
-import spread from 'lodash-es/fp/spread'
-import rest from 'lodash-es/fp/rest'
-import {default as filterFP} from 'lodash-es/fp/filter'
-import uniqueId from 'lodash-es/fp/uniqueId'
-import {default as matchesFP} from 'lodash-es/fp/matches'
-import concat from 'lodash-es/fp/concat'
-import constant from 'lodash-es/fp/constant'
-import overEvery from 'lodash-es/fp/overEvery'
-import overSome from 'lodash-es/fp/overSome'
-import negate from 'lodash-es/fp/negate'
-import {default as flatMapFP} from 'lodash-es/fp/flatMap'
-import flattenDeep from 'lodash-es/fp/flattenDeep'
-import over from 'lodash-es/fp/over'
-import identity from 'lodash-es/fp/identity'
-import difference from 'lodash-es/fp/difference'
-import isInteger from 'lodash-es/fp/isInteger'
-import isError from 'lodash-es/fp/isError'
-import isNumber from 'lodash-es/fp/isNumber'
-import isObjectLike from 'lodash-es/fp/isObjectLike'
-import hasIn from 'lodash-es/fp/hasIn'
-import has from 'lodash-es/fp/has'
-import isWeakMap from 'lodash-es/fp/isWeakMap'
-import isWeakSet from 'lodash-es/fp/isWeakSet'
-import isMap from 'lodash-es/fp/isMap'
-import isSet from 'lodash-es/fp/isSet'
-import isEmpty from 'lodash-es/fp/isEmpty'
-import isString from 'lodash-es/fp/isString'
-import isPlainObject from 'lodash-es/fp/isPlainObject'
-import isFunction from 'lodash-es/fp/isFunction'
-import isNull from 'lodash-es/fp/isNull'
-import isUndefined from 'lodash-es/fp/isUndefined'
-import set from 'lodash-es/fp/set'
-import unset from 'lodash-es/fp/unset'
-import once from 'lodash-es/fp/once'
-import sortBy from 'lodash-es/fp/sortBy'
-import every from 'lodash-es/fp/every'
-import values from 'lodash-es/fp/values'
-import keys from 'lodash-es/fp/keys'
-import zip from 'lodash-es/fp/zip'
-import unzip from 'lodash-es/fp/unzip'
-import union from 'lodash-es/fp/union'
-import conforms from 'lodash-es/fp/conforms'
-import intersection from 'lodash-es/fp/intersection'
-import nth from 'lodash-es/fp/nth';
-import clone from 'lodash-es/fp/clone';
 
-import merge from 'lodash-es/merge'
-import mergeWith from 'lodash-es/mergeWith'
-import {default as _set} from 'lodash-es/set'
-
-const [filter,mapValues,flatMap] = [
-  filterFP,mapValuesFP,flatMapFP].map(fn=>fn.convert({cap:false}));
+import _merge from 'lodash-es/merge';
+import {default as _set} from 'lodash-es/set';
+import overEvery from 'lodash-es/overEvery';
+import overSome from 'lodash-es/overSome';
+import sortBy from 'lodash-es/sortBy';
+import isString from 'lodash-es/isString';
+import pick from 'lodash-es/pick';
+import isPlainObject from 'lodash-es/isPlainObject';
 
 // curry/compose/pipe, for later fns
 let curry,compose,pipe;
+export const identity=x=>x;
 if (process.env.NODE_ENV !== 'production') {
   // debugging versions
   const fToString = fn => fn.name ? fn.name : fn.toString();
@@ -72,13 +26,14 @@ if (process.env.NODE_ENV !== 'production') {
   };
 
   // based on https://dev.to/ascorbic/creating-a-typed-compose-function-in-typescript-3-351i
-  compose = (...fns) => {
-    const composed = (x) => fns.reduceRight((acc, f) => f(acc), x);
+
+  compose = (fn=identity,...fns) => {
+    const composed = (...args) => fns.reduceRight((acc, f) => f(acc), fn(...args));
     composed.toString = () => `compose(${fns.map(fToString).join(', ')})`;
     return composed;
   };
-  pipe = (...fns) => {
-    const piped = (x) => fns.reduce((acc, f) => f(acc), x);
+  pipe = (fn=identity,...fns) => {
+    const piped = (...args) => fns.reduce((acc, f) => f(acc), fn(...args));
     piped.toString = () => `pipe(${fns.reverse().map(fToString).join(', ')})`;
     return piped;
   };
@@ -86,9 +41,9 @@ if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line
   curry = fn => (...args) => args.length >= fn.length ? fn(...args) : curry(fn.bind(null, ...args));
   // eslint-disable-next-line
-  compose = (...fns) => (arg) => fns.reduceRight((acc, f) => f(acc), arg);
+  compose = (fn=identity,...fns) => (...args) => fns.reduceRight((acc, f) => f(acc), fn(...args));
   // eslint-disable-next-line
-  pipe = (...fns) => (arg) => fns.reduce((acc, f) => f(acc), arg);
+  pipe = (fn=identity,...fns) => (...args) => fns.reduce((acc, f) => f(acc), fn(...args));
 }
 export { curry, compose, pipe };
 
@@ -109,8 +64,8 @@ export const frozenEmptyObject = Object.freeze(Object.create(null));
 
 
 // predicates
-export {isError,isInteger,isNumber,isObjectLike,hasIn,has,isWeakMap,isWeakSet,isMap,
-  isSet,isEmpty,isString,isPlainObject,isFunction,isNull,isUndefined,every,conforms}
+// export {isError,isInteger,isNumber,isObjectLike,hasIn,has,isWeakMap,isWeakSet,isMap,
+//   isSet,isEmpty,isString,isPlainObject,isFunction,isNull,isUndefined,every,conforms} from 'lodash-es';
 export const isArray = Array.isArray.bind(Array);
 export const isFalsy = arg=>!arg;
 export const isTruthy = arg=>!!arg;
@@ -139,21 +94,19 @@ export const isDeepEqual=(a,b)=>{ // decently fast check on objects and arrays
 export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
 
 // flow
-export {once,over};
 export const dpipe = (data,...args)=>pipe(...args)(data);
 
 // functions
-export {spread,rest,identity}
 export const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(...args);
 export const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 export const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
-export const mergeToBlank = acceptArrayOrArgs(vals => merge({},...vals));
+export const mergeToBlank = acceptArrayOrArgs(vals => _merge({},...vals));
 
 export const overObj = obj=>(...args)=>mo(f=>f(...args))(obj);
 export const converge = (arg)=>(isArray(arg)?over:overObj)(arg);
 
 // casting
-export {constant};
+export const constant = x=>_=>x;
 export const ensureArray = (val=[])=>isArray(val) ? val : [val];
 export const ensureString = (val)=>isString(val) ? val : `${val}`;
 export const ensureFunction = (arg)=>typeof arg==='function'?arg:constant(arg);
@@ -163,11 +116,11 @@ export const ensurePropIsArray = ensurePropWith(stubArray);
 export const ensurePropIsObject = ensurePropWith(stubObject);
 
 // logic
-export const not = negate;
+export const not = fn=>arg=>!fn(arg);
 export const ifElseUnary = (pred,T,F=identity)=>arg=>pred(arg)?T(arg):F(arg);
 export const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
-export const and = rest(overEvery);
-export const or = rest(overSome);
+export const and = (...args)=>overEvery(args);
+export const or = (...args)=>overSome(...args);
 export const none = not(or);
 export const xor = fn=>pipe(filter(fn),len1);
 export const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (let [pred,val] of arrs){if(pred(...x)){return val;}}});
@@ -176,16 +129,14 @@ export const cond = acceptArrayOrArgs(arrs=>(...args)=>ensureFunction(condNoExec
 
 
 // Array methods
-export {concat,sortBy,zip,unzip,difference,union,intersection};
 export const slice = (...sliceArgs)=>arr=>arr.slice(...sliceArgs);
 export const reverse = arr=>arr.slice(0).reverse(); // immutable array reverse
-export const sort = sortBy(null)
+export const sort = coll=>sortBy(coll,null);
 
 
 
 
 // collections
-export {merge,mergeWith,flatMap,flattenDeep,flatten};
 const makeCollectionFn=(arrayFn,objFn)=>fn=>{
   const aFn=arrayFn(fn);
   const oFn=objFn(fn);
@@ -284,13 +235,12 @@ export const groupByValues = transToObject((o,v)=>{
 
 
 // getters
-export {get,set,_set,unset,nth};
 export const pget = cond(
   [isString,str=>{
     str=str.split('.');
     return targ=>str.reduce((t,s)=>isArray(t) && !isInteger(+s) ? t.map(o=>o[s]) : t[s], targ)
   }],
-  [isArray,pick],
+  [isArray,keys=>obj=>pick(obj,keys)],
   [isPlainObject, obj=>target=>mo(f=>pget(f)(target))(obj)],
   [stubTrue,identity], // handles the function case
 );
@@ -306,7 +256,7 @@ export const last = c =>{
 
 
 // Objects
-export {values,keys,clone}
+
 export const renameProps = obj=>target=>{
   let newKey,oldKey,targetCopy = {...target};
   for (newKey in obj){
@@ -334,7 +284,7 @@ export const objToUrlParams = objStringifierFactory({
 });
 
 // content
-export {uniqueId}
+export {default as uniqueId} from 'lodash-es/uniqueId'
 
 
 

@@ -9,10 +9,7 @@
   "main": "style-string-to-object.js",
   "browser": "style-string-to-object.js",
   "module": "style-string-to-object.js",
-  "peerDependencies": {
-    "lodash": "^4.17.15"
-  },
-  "scripts": {
-    "test": ""
+  "dependencies": {
+    "lodash-es": "^4"
   }
 }

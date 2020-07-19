@@ -9,10 +9,7 @@
   "module": "react-utils.js",
   "main": "react-utils.js",
   "browser": "react-utils.js",
-  "scripts": {
-    "test": "jest --no-watch"
-  },
-  "peerDependencies": {
+  "dependencies": {
     "@a-laughlin/fp-utils": "*",
     "react": ">=16.9"
   }
