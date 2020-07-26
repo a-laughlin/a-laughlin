@@ -53,6 +53,7 @@ export const schemaToStateOpsMapper=(
       // if item
       // if value
       // which has a simpler dependency graph topology?  These fns, handling different types, or or a mutation tree?
+      // note: I can make these property functions, like "filter" and "omit" on query
       return nextReducer(({...prevState,...action.payload}),action)
     },
     SUBTRACT:nextReducer=>(prevState,action)=>{
