@@ -12,7 +12,8 @@ import {
   transToArray,
   transToObject,
   pipe,
-  and
+  and,
+  keyBy
 } from './fp-utils'
 describe("and", () => {
   it('should ensure multiple predicates pass', () =>{
@@ -142,6 +143,16 @@ describe("groupByValues", () => {
 describe("tdKeyBy", () => {
   it("should generate a key for each item",()=>{
     expect(tdToObject(tdKeyBy(x=>x.id))([{id:'a'},{id:'b'}]))
+    .toEqual({a:{id:'a'},b:{id:'b'}});
+  });
+})
+describe("keyBy", () => {
+  it("should generate a key for each via Fn",()=>{
+    expect(keyBy(x=>x.id)([{id:'a'},{id:'b'}]))
+    .toEqual({a:{id:'a'},b:{id:'b'}});
+  });
+  it("should generate a key for each via string",()=>{
+    expect(keyBy('id')([{id:'a'},{id:'b'}]))
     .toEqual({a:{id:'a'},b:{id:'b'}});
   });
 })

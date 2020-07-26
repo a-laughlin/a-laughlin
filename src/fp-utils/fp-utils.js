@@ -1,12 +1,13 @@
 
 import _merge from 'lodash-es/merge';
 import {default as _set} from 'lodash-es/set';
-import overEvery from 'lodash-es/overEvery';
+import _overEvery from 'lodash-es/overEvery';
 import overSome from 'lodash-es/overSome';
 import sortBy from 'lodash-es/sortBy';
 import isString from 'lodash-es/isString';
 import pick from 'lodash-es/pick';
 import isPlainObject from 'lodash-es/isPlainObject';
+import _matches from 'lodash-es/matches';
 
 // curry/compose/pipe, for later fns
 let curry,compose,pipe;
@@ -75,7 +76,7 @@ export const len = num=>({length})=>length===num;
 export const len0 = len(0);
 export const len1 = len(1);
 export const isProductionEnv = ()=>process.env.NODE_ENV === 'production';
-export const matches = arg=>matchesFP(arg);
+export const matches = _matches;
 export const isDeepEqual=(a,b)=>{ // decently fast check on objects and arrays
   if (a===b)return true;
   if (typeof a !== 'object')return a===b;
@@ -119,7 +120,7 @@ export const ensurePropIsObject = ensurePropWith(stubObject);
 export const not = fn=>arg=>!fn(arg);
 export const ifElseUnary = (pred,T,F=identity)=>arg=>pred(arg)?T(arg):F(arg);
 export const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
-export const and = (...args)=>overEvery(args);
+export const and = (...args)=>_overEvery(args);
 export const or = (...args)=>overSome(...args);
 export const none = not(or);
 export const xor = fn=>pipe(filter(fn),len1);
@@ -290,7 +291,7 @@ export {default as uniqueId} from 'lodash-es/uniqueId'
 
 
 
-export const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';;
+export const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';
 
 export const transduce = (acc, combiner , transducer, collection) =>{
   let k,l;
@@ -305,6 +306,10 @@ export const transduce = (acc, combiner , transducer, collection) =>{
       (acc=isPromise(acc)
         ? acc.then(a=>reducer(a, collection[k], k, collection))
         : reducer(acc, collection[k], k, collection));
+  else 
+    (acc=isPromise(acc)
+      ? acc.then(a=>reducer(a, collection, null,null))
+      : reducer(acc, collection,null));
   return acc;
 }
 

@@ -1,85 +1,150 @@
 import indexSchema from './indexSchema'
-import {isDeepEqual,mo,reduce,transToObject,keyBy,ensureArray} from '@a-laughlin/fp-utils';
+import {isDeepEqual,mo,reduce,transToObject,cond,identity,isArray,and,stubTrue,diffBy,keyBy,ensureArray} from '@a-laughlin/fp-utils';
 
 export const schemaToActionCreators=( schema )=>{};
 export const schemaToQueries=( schema )=>{};
 export const schemaToMutations=( schema )=>{};
 export const extendSchemaWithQueryAndMutationDefinitions=( schema )=>{};
 
-export const schemaToReducers=( schema = gql('type DefaultType {id:ID!}') )=>{
-  const {objectFieldMeta,ObjectTypeDefinition,definitionsByName}=indexSchema(schema);
-  return Object.keys(definitionsByName).reduce((acc,dName)=>{
-    const idKey=objectFieldMeta[dName]?.idKey;
+// normalize collectionTree,ArrayTree,item,value
+// normalize tree,set,value
+// given id,array of ids, single item, collection of items, array of items
+const schemaToActionNormalizers=schema=>{
+  const {objectFieldMeta,definitionsByName}=indexSchema(schema);
+  const notJSObject = action=>action.payload===null||typeof action.payload!=='object';
+  // const isJSObject = action=>action.payload!==null && typeof action.payload==='object';
+  // const isJSArray = action=>Array.isArray(action.payload);
+  // const isGQLObject = x=>dName in objectFieldMeta;
+  // const isState = action=>cName in action.payload;
+  // const isStateCollection = action=>cName in action.payload;
+  // const isStateItem = action=>idKey in action.payload;
+  // const isStateValue = x=>objectFieldMeta[dName]===undefined;
+  return transToObject((o,_,dName)=>{
+    const notGQLObject = action=>!(dName in objectFieldMeta);
     
-    const NAME=dName.toUpperCase();
-    const [UNION,INTERSECTION,ADD,SUBTRACT,SET,GET]=['UNION','INTERSECTION','ADD','SUBTRACT','SET','GET']
-      .map(OP=>`${OP}_${NAME}`);
-    const collDiffer=diffBy(idKey);
-    acc[dName]=(prevState=null,action={type:GET,payload:{}})=>{
-      let {type,payload={}}=action;
-      
-      if (type===GET) return prevState;
+    const idKey=objectFieldMeta[dName]?.idKey;
+    o[dName] =  cond(
+      // leave scalars and other non-object types
+      [notGQLObject,identity],
+      // convert number/string id to collection
+      [notJSObject,(action)=>({...action,payload:{[action.payload]:{[idKey]:action.payload}}})],
+      // convert single item to collection
+      [action=>idKey in action.payload,
+        action=>({...action,payload:{[action.payload[idKey]]:action.payload}})],
+      // convert array to collection
+      [isArray,transToObject((o,v)=>{
+        v=normalizePayload(v);
+        o[v[idKey]]=v;
+      })],
+      // collection, leave as is
+      [stubTrue,identity]
+    );
+  })(definitionsByName);
+}
 
-      if (type===SET) return payload;
-      
-      if(idKey===undefined)return prevState;
-      if (typeof payload !== 'object') payload={[payload]:{[idKey]:payload}}; // convert number to collection shape
-      else if (idKey in payload) payload={[payload[idKey]]:payload}; // convert item to collection shape
-      
-      if (type===ADD) return {...prevState,...payload};
-      
-      const diff = collDiffer([prevState,payload]);
+
+const keyDiff=(v,k)=>k;
+export const schemaToStateOpsMapper=(
+  schema = gql('type DefaultType {id:ID!}')
+)=>(
+  ops={
+    ADD:nextReducer=>(prevState,action)=>{
+      // if collection
+      // if item
+      // if value
+      // which has a simpler dependency graph topology?  These fns, handling different types, or or a mutation tree?
+      return nextReducer(({...prevState,...action.payload}),action)
+    },
+    SUBTRACT:nextReducer=>(prevState,action)=>{
+      const diff = diffBy(keyDiff,[prevState,action.payload]);
       let nextState={},k;
-      
-      if (type===SUBTRACT) {
-        if (diff.aibc===0) return prevState; // no intersection to remove
-        if (diff.aibc===diff.aubc) return nextState; // complete intersection. remove everything
-        for (k in diff.anb)nextState[k]=prevState[k]; // copy non-intersecting collection items to new state
-        return nextState;
-      }
-      
-      if (type===UNION){
-        for (k in diff.aub)nextState[k]=payload[k]??prevState[k];
-        return diff.changedc===0?prevState:nextState;
-      }
-      
-      if (type===INTERSECTION){
-        for (k in diff.aib)nextState[k]=payload[k];
-        return diff.changedc===0?prevState:nextState;
-      }
-      
-      return prevState;
-    };
-    return acc;
-  },{});
+      if (diff.aibc===0) return nextReducer(prevState,action); // no intersection to remove
+      if (diff.aibc===diff.aubc) return nextReducer(nextState,action); // complete intersection. remove everything
+      for (k in diff.anb)nextState[k]=prevState[k]; // copy non-intersecting collection items to new state
+      return nextReducer(nextState,action);
+    },
+    UNION:nextReducer=>(prevState,action)=>{
+      const diff = diffBy(keyDiff,[prevState,action.payload]);
+      let nextState={},k;
+      for (k in diff.aub)nextState[k]=action.payload[k]??prevState[k];
+      return nextReducer(diff.changedc===0?prevState:nextState,action);
+    },
+    INTERSECTION:nextReducer=>(prevState,action)=>{
+      const diff = diffBy(keyDiff,[prevState,action.payload]);
+      let nextState={},k;
+      for (k in diff.aib)nextState[k]=action.payload[k];
+      return nextReducer(diff.changedc===0?prevState:nextState,action);
+    },
+    SET:nextReducer=>(prevState,action)=>nextReducer(action.payload,action),
+    GET:nextReducer=>(prevState,action)=>nextReducer(prevState,action),
+    // ADD_TREE=(prevState,payload,idKey)=>{...prevState,...normalizePayload(payload)},
+    // SUBTRACT_TREE=(prevState,payload,idKey)=>return {...prevState,...payload},
+    // UNION_TREE=(prevState,payload,idKey)=>return {...prevState,...payload},
+    // INTERSECTION_TREE=(prevState,payload,idKey)=>return {...prevState,...payload},
+    // SET_TREE=(prevState,payload,idKey)=>return {...prevState,...payload},
+    // GET_TREE=(prevState,payload,idKey)=>return {...prevState,...payload},
+  }
+)=>{
+  // const transduce = (initial,finalReducer,transducer,val)
+  return transToObject((acc,actionNormalizer,dName)=>{
+    const opFns=transToObject((o,opFn,OP)=>o[`${OP}_${dName.toUpperCase()}`]=opFn(identity))(ops)
+    acc[dName]=(prevState=null,action={})=>{
+      return action.type in opFns
+        ? opFns[action.type](prevState,actionNormalizer(action))
+        : prevState;
+    }
+  })(schemaToActionNormalizers(schema));
 };
 
-
-
-
-
-
-
-export const getMemoizedObjectQuerier=(schema)=>{
-  const {objectFieldMeta,definitionsByName}=indexSchema(schema);
-  
-  const matches = args=>v=>{
+export const getMemoizedObjectQuerier=(schema,queryMatchers={
+  // filtering language ... not sure whether to go this far, or use functions...
+  // use functions to make it extensible...  transducers?
+  // https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
+  // or mimic lodash iteratee with filter and omit
+  // https://lodash.com/docs/4.17.15#filter
+  // where Person(id:"a") is equivalent to filter({id:"a"})
+  filter:pred=>v=>pred(v),
+  omit:pred=>v=>!pred(v),
+  matchesAll:args=>v=>{
     for (const arg in args)
       if(v[arg]!==args[arg])
         return false;
     return true;
-  };
+  },
+  matchesAny:args=>v=>{
+    for (const arg in args)
+      if(v[arg]===args[arg])
+        return true;
+    return false;
+  },
+  matchesAnyIn:args=>v=>{
+    for (const arg in args)
+      if(!args[arg].includes(v[arg]))
+        return false;
+    return true;
+  },
+})=>{
+  const {objectFieldMeta,definitionsByName}=indexSchema(schema);
+
   const populateArgsFromVars = (args=[],vars={})=>{
     let result={},name,kind,value;
-    for ({name:{value:name},value:{kind,value}} of args){
-      result[name] = kind==='Variable' ? vars[name] : value;
+    for ({name:{value:name},value} of args){
+      if(value.kind==='Variable'){ result[name]= vars[value.name.value]; }
+      else if (value.kind==='ObjectValue') {
+        // todo, figure out what about the structure made the recursive call not work
+        // else if (value.kind==='ObjectValue') result[name]=populateArgsFromVars(value.fields,vars)
+        result[name]=transToObject((o,f)=>{
+          o[f.name.value]=f.value.value;
+        })(value.fields);
+      }
+      else result[name] = value.value;
       // may need to delist and denull here
     }
     return result;
   };
   const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=>{
     let vars = {},name,defaultValue;
-    // default per spec is returning only what's in variableDefinitions, but this eliminates the duplicate definitions just to pass a variable for less boilerplate.  Can always change it to the more verbose version and add validation.
+    // default per spec is returning only what's in variableDefinitions, but this eliminates the duplicate definitions in each query to pass a variable, given it's usually specified in the schema already.  Can always change it to the more verbose version and add validation if necessary.
     if (variableDefinitions.length===0) return passedVariables;
     for ({variable:{name:{value:name}},defaultValue} of variableDefinitions)
       vars[name]=passedVariables[name]!==undefined ? passedVariables[name] : defaultValue?.value;
@@ -103,18 +168,28 @@ export const getMemoizedObjectQuerier=(schema)=>{
       // what if we're filtering the collection
       if (Field.arguments.length===0)
         return transToObject((o,_,k)=>o[k]=queryObjectCollection(rootState,collName,k,Field,vars))(rootState[collName]);
-        
+
       const args = populateArgsFromVars(Field.arguments,vars);
-      const matchesFn = matches(args);
+      
+      const queryMatcherFns=[];
+      for (const arg in args)
+        if (arg in queryMatchers) {
+          queryMatcherFns.push(queryMatchers[arg](args[arg]));
+          // console.log(`args`,args)
+          // console.log(`arg,args[arg]`,arg,args[arg])
+        };
+
+      const matchesFn = queryMatcherFns.length===0
+        ? queryMatchers.matchesAll(args)
+        : and(...queryMatcherFns);
       return transToObject(
         (o,item,k)=>matchesFn(item)&&(o[k]=queryObjectCollection(rootState,collName,k,Field,vars))
       )(rootState[collName]);
     }
-    const {collectionNames,collectionKeysCount}=objectFieldMeta[collName];
-
+    const {collectionNames}=objectFieldMeta[collName];
     if (Array.isArray(id))
       return transToObject((o,k)=>o[k]=queryObjectCollection(rootState,collName,k,Field,vars))(id);
-    
+
     let f,fName,newItem={},item=rootState[collName][id];
     for (f of Field.selectionSet.selections){
       fName=f.name.value;
@@ -124,7 +199,6 @@ export const getMemoizedObjectQuerier=(schema)=>{
     }
     return newItem;
   });
-
   const getVarsKey = vars=>{
     const keys=Object.keys(vars).sort();
     return keys.join(',') + keys.map(k=>JSON.stringify(vars[k])).join(',');
@@ -144,8 +218,7 @@ export const getMemoizedObjectQuerier=(schema)=>{
   });
 
   const getQueryCollectionNames = reduce((acc=new WeakSet(),{selectionSet:{selections=[]}={}})=>getFieldCollectionNames(selections,acc));
-  
-  
+      
   let prevState={};
   let operations=new WeakSet();
   let queryResults=new WeakMap();
@@ -174,58 +247,53 @@ export const getMemoizedObjectQuerier=(schema)=>{
       : (opResults[varsKey] = querier(state,operation,vars));
   }
 }
+// acc[dName]=(prevState=null,action={type:GET,payload:{}})=>{
+//   let {type=GET,payload={}}=action;
+//   if (type===GET) return prevState;
+
+//   if (type===SET) return payload;
+  
+//   if(idKey===undefined)return prevState;
+//   if(payload===null)return prevState;
+//   if (typeof payload !== 'object') payload={[payload]:{[idKey]:payload}}; // convert number to collection shape
+//   else if (idKey in payload) payload={[payload[idKey]]:payload}; // convert item to collection shape
+//   else if(Array.isArray(payload))
+  
+//   if (type===ADD) return {...prevState,...payload};
+  
+//   const diff = collDiffer([prevState,payload]);
+//   let nextState={},k;
+  
+//   if (type===SUBTRACT) {
+//     if (diff.aibc===0) return prevState; // no intersection to remove
+//     if (diff.aibc===diff.aubc) return nextState; // complete intersection. remove everything
+//     for (k in diff.anb)nextState[k]=prevState[k]; // copy non-intersecting collection items to new state
+//     return nextState;
+//   }
+  
+//   if (type===UNION){
+//     for (k in diff.aub)nextState[k]=payload[k]??prevState[k];
+//     return diff.changedc===0?prevState:nextState;
+//   }
+  
+//   if (type===INTERSECTION){
+//     for (k in diff.aib)nextState[k]=payload[k];
+//     return diff.changedc===0?prevState:nextState;
+//   }
+//   // select partial collections to update?
+//   // select partial trees to update (mutation syntax)??
+//   // how compose directives handlers, like boundary values?
+//   // denormalize
+//   // normalize
+//   return prevState;
+// };
+// return acc;
 
 
-/* eslint-disable @typescript-eslint/no-use-before-define */
-/*
- * General Utils
- */
-// import-free equivalent-lodash-function-named one-liners for-bundle-size
-// see https://lodash.com/docs/ for descriptions and repl
-// export const isArray = Array.isArray;
-// export const isFunction = x => typeof x === 'function';
-// export const stubArray = () => [];
-// export const stubObject = () => Object.create(null);
-// export const isPromise = x=>typeof x==='object'&&typeof x.then==='function';
-// export const curryN = (n = 1, fn) => (...args) => (n <= args.length) ? fn(...args) : curryN(n - args.length, (...more) => fn(...args, ...more));
-// // @ts-ignore: tslint dislikes these
-// export const over = (fns = []) => (...args) => fns.map(f => f(...args));
-// // @ts-ignore: tslint dislikes these
-// export const keyBy = (by = x => x.id) => (a = []) => { const o = {}, l = a.length; let i = -1; while (++i < l) (o[by(a[i])] = a[i]); return o; }
-// // @ts-ignore: tslint dislikes these
-// export const flow = (fn = identity, ...fns) => (...args) => { const l = fns.length; let i = -1, a = fn(...args); while (++i < l) (a = fns[i](a)); return a; }
-// // @ts-ignore: tslint dislikes these
-
-// export const pick = keys => o => { let i = -1; const l = keys.length, acc = Object.create(null); while (++i < l) (acc[keys[i]] = o[keys[i]]); return acc; }
-
-
-// export const invert = obj => transx((acc, v1, k1) => mapx((v2, k2) => {
-//   (acc[k2] || (acc[k2] = {}))[k1] = v2;
-// })(v1))(obj);
-// const getMemoizedLenses = (keys,rw,kind)=>transArrayToObj((o,k)=>lenses[k]&&lenses[k][kind]&&(o[k]=lenses[k][kind][rw]))(keys.split(','))
 
 
 
-// common op. imperative implementation for speed.
-export const transDiff = (fn = identity, { by = x => x.id, subset = 'aub', ret } = {}) => (collections = []) => {
-  const diff = diffBy(by, collections);
-  if (ret === undefined) (ret = isArray(collections[0]) ? [] : Object.create(null));
-  const { anb, bna, aib, aub, changed, a, b, [subset]: sub } = diff;
-  const reused = Object.create(diff);
-  let k;
-  for (k in sub) {
-    reused.anb = anb[k];
-    reused.bna = bna[k];
-    reused.aib = aib[k];
-    reused.aub = aub[k];
-    reused.changed = changed[k];
-    reused.a = a[k];
-    reused.b = b[k];
-    reused.k = k;
-    fn(ret, a[k], b[k], reused);
-  }
-  return ret;
-}
+
 
 // export const diffBy = (by, reducer) => (args = []) => {
 //   const diff = by ? diffObjs(args.map(keyBy(by))) : diffObjs(args);

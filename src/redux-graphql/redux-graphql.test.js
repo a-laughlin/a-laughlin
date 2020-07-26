@@ -4,20 +4,23 @@ import gql from 'graphql-tag';
 import { renderHook, act } from '@testing-library/react-hooks'
 import { useState,useEffect } from 'react';
 import {createStore,combineReducers} from 'redux';
-import { schemaToReducers, getMemoizedObjectQuerier } from './redux-graphql';
+import {
+  schemaToStateOpsMapper,
+  getMemoizedObjectQuerier
+} from './redux-graphql';
 // import configureStore from 'redux-mock-store';
 
 
 const dedent = str=>str.split('\n').map(s=>s.trim()).join('\n');
 
-describe("schemaToReducers", () => {
+describe("schemaToStateOpsMapper", () => {
   let state;
   let schema=gql(dedent(`
     type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
     type Pet{id:ID,name:String}
     scalar SomeScalar
   `));
-  let reducerMap = schemaToReducers(schema);
+  let reducerMap = schemaToStateOpsMapper(schema)();
   
   beforeEach(()=>{
     state={
@@ -37,9 +40,9 @@ describe("schemaToReducers", () => {
   afterAll(()=>{
     schema=state=reducerMap=null;
   });
-  it("should generate a key for each type,plus scalars",()=>{
+  it("should generate keys for each type ,plus scalars",()=>{
     expect(Object.keys(reducerMap).sort())
-    .toEqual( [ 'Person', 'Pet','SomeScalar' ].sort());
+    .toEqual(['Person','Pet','SomeScalar']);
   });
   it("should read values as default",()=>{
     expect(reducerMap.Person(state.Person))
@@ -50,10 +53,6 @@ describe("schemaToReducers", () => {
   });
   it("should set scalar values",()=>{
     expect(reducerMap.SomeScalar(state.SomeScalar,{type:'SET_SOMESCALAR',payload:2})).toBe(2);
-  });
-  it("should not read values not defined on the schema",()=>{
-    expect(reducerMap.SomeThingNotInSchema)
-    .toBeUndefined();
   });
   it("should enable deletions from a collection",()=>{
     const result = reducerMap.Person(state.Person,{type:'SUBTRACT_PERSON',payload:{c:{id:'c'}}});
@@ -71,8 +70,7 @@ describe("schemaToReducers", () => {
 
   it("should enable creations|unions",()=>{
     const c={id:'c',best:'a',friends:['a']};
-    const reducer = reducerMap.Person;
-    const result = reducer(state.Person,{type:'UNION_PERSON',payload:{c}});
+    const result = reducerMap.Person(state.Person,{type:'UNION_PERSON',payload:{c}});
     expect(result).toEqual({...state.Person,c});
     expect(result).not.toBe(state.Person);
   });
@@ -148,6 +146,34 @@ describe("getMemoizedObjectQuerier", () => {
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
     expect(result2).toBe(result1);
   });
+  it("should behave the same with matchesAll and no matchers",()=>{
+    let query = gql(`{Person(id:"a") {best{id},otherbest{id}}}`);
+    let [result1,result2]=[query,query].map(q=>querier(state,q))
+    expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
+    expect(result2).toBe(result1);
+    query = gql(`{Person(matchesAll: {id:"a"} ) {best{id},otherbest{id}}}`);
+    let [result3,result4]=[query,query].map(q=>querier(state,q))
+    expect(result3).toEqual(result1);
+    expect(result4).toBe(result3);
+  });
+  it("should accept filter functions as variables",()=>{
+    let query = gql(`{Person(filter:$filter) {best{id},otherbest{id}}}`);
+    let [result1,result2]=[query,query].map(q=>querier(state,q,{filter:x=>x.id==="a"}))
+    expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
+    expect(result2).toBe(result1);
+  });
+  it("should accept omit functions as variables",()=>{
+    let query = gql(`{Person(omit:$fn) {best{id},otherbest{id}}}`);
+    let [result1,result2]=[query,query].map(q=>querier(state,q,{fn:x=>x.id!=="a"}))
+    expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
+    expect(result2).toBe(result1);
+  });
+  it("should accept variables named differently than the key",()=>{
+    let query = gql(`{Person(id:$xyz) {best{id},otherbest{id}}}`);
+    let [result1,result2]=[query,query].map(q=>querier(state,q,{xyz:"a"}));
+    expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
+    expect(result2).toBe(result1);
+  });
   it("should query objects deeply",()=>{
     const query = gql(`{Person(id:"a"){best{best{best{best{best{best{best{best{best{best{id}}}}}}}}}}}}`);
     const [result1,result2]=[query,query].map(q=>querier(state,q))
@@ -202,7 +228,7 @@ describe("getUseQuery: integration test React.useState,redux.combineReducers(sch
       scalar SomeScalar
     `
     querier = getMemoizedObjectQuerier(schema);
-    reducerMap = schemaToReducers(schema);
+    reducerMap = schemaToStateOpsMapper(schema)();
   });
   beforeEach(()=>{
     const rootReducer = combineReducers(reducerMap);
@@ -245,27 +271,72 @@ describe("getUseQuery: integration test React.useState,redux.combineReducers(sch
     expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
     act(()=>{store.dispatch({type:'SUBTRACT_PERSON',payload:'a'});})
     expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
-    // const prevState = store.getState();
-    // expect(store.getState()).not.toBe(prevState);
-    // expect(store.getState().SomeScalar).toBe(2);
-    // expect(store.getState().Person).toBe(prevState.Person);
-    // store.dispatch({type:'SET_SOMESCALAR',payload:3});
-    // console.log(`result.current`,result.current)
-    // console.log(`after`,store.getState().SomeScalar)
-    // expect(result.current.SomeScalar).toBe(2);
-    // expect(result.current).toEqual({SomeScalar:2});
-    // expect(result.current).toBe(result1);
   })
-  // test('should get a result', () => {
-  //   const { result } = renderHook(() =>useQuery(gql(`{Person(id:$id){best{id}}}`),{id:'a'}));
-  //   expect(result.current).toEqual({Person:{a:{best:{id:'b'}}}})
-  //   const result1=result.current;
-  //   act(() => {
-  //     store.dispatch({type:'SET_SOMESCALAR'});
-  //   });
-  //   expect(result.current).toBe(result1);
-  // })
 });
+
+// describe("getUseQuery: integration test react+redux+useQuery+boundary values directive",()=>{
+//   let store,useQuery,querier,reducerMap;
+  
+//   beforeAll(()=>{
+//     const schema = gql`
+//       type Person{
+//         id:ID, @bvs([])
+//         name:String, @bvs([])
+//         best:Person, @bvs([])
+//         otherbest:Person, @bvs([])
+//         nicknames:[String], @bvs([])
+//         friends:[Person], @bvs([])
+//         pet:Pet @bvs([])
+//       }
+//       type Pet{id:ID,name:String}
+//       scalar SomeScalar
+//     `
+//     querier = getMemoizedObjectQuerier(schema);
+//     reducerMap = schemaToStateOpsMapper(schema)();
+//   });
+//   beforeEach(()=>{
+//     const rootReducer = combineReducers(reducerMap);
+//     store = createStore(rootReducer,{
+//       SomeScalar:1,
+//       Person:{
+//         a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
+//         b:{id:'b',name:'B',best:'a',friends:['a']},
+//         c:{id:'c',name:'C',best:'a',friends:['a']},
+//       },
+//       Pet:{
+//         x:{id:'x',name:'X'},
+//         y:{id:'y',name:'Y'},
+//       },
+//     });
+//     useQuery = getUseQuery(store,querier);
+//   });
+//   afterAll(()=>{
+//     reducerMap=querier=store=useQuery=null;
+//   });
+  
+//   test('should work on scalars', () => {
+//     const query=gql(`{SomeScalar}`)
+//     const { result } = renderHook(() =>useQuery(query));
+//     expect(result.current).toEqual({SomeScalar:1});
+//     const result1=result.current;
+//     const prevState = store.getState();
+//     act(()=>{store.dispatch({type:'SET_SOMESCALAR',payload:1})});
+//     expect(store.getState()).toBe(prevState);
+//     expect(result.current).toBe(result1);
+//     act(()=>{store.dispatch({type:'SET_SOMESCALAR',payload:2})});
+//     expect(result.current.SomeScalar).toBe(2);
+//     expect(store.getState()).not.toBe(prevState);
+//     expect(store.getState().SomeScalar).toBe(2);
+//     expect(store.getState().Person).toBe(prevState.Person);
+//   });
+//   test('should work on objects', () => {
+//     const query=gql(`{Person{id}}`);
+//     const { result } = renderHook(() =>useQuery(query));
+//     expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+//     act(()=>{store.dispatch({type:'SUBTRACT_PERSON',payload:'a'});})
+//     expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
+//   })
+// });
 
 // // describe("Spec Section 3: Type System", () => {
 // //   // nodes are values
