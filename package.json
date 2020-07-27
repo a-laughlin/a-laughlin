@@ -66,6 +66,9 @@
     "test:exp:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --no-cache --watch ./src/**/*.test.js",
     "test:nowatch": "jest --no-cache --no-watch ./src/**/*.test.js",
     "test:watch": "jest --watch ./src/**/*.test.js",
+    "// test:debug requires going to chrome://inspect and opening chrome devtools for node":"",
+    "// can also just use node debug in vscode with f5":"",
+    "test:debug": "node --inspect node_modules/.bin/jest --watch --runInBand ./src/**/*.test.js",
     "test": "jest --watch ./src/**/*.test.js"
   }
 }

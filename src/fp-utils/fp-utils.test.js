@@ -8,12 +8,21 @@ import {
   groupByKeys,
   groupByValues,
   tdKeyBy,
-  tdToObject,
   transToArray,
   transToObject,
   pipe,
   and,
-  keyBy
+  or,
+  keyBy,
+  tdToArray,
+  tdToObject,
+  tdMap,
+  tdFilter,
+  compose,
+  transduceDFPredorder,
+  partition,
+  partitionObject,
+  partitionArray
 } from './fp-utils'
 describe("and", () => {
   it('should ensure multiple predicates pass', () =>{
@@ -23,6 +32,16 @@ describe("and", () => {
     expect(and(is5,not5)(5)).toBe(false);
     expect(and(not5,is5)(5)).toBe(false);
     expect(and(not5,not5)(5)).toBe(false);
+  });
+})
+describe("and", () => {
+  it('should ensure multiple predicates pass', () =>{
+    const is5=x=>x===5;
+    const not5=x=>x!==5;
+    expect(or(is5,is5)(5)).toBe(true);
+    expect(or(is5,not5)(5)).toBe(true);
+    expect(or(not5,is5)(5)).toBe(true);
+    expect(or(not5,not5)(5)).toBe(false);
   });
 })
 describe("pipe", () => {
@@ -155,4 +174,59 @@ describe("keyBy", () => {
     expect(keyBy('id')([{id:'a'},{id:'b'}]))
     .toEqual({a:{id:'a'},b:{id:'b'}});
   });
-})
+});
+describe("tdToArray", () => {
+  it("tdToArray should produce expected results",()=>{
+    const takeEvensAdd1=compose(tdFilter(x=>x%2===0),tdMap(x=>x+'a'));
+    const arrayInputResult=tdToArray(takeEvensAdd1)([0,1,2,3,4]);
+    const objectInputResult=tdToArray(takeEvensAdd1)({a:0,b:1,c:2,d:3,e:4})
+    const blankArrayResult=tdToArray(takeEvensAdd1)([]);
+    const blankObjectResult=tdToArray(takeEvensAdd1)({});
+    expect(arrayInputResult).toEqual(['0a','2a','4a']);
+    expect(objectInputResult).toEqual(['0a','2a','4a']);
+    expect(blankArrayResult).toEqual([]);
+    expect(blankObjectResult).toEqual([]);
+  });
+});
+describe("tdToObject", () => {
+  it("tdToObject should produce expected results",()=>{
+    const takeEvensAdd1=compose(tdFilter(x=>x%2===0),tdMap(x=>x+'a'));
+    const arrayInputResult=tdToObject(takeEvensAdd1)([0,1,2,3,4]);
+    const objectInputResult=tdToObject(takeEvensAdd1)({a:0,b:1,c:2,d:3,e:4});
+    const blankArrayResult=tdToObject(takeEvensAdd1)([]);
+    const blankObjectResult=tdToObject(takeEvensAdd1)({});
+    expect(arrayInputResult).toEqual({"0":'0a',"2":'2a',"4":'4a'});
+    expect(objectInputResult).toEqual({a:'0a',c:'2a',e:'4a'});
+    expect(blankArrayResult).toEqual({});
+    expect(blankObjectResult).toEqual({});
+  });
+});
+describe("transduceDFPredorder", () => {
+  it("transduceDFPredorder should produce expected results",()=>{
+    const reduceDepthFirst=transduceDFPredorder();
+    const tree={a:{a1:{a11:true},a2:true},b:{b1:true}};
+    const aTree=['a',['aa',['aaa']]];
+    
+    const arrayInputResult=reduceDepthFirst(aTree).root;
+    expect(arrayInputResult).toEqual({"0":"a","1":{"0":"aa","1":{"0":"aaa"}}});
+    
+    const objectInputResult=reduceDepthFirst(tree).root;
+    expect(objectInputResult).toEqual({a:{a1:{a11:true},a2:true},b:{b1:true}});
+    
+    const blankObjectResult=reduceDepthFirst({});
+    expect(blankObjectResult).toEqual({});
+    
+    const blankArrayResult=reduceDepthFirst([]);
+    expect(blankArrayResult).toEqual({});
+  });
+});
+describe("partition", () => {
+  it("partition should produce expected results",()=>{
+    const isEven = x=>x%2===0;
+    const isOdd = x=>x%2===1;
+    expect(partition(isEven,isOdd)({a:0,b:1,c:2,d:3,e:4})).toEqual([{a:0,c:2,e:4},{b:1,d:3},{}]);
+    expect(partition(isEven,isOdd)([0,1,2,3,4])).toEqual([[0,2,4],[1,3],[]]);
+    expect(partition(isEven)({a:0,b:1,c:2,d:3,e:4})).toEqual([{a:0,c:2,e:4},{b:1,d:3}]);
+    expect(partition(isEven)([0,1,2,3,4])).toEqual([[0,2,4],[1,3]]);
+  });
+});

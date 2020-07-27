@@ -146,14 +146,15 @@ describe("getMemoizedObjectQuerier", () => {
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
     expect(result2).toBe(result1);
   });
-  it("should behave the same with matchesAll and no matchers",()=>{
+  it("should behave the same with (filter:{...}) and (...)",()=>{
     let query = gql(`{Person(id:"a") {best{id},otherbest{id}}}`);
     let [result1,result2]=[query,query].map(q=>querier(state,q))
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
     expect(result2).toBe(result1);
-    query = gql(`{Person(matchesAll: {id:"a"} ) {best{id},otherbest{id}}}`);
+    query = gql(`{Person(filter: {id:"a"} ) {best{id},otherbest{id}}}`);
     let [result3,result4]=[query,query].map(q=>querier(state,q))
     expect(result3).toEqual(result1);
+    expect(result3).not.toBe(result1);
     expect(result4).toBe(result3);
   });
   it("should accept filter functions as variables",()=>{

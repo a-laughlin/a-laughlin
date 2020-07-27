@@ -2,12 +2,12 @@
 import _merge from 'lodash-es/merge';
 import {default as _set} from 'lodash-es/set';
 import _overEvery from 'lodash-es/overEvery';
-import overSome from 'lodash-es/overSome';
-import sortBy from 'lodash-es/sortBy';
-import isString from 'lodash-es/isString';
-import pick from 'lodash-es/pick';
-import isPlainObject from 'lodash-es/isPlainObject';
+import _overSome from 'lodash-es/overSome';
+import _sortBy from 'lodash-es/sortBy';
+import _pick from 'lodash-es/pick';
+import _isPlainObject from 'lodash-es/isPlainObject';
 import _matches from 'lodash-es/matches';
+import _over from 'lodash-es/over';
 
 // curry/compose/pipe, for later fns
 let curry,compose,pipe;
@@ -28,12 +28,17 @@ if (process.env.NODE_ENV !== 'production') {
 
   // based on https://dev.to/ascorbic/creating-a-typed-compose-function-in-typescript-3-351i
 
-  compose = (fn=identity,...fns) => {
+  compose = (...fns) => {
+    if (fns.length===0)return identity;
+    if (fns.length===1)return fns[0];
+    const fn=fns[fns.length-1];
+    fns=fns.slice(0,fns.length-1);
     const composed = (...args) => fns.reduceRight((acc, f) => f(acc), fn(...args));
     composed.toString = () => `compose(${fns.map(fToString).join(', ')})`;
     return composed;
   };
   pipe = (fn=identity,...fns) => {
+    if (fns.length===0)return fn;
     const piped = (...args) => fns.reduce((acc, f) => f(acc), fn(...args));
     piped.toString = () => `pipe(${fns.reverse().map(fToString).join(', ')})`;
     return piped;
@@ -42,9 +47,16 @@ if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line
   curry = fn => (...args) => args.length >= fn.length ? fn(...args) : curry(fn.bind(null, ...args));
   // eslint-disable-next-line
-  compose = (fn=identity,...fns) => (...args) => fns.reduceRight((acc, f) => f(acc), fn(...args));
+  compose = (...fns) => (...args) =>{
+    if (fns.length===0)return identity;
+    if (fns.length===1)return fns[0];
+    return fns.slice(0,fns.length-1).reduceRight((acc, f) => f(acc), fns[fns.length-1](...args));
+  }
   // eslint-disable-next-line
-  pipe = (fn=identity,...fns) => (...args) => fns.reduce((acc, f) => f(acc), fn(...args));
+  pipe = (fn=identity,...fns) => (...args) => {
+    if (fns.length===0)return fn;
+    return fns.reduce((acc, f) => f(acc), fn(...args));
+  }
 }
 export { curry, compose, pipe };
 
@@ -58,38 +70,30 @@ export const stubString = ()=>'';
 export const stubTrue = ()=>true;
 export const stubFalse = ()=>false;
 export const noop = ()=>{};
+export const range=(end=10,start=0,step=1,mapper=identity)=>{
+  const result=[];
+  while(start<end)result[result.length]=mapper(start+=step);
+  return result;
+}
 
 // const stubs
 export const frozenEmptyArray = Object.freeze([]);
 export const frozenEmptyObject = Object.freeze(Object.create(null));
 
 
-// predicates
+// value predicates
 // export {isError,isInteger,isNumber,isObjectLike,hasIn,has,isWeakMap,isWeakSet,isMap,
 //   isSet,isEmpty,isString,isPlainObject,isFunction,isNull,isUndefined,every,conforms} from 'lodash-es';
+export const isString = arg=>typeof arg==='string';
+export const isFunction = arg=>typeof arg==='function';
+export const isObjectLike = arg=>typeof arg==='object' && arg !== null;
 export const isArray = Array.isArray.bind(Array);
 export const isFalsy = arg=>!arg;
 export const isTruthy = arg=>!!arg;
 export const is = val1=>val2=>val1===val2;
-export const isUndefOrNull = val => val == undefined; // eslint-disable-line
-export const len = num=>({length})=>length===num;
-export const len0 = len(0);
-export const len1 = len(1);
+export const isUndefOrNull = val => val === undefined || val === null;
 export const isProductionEnv = ()=>process.env.NODE_ENV === 'production';
-export const matches = _matches;
-export const isDeepEqual=(a,b)=>{ // decently fast check on objects and arrays
-  if (a===b)return true;
-  if (typeof a !== 'object')return a===b;
-  if (Array.isArray(a)){
-    if (Array.isArray(b)===false||a.length!==b.length)return false;
-    let key=-1,L=toCheck.length;
-    while (++key<L) if (isCached(a[key],b[key])===false) return false;
-    return true;
-  }
-  let key;
-  for (key in toCheck) if (isCached(a[key],b[key])===false) return false;
-  return true;
-}
+
 
 // debugging
 export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
@@ -104,7 +108,7 @@ export const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction
 export const mergeToBlank = acceptArrayOrArgs(vals => _merge({},...vals));
 
 export const overObj = obj=>(...args)=>mo(f=>f(...args))(obj);
-export const converge = (arg)=>(isArray(arg)?over:overObj)(arg);
+export const converge = (arg)=>(isArray(arg)?_over:overObj)(arg);
 
 // casting
 export const constant = x=>_=>x;
@@ -117,12 +121,12 @@ export const ensurePropIsArray = ensurePropWith(stubArray);
 export const ensurePropIsObject = ensurePropWith(stubObject);
 
 // logic
-export const not = fn=>arg=>!fn(arg);
+export const not = fn=>(...args)=>!fn(...args);
 export const ifElseUnary = (pred,T,F=identity)=>arg=>pred(arg)?T(arg):F(arg);
 export const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
 export const and = (...args)=>_overEvery(args);
-export const or = (...args)=>overSome(...args);
-export const none = not(or);
+export const or = (...fns)=>_overSome(fns);
+export const none = (...fns)=>not(or(...fns));
 export const xor = fn=>pipe(filter(fn),len1);
 export const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (let [pred,val] of arrs){if(pred(...x)){return val;}}});
 export const cond = acceptArrayOrArgs(arrs=>(...args)=>ensureFunction(condNoExec(...arrs)(...args))(...args));
@@ -132,15 +136,15 @@ export const cond = acceptArrayOrArgs(arrs=>(...args)=>ensureFunction(condNoExec
 // Array methods
 export const slice = (...sliceArgs)=>arr=>arr.slice(...sliceArgs);
 export const reverse = arr=>arr.slice(0).reverse(); // immutable array reverse
-export const sort = coll=>sortBy(coll,null);
+export const sort = coll=>_sortBy(coll,null);
 
 
 
 
 // collections
-const makeCollectionFn=(arrayFn,objFn)=>fn=>{
-  const aFn=arrayFn(fn);
-  const oFn=objFn(fn);
+const makeCollectionFn=(arrayFn,objFn)=>(fn,...args)=>{
+  const aFn=arrayFn(fn,...args);
+  const oFn=objFn(fn,...args);
   return coll=>isArray(coll)?aFn(coll):oFn(coll);
 }
 const transArrayToObject = fn => (coll=[]) => {
@@ -181,12 +185,38 @@ export const immutableFilterObjectToObject = (pred=(v,k,c)=>true) => (coll={}) =
       : (changed=true);
   return changed===true?acc:coll;
 }
-export const transX = makeCollectionFn(transArrayToArray,transObjectToObject);
+
+export const transToSame = makeCollectionFn(transArrayToArray,transObjectToObject);
 export const transToObject = makeCollectionFn(transArrayToObject,transObjectToObject);
+export const ro=transToObject; // backward compatability 
 export const transToArray = makeCollectionFn(transArrayToArray,transObjectToArray);
+export const ra=transToArray; // backward compatability
+export const filterToArray =pred=>transToArray((a,v,k)=>pred(v,k)&&(a[a.length]=v)); // _ equiv filter
+export const fa=filterToArray;
+export const filterToObject=pred=>transToObject((a,v,k)=>pred(v,k)&&(a[k]=v)); // _ equiv pickBy
+export const fo=filterToObject; // backward compatability
+export const filterToSame=makeCollectionFn(filterToArray,filterToObject);
+export const fx=filterToSame;// backward compatability
+export const omitToArray=pred=>transToArray((a,v,k)=>!pred(v,k)&&(a[a.length]=v)); // _ equiv withoutBy
+export const oa=omitToArray; // backward compatability
+export const omitToObject=pred=>transToObject((a,v,k)=>!pred(v,k)&&(a[k]=v)); // _ equiv pickBy
+export const oo=omitToObject; // backward compatability
+export const omitToSame=makeCollectionFn(omitToArray,omitToObject);
+export const ox=omitToSame; // backward compatability
+export const mapToArray=fn=>transToArray((a,v,k)=>a[a.length]=fn(v,k)); // _ equiv map
+export const ma=mapToArray; // backward compatability
+export const mapToObject=fn=>transToObject((a,v,k)=>a[k]=fn(v,k)); // _ equiv mapValues
+export const mo=mapToObject; // backward compatability
+export const mapToSame=makeCollectionFn(mapToArray,mapToObject);
+export const mx=mapToSame; // backward compatability
+export const filterMapToArray = (pred,mapper)=>transToArray((a,v,k)=>pred(v,k)&&(a[a.length]=mapper(v,k)));
+export const filterMapToObject = (pred,mapper)=>transToObject((o,v,k)=>pred(v,k)&&(o[k]=mapper(v,k)));
+export const filterMapToSame=makeCollectionFn(filterMapToArray,filterMapToObject);
+export const fmx=filterMapToSame; // backward compatability
 // utility functions that return the same type. For performance, user fn is only call in loop.
 // equivalent to lodash reduce(coll,isArray(coll)[]?{},fn)
-export const reduce = fn => (coll,acc) => {
+export const reduce = (fn,getInitial) => (coll,acc) => {
+  if(isFunction(getInitial)) acc=getInitial(coll);
   let k = -1;
   if (isArray(coll)) {
     const l = coll.length;
@@ -194,29 +224,45 @@ export const reduce = fn => (coll,acc) => {
   } else for (k in coll) (acc = fn(acc, coll[k], k, coll));
   return acc;
 }
+export const first = c=>{
+  if (isArray(c)) return c[0];
+  for (const k in c)return c[k];
+}
+export const last = c =>{
+  c=isArray(c)?c:Object.values(c);
+  return c[c.length-1];
+}
 
-// backwards compat
-// shortcuts for the most common collection operations
-// prefixes = r,m,f,o,fm = reduce,map,filter,omit,filter+map
-// suffixes = o,a,x = toObject,toArray,toX (where X is the same type as input)
-export const ro=transToObject; 
-export const ra=transToArray; // backwards compat
-export const ma=fn=>transToArray((a,v,k)=>a[a.length]=fn(v,k)); // _ equiv map
-export const mo=fn=>transToObject((a,v,k)=>a[k]=fn(v,k)); // _ equiv mapValues
-export const fa=pred=>transToArray((a,v,k)=>pred(v,k)&&(a[a.length]=v)); // _ equiv filter
-export const fo=pred=>transToObject((a,v,k)=>pred(v,k)&&(a[k]=v)); // _ equiv pickBy
-export const oa=pred=>transToArray((a,v,k)=>!pred(v,k)&&(a[a.length]=v)); // _ equiv withoutBy
-export const oo=pred=>transToObject((a,v,k)=>!pred(v,k)&&(a[k]=v)); // _ equiv pickBy
-
-// partionObject((v,k)=>k=='a',(v,k)=>k!='a')({a:1,b:2,c:3}) =>[{a:1},{b:1,c:2}]
-// partionObject((v,k)=>v==1,(v,k)=>v!=1)({a:1,b:2,c:3}) =>[{a:1,b:1},{c:2}]
-// partionObject((v,k)=>v==1)({a:1,b:2,c:3}) =>[{a:1,b:1},{c:2}]
-const partitionObject = (...preds)=>over([...(preds.map(fo)),fo(none(preds))]);
-const partitionArray = (...preds)=>over([...(preds.map(fa)),fa(none(preds))]);
+const partitionObject = (...preds)=>_over([...(preds.map(p=>fo(p))),fo(none(...preds))]);
+const partitionArray = (...preds)=>_over([...(preds.map(fa)),fa(none(...preds))]);
 export const partition = makeCollectionFn(partitionArray,partitionObject);
 
 
-
+// collection predicates
+export const len = makeCollectionFn(
+  num=>({length})=>length===num,
+  num=>coll=>{
+    let l=0,k;
+    for (k in coll)if(++l>num)return false;
+    return l===num;
+  }
+);
+export const len0 = len(0);
+export const len1 = len(1);
+export const has = key=>obj=>key in obj;
+export const isDeepEqual=(a,b)=>{ // decently fast check on objects and arrays
+  if (a===b)return true;
+  if (typeof a !== 'object')return a===b;
+  if (Array.isArray(a)){
+    if (Array.isArray(b)===false||a.length!==b.length)return false;
+    let key=-1,L=toCheck.length;
+    while (++key<L) if (isCached(a[key],b[key])===false) return false;
+    return true;
+  }
+  let key;
+  for (key in toCheck) if (isCached(a[key],b[key])===false) return false;
+  return true;
+}
 
 // indexers
 export const keyBy = ifElseUnary(isString,
@@ -236,23 +282,21 @@ export const groupByValues = transToObject((o,v)=>{
 
 
 // getters
-export const pget = cond(
+export const pget = cond( // polymorphic get
   [isString,str=>{
     str=str.split('.');
     return targ=>str.reduce((t,s)=>isArray(t) && !isInteger(+s) ? t.map(o=>o[s]) : t[s], targ)
   }],
-  [isArray,keys=>obj=>pick(obj,keys)],
-  [isPlainObject, obj=>target=>mo(f=>pget(f)(target))(obj)],
+  [isArray,keys=>pick(keys)],
+  [_isPlainObject, obj=>target=>mo(f=>pget(f)(target))(obj)],
   [stubTrue,identity], // handles the function case
 );
-export const first = c=>{
-  if (isArray(c)) return c[i];
-  for (const k in c)return c[k];
-}
-export const last = c =>{
-  c=isArray(c)?c:Object.values(c);
-  return c[c.length-1];
-}
+export const pick=cond(
+  [isArray,keys=>obj=>transToSame((o,k)=>o[k]=obj[k])(keys)],
+  [isString,k=>pick([k])],
+  [isFunction,filterToSame],
+);
+
 
 
 
@@ -293,55 +337,72 @@ export {default as uniqueId} from 'lodash-es/uniqueId'
 
 export const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';
 
-export const transduce = (acc, combiner , transducer, collection) =>{
+export const transduce = (acc, itemCombiner , transducer, collection) =>{
   let k,l;
-  const reducer = transducer(combiner);
+  const reducer = transducer(itemCombiner);
   if (Array.isArray(collection))
-    for (k=-1, l = collection.length;++k < l;)
-      (acc=isPromise(acc)
-        ? acc.then(a=>reducer(a, collection[k], k, collection))
-        : reducer(acc, collection[k], k, collection));
+    for (k=-1, l = collection.length;++k < l;){
+      // (acc=isPromise(acc)
+      //   ? acc.then(a=>reducer(a, collection[k], k, collection))
+      //   : reducer(acc, collection[k], k, collection));
+        (acc=reducer(acc, collection[k], k, collection));
+    }
   else if (typeof collection === 'object')
-    for (k in collection)
-      (acc=isPromise(acc)
-        ? acc.then(a=>reducer(a, collection[k], k, collection))
-        : reducer(acc, collection[k], k, collection));
-  else 
-    (acc=isPromise(acc)
-      ? acc.then(a=>reducer(a, collection, null,null))
-      : reducer(acc, collection,null));
+    for (k in collection){
+      // (acc=isPromise(acc)
+      //   ? acc.then(a=>reducer(a, collection[k], k, collection))
+      //   : reducer(acc, collection[k], k, collection));
+      (acc=reducer(acc, collection[k], k, collection));
+    }
   return acc;
 }
 
-export const appendArrayReducer = (acc,v)=>{acc[acc.length]=v;return acc;}
-export const appendObjectReducer = (acc,v,k)=>{acc[k]=v;return acc;}
+export const appendArrayReducer = (acc=[],v)=>{acc[acc.length]=v;return acc;}
+export const appendObjectReducer = (acc={},v,k)=>{acc[k]=v;return acc;}
 export const tdToArray = transducer=>collection=>transduce([], appendArrayReducer, transducer, collection);
 export const tdToObject = transducer=>collection=>transduce(({}), appendObjectReducer, transducer, collection);
 export const tdToSame = transducer=>collection=>(Array.isArray(collection)?tdToArray:tdToObject)(transducer)(collection);
-export const tdToInitial = transducer=>initial=>transduce(initial, identity, transducer, [initial]);
+export const tdValue = transducer=>value=>transduce(undefined, identity, transducer, [value]);
 
-export const tdMap = (mapper) => (nextReducer) => (a,v,k,c) => nextReducer(a,mapper(v,k,c),k,c);
-export const tdFilter = (pred) => (nextReducer) => (a,v,k,c) => pred(v,k,c) ? nextReducer(a,v,k,c) : a;
-export const tdOmit = (pred) => (nextReducer) => (a,v,k,c) => pred(v,k,c) ? a: nextReducer(a,v,k,c);
-export const tdReduce = (reducer) => (nextReducer) => (a,v,k,c) =>nextReducer(reducer(a,v,k,c),v,k,c);
-export const tdTrans = (reducer) => (nextReducer) => (a,v,k,c)=>{
-  reducer(a,v,k,c);
-  nextReducer(a,v,k,c);
-  return a;
+export const tdMap = mapper => nextReducer => (a,v,k,c) =>
+  nextReducer(a,mapper(v,k,c),k,c);
+export const tdItentity = identity;
+export const tdTap = fn => nextReducer => (a,v,k,c) => {
+  fn(a,v,k,c);
+  return nextReducer(a,v,k,c);
 };
-export const tdOver = (...reducers) => (nextReducer) => (a,v,k,c) => {
-  return nextReducer(reducers.reduce((aa,r,i)=>aa[aa.length]=r(aa,v,i,c),k,c,[]),v,k,c);
-};
-export const tdFlat = tdReduce((a) => {
-  return a.reduce((acc,subArr)=>{for (let s of subArr)acc[acc.length]=s;return acc;},[]);
-});
+export const tdLog = tdTap((msg='log')=>(a,v,k,c)=>console.log(msg,a,v,k,c));
+export const tdFilter = (pred=(v,k,c)=>true) => nextReducer => (a,v,k,c) =>
+  pred(v,k,c) ? nextReducer(a,v,k,c) : a;
+export const tdOmit = pred=>tdFilter(not(pred));
+export const tdPipeToArray = (...fns)=>tdToArray(compose(...fns));
+export const tdPipeToObject = (...fns)=>tdToObject(compose(...fns));
+export const tdDPipeToArray = (coll,...fns)=>tdToArray(compose(...fns))(coll);
+export const tdDPipeToObject = (coll,...fns)=>tdToObject(compose(...fns))(coll);
 
-export const transduceRecursive = transducer=>{
-  const walkReducer = tdToSame(compose(
-    transducer,
-    tdMap(v=>typeof v==='object'?walkReducer(v):v)
-  ));
-  return walkReducer;
+export const transduceDFPredorder = (
+  itemCombiner=appendObjectReducer,
+  itemTransducer=tdItentity,
+)=>{
+  const walkableItemCombiner=(a,v,k,c)=>dfWalkPreorderReducer(itemCombiner(a,v,k,c),v,k,c)
+  const walkableItemReducer = itemTransducer(walkableItemCombiner);
+  const itemReducer=itemTransducer(itemCombiner);
+  const dfWalkPreorderReducer = (parentAcc,value,parentKey,parentCollection)=>{
+    let l,k, acc;
+    if (Array.isArray(value)){
+      for (k=-1, l = value.length;++k < l;){
+        acc=walkableItemReducer(acc,value[k], k, value)
+      }
+    } else if (typeof value === 'object'){
+      for (k in value){
+        acc=walkableItemReducer(acc,value[k], k, value)
+      }
+    } else {
+      acc=value;
+    }
+    return itemReducer(parentAcc,acc,parentKey,parentCollection);
+  }
+  return (rootCollection={},initial)=>dfWalkPreorderReducer(initial,rootCollection,"root");
 }
 // lodash equivalents
 export const memoize = (fn, by = identity) => {

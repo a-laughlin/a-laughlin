@@ -1,9 +1,10 @@
 import indexSchema from './indexSchema'
-import {isDeepEqual,mo,reduce,transToObject,cond,identity,isArray,and,stubTrue,diffBy,keyBy,ensureArray} from '@a-laughlin/fp-utils';
+import {isFunction,isObjectLike,not,reduce,transX,transToObject,cond,identity,isArray,and,stubTrue,diffBy, filterToArray, transToArray, omitToArray, tdMap, tdFilter, tdDPipeToArray, tdTap} from '@a-laughlin/fp-utils';
+import _matchesProperty from 'lodash-es/matchesProperty'
+import _matches from 'lodash-es/matches';
+import _property from 'lodash-es/property';
+import { isObject } from 'util';
 
-export const schemaToActionCreators=( schema )=>{};
-export const schemaToQueries=( schema )=>{};
-export const schemaToMutations=( schema )=>{};
 export const extendSchemaWithQueryAndMutationDefinitions=( schema )=>{};
 
 // normalize collectionTree,ArrayTree,item,value
@@ -12,13 +13,6 @@ export const extendSchemaWithQueryAndMutationDefinitions=( schema )=>{};
 const schemaToActionNormalizers=schema=>{
   const {objectFieldMeta,definitionsByName}=indexSchema(schema);
   const notJSObject = action=>action.payload===null||typeof action.payload!=='object';
-  // const isJSObject = action=>action.payload!==null && typeof action.payload==='object';
-  // const isJSArray = action=>Array.isArray(action.payload);
-  // const isGQLObject = x=>dName in objectFieldMeta;
-  // const isState = action=>cName in action.payload;
-  // const isStateCollection = action=>cName in action.payload;
-  // const isStateItem = action=>idKey in action.payload;
-  // const isStateValue = x=>objectFieldMeta[dName]===undefined;
   return transToObject((o,_,dName)=>{
     const notGQLObject = action=>!(dName in objectFieldMeta);
     
@@ -97,34 +91,34 @@ export const schemaToStateOpsMapper=(
   })(schemaToActionNormalizers(schema));
 };
 
-export const getMemoizedObjectQuerier=(schema,queryMatchers={
-  // filtering language ... not sure whether to go this far, or use functions...
-  // use functions to make it extensible...  transducers?
-  // https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
-  // or mimic lodash iteratee with filter and omit
-  // https://lodash.com/docs/4.17.15#filter
-  // where Person(id:"a") is equivalent to filter({id:"a"})
-  filter:pred=>v=>pred(v),
-  omit:pred=>v=>!pred(v),
-  matchesAll:args=>v=>{
-    for (const arg in args)
-      if(v[arg]!==args[arg])
-        return false;
-    return true;
-  },
-  matchesAny:args=>v=>{
-    for (const arg in args)
-      if(v[arg]===args[arg])
-        return true;
-    return false;
-  },
-  matchesAnyIn:args=>v=>{
-    for (const arg in args)
-      if(!args[arg].includes(v[arg]))
-        return false;
-    return true;
-  },
-})=>{
+// const isJSObject = action=>action.payload!==null && typeof action.payload==='object';
+// const isJSArray = action=>Array.isArray(action.payload);
+// const isGQLObject = x=>dName in objectFieldMeta;
+// const isState = action=>cName in action.payload;
+// const isStateCollection = action=>cName in action.payload;
+// const isStateItem = action=>idKey in action.payload;
+// const isStateValue = x=>objectFieldMeta[dName]===undefined;
+// state,collection,item,value need to vary for these, or just assume we'll know the shape and choose the
+// appropriate fn when writing the filter? // let's see how it works
+const filterIteratees = cond(
+  [isFunction,pred=>v=>pred(v)],
+  [isArray,_matchesProperty],
+  [isObjectLike,_matches],
+  [stubTrue,k=>v=>k in v],
+);
+export const getMemoizedObjectQuerier=(
+  schema,
+  queryMatchers={
+    // filtering language ... not sure whether to go this far, or use functions...
+    // use functions to make it extensible...  transducers?
+    // https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
+    // or mimic lodash iteratee with filter and omit
+    // https://lodash.com/docs/4.17.15#filter
+    // where Person(id:"a") is equivalent to filter({id:"a"})
+    filter:filterIteratees,
+    omit:fn=>filterIteratees(not(fn))
+  }
+)=>{
   const {objectFieldMeta,definitionsByName}=indexSchema(schema);
 
   const populateArgsFromVars = (args=[],vars={})=>{
@@ -171,18 +165,17 @@ export const getMemoizedObjectQuerier=(schema,queryMatchers={
         return transToObject((o,_,k)=>o[k]=queryObjectCollection(rootState,collName,k,Field,vars))(rootState[collName]);
 
       const args = populateArgsFromVars(Field.arguments,vars);
-      
-      const queryMatcherFns=[];
-      for (const arg in args)
-        if (arg in queryMatchers) {
-          queryMatcherFns.push(queryMatchers[arg](args[arg]));
-          // console.log(`args`,args)
-          // console.log(`arg,args[arg]`,arg,args[arg])
-        };
 
-      const matchesFn = queryMatcherFns.length===0
-        ? queryMatchers.matchesAll(args)
-        : and(...queryMatcherFns);
+      const queryMatcherFns=tdDPipeToArray(
+        args,
+        // tdTap((a,v,k,c)=>console.log('before',a,v,k,c)),
+        tdFilter((v,k)=>k in queryMatchers),
+        tdMap((v,k)=>queryMatchers[k](args[k])),
+        // tdTap((a,v,k,c)=>console.log('after',a,v,k,c)),
+      );
+      queryMatcherFns[0]||(queryMatcherFns[0]=queryMatchers.filter(args));
+      const matchesFn = and(...queryMatcherFns);
+
       return transToObject(
         (o,item,k)=>matchesFn(item)&&(o[k]=queryObjectCollection(rootState,collName,k,Field,vars))
       )(rootState[collName]);
