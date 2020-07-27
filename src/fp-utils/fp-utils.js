@@ -8,6 +8,9 @@ import _pick from 'lodash-es/pick';
 import _isPlainObject from 'lodash-es/isPlainObject';
 import _matches from 'lodash-es/matches';
 import _over from 'lodash-es/over';
+import isError from 'lodash-es/isError';
+import isInteger from 'lodash-es/isInteger';
+import isNumber from 'lodash-es/isNumber';
 
 // curry/compose/pipe, for later fns
 let curry,compose,pipe;
@@ -84,6 +87,7 @@ export const frozenEmptyObject = Object.freeze(Object.create(null));
 // value predicates
 // export {isError,isInteger,isNumber,isObjectLike,hasIn,has,isWeakMap,isWeakSet,isMap,
 //   isSet,isEmpty,isString,isPlainObject,isFunction,isNull,isUndefined,every,conforms} from 'lodash-es';
+export {isInteger,isNumber,isError};
 export const isString = arg=>typeof arg==='string';
 export const isFunction = arg=>typeof arg==='function';
 export const isObjectLike = arg=>typeof arg==='object' && arg !== null;
