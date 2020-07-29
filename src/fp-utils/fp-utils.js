@@ -84,7 +84,7 @@ export const frozenEmptyArray = Object.freeze([]);
 export const frozenEmptyObject = Object.freeze(Object.create(null));
 
 
-// value predicates
+// primitive predicates
 // export {isError,isInteger,isNumber,isObjectLike,hasIn,has,isWeakMap,isWeakSet,isMap,
 //   isSet,isEmpty,isString,isPlainObject,isFunction,isNull,isUndefined,every,conforms} from 'lodash-es';
 export {isInteger,isNumber,isError};
@@ -181,6 +181,14 @@ export const immutableTransObjectToObject = fn => (coll={}) => {
   }
   return changed===false?coll:acc;
 }
+export const immutableTransArrayToArray = fn => (coll=[]) => {
+  let k, acc = [],changed=false;
+  for (k of coll) {
+    fn(acc, coll[k], k, coll);
+    if (acc[k]!==coll[k]) changed=true;
+  }
+  return changed===false?coll:acc;
+}
 export const immutableFilterObjectToObject = (pred=(v,k,c)=>true) => (coll={}) => {
   let k, acc = {},changed=false;
   for (k in coll)
@@ -221,6 +229,14 @@ export const fmx=filterMapToSame; // backward compatability
 // equivalent to lodash reduce(coll,isArray(coll)[]?{},fn)
 export const reduce = (fn,getInitial) => (coll,acc) => {
   if(isFunction(getInitial)) acc=getInitial(coll);
+  let k = -1;
+  if (isArray(coll)) {
+    const l = coll.length;
+    while (++k < l) (acc = fn(acc, coll[k], k, coll));
+  } else for (k in coll) (acc = fn(acc, coll[k], k, coll));
+  return acc;
+}
+export const reduceAny = (fn,coll,acc)=>{
   let k = -1;
   if (isArray(coll)) {
     const l = coll.length;
@@ -361,8 +377,8 @@ export const transduce = (acc, itemCombiner , transducer, collection) =>{
   return acc;
 }
 
-export const appendArrayReducer = (acc=[],v)=>{acc[acc.length]=v;return acc;}
-export const appendObjectReducer = (acc={},v,k)=>{acc[k]=v;return acc;}
+export const appendArrayReducer = (acc=[],v)=>{if (v!==undefined)acc[acc.length]=v;return acc;}
+export const appendObjectReducer = (acc={},v,k)=>{if (v!==undefined){acc[k]=v};return acc;}
 export const tdToArray = transducer=>collection=>transduce([], appendArrayReducer, transducer, collection);
 export const tdToObject = transducer=>collection=>transduce(({}), appendObjectReducer, transducer, collection);
 export const tdToSame = transducer=>collection=>(Array.isArray(collection)?tdToArray:tdToObject)(transducer)(collection);
@@ -370,12 +386,12 @@ export const tdValue = transducer=>value=>transduce(undefined, identity, transdu
 
 export const tdMap = mapper => nextReducer => (a,v,k,c) =>
   nextReducer(a,mapper(v,k,c),k,c);
-export const tdItentity = identity;
+export const tdIdentity = identity;
 export const tdTap = fn => nextReducer => (a,v,k,c) => {
   fn(a,v,k,c);
   return nextReducer(a,v,k,c);
 };
-export const tdLog = tdTap((msg='log')=>(a,v,k,c)=>console.log(msg,a,v,k,c));
+export const tdLog = (msg='log')=>tdTap((a,v,k,c)=>console.log(msg,a,v,k));
 export const tdFilter = (pred=(v,k,c)=>true) => nextReducer => (a,v,k,c) =>
   pred(v,k,c) ? nextReducer(a,v,k,c) : a;
 export const tdOmit = pred=>tdFilter(not(pred));
@@ -384,36 +400,31 @@ export const tdPipeToObject = (...fns)=>tdToObject(compose(...fns));
 export const tdDPipeToArray = (coll,...fns)=>tdToArray(compose(...fns))(coll);
 export const tdDPipeToObject = (coll,...fns)=>tdToObject(compose(...fns))(coll);
 
-export const transduceDFPredorder = (
-  itemCombiner=appendObjectReducer,
-  itemTransducer=tdItentity,
+export const transduceDF = (
+  preOrderTransducer=tdIdentity,
+  postOrderTransducer=tdIdentity,
+  postOrderCombiner=appendObjectReducer,
+  reduceChildren=reduceAny,
+  getAcc=stubObject,
 )=>{
-  const walkableItemCombiner=(a,v,k,c)=>dfWalkPreorderReducer(itemCombiner(a,v,k,c),v,k,c)
-  const walkableItemReducer = itemTransducer(walkableItemCombiner);
-  const itemReducer=itemTransducer(itemCombiner);
-  const dfWalkPreorderReducer = (parentAcc,value,parentKey,parentCollection)=>{
-    let l,k, acc;
-    if (Array.isArray(value)){
-      for (k=-1, l = value.length;++k < l;){
-        acc=walkableItemReducer(acc,value[k], k, value)
-      }
-    } else if (typeof value === 'object'){
-      for (k in value){
-        acc=walkableItemReducer(acc,value[k], k, value)
-      }
-    } else {
-      acc=value;
-    }
-    return itemReducer(parentAcc,acc,parentKey,parentCollection);
-  }
-  return (rootCollection={},initial)=>dfWalkPreorderReducer(initial,rootCollection,"root");
+  const dfReducer = compose(
+    preOrderTransducer,
+    tdMap(v=>isObjectLike(v) ? reduceChildren(dfReducer,v,getAcc()) : v),
+    postOrderTransducer,
+  )(postOrderCombiner);
+
+  return coll=>reduceChildren(dfReducer,coll,{});
 }
+
+
 // lodash equivalents
 export const memoize = (fn, by = identity) => {
   const mFn = (...x) => { const k = by(...x); return fn(...(mFn.cache.has(k) ? mFn.cache.get(k) : (mFn.cache.set(k, x) && x))) };
   mFn.cache = new WeakMap(); // eslint-disable-line
   return mFn;
 };
+
+
 export const tdKeyBy = (by = x => x.id) => next=>(o,v,k,c)=>next(o,v,by(v,k,c),c)
 
 export const diffObjs = (a={},b={}) => {

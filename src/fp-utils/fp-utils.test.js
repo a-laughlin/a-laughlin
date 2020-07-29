@@ -19,10 +19,11 @@ import {
   tdMap,
   tdFilter,
   compose,
-  transduceDFPredorder,
+  transduceDF,
   partition,
   partitionObject,
-  partitionArray
+  partitionArray,
+  tdOmit
 } from './fp-utils'
 describe("and", () => {
   it('should ensure multiple predicates pass', () =>{
@@ -201,22 +202,29 @@ describe("tdToObject", () => {
     expect(blankObjectResult).toEqual({});
   });
 });
-describe("transduceDFPredorder", () => {
-  it("transduceDFPredorder should produce expected results",()=>{
-    const reduceDepthFirst=transduceDFPredorder();
-    const tree={a:{a1:{a11:true},a2:true},b:{b1:true}};
+describe("transduceDF", () => {
+  it("transduceDF should produce expected results",()=>{
+    const oTree={a:{a1:{a11:true},a2:true},b:{b1:true}};
     const aTree=['a',['aa',['aaa']]];
+
+    expect(transduceDF()(aTree))
+    .toEqual({"0":"a","1":{"0":"aa","1":{"0":"aaa"}}});
     
-    const arrayInputResult=reduceDepthFirst(aTree).root;
-    expect(arrayInputResult).toEqual({"0":"a","1":{"0":"aa","1":{"0":"aaa"}}});
+    expect(transduceDF(tdOmit((v,k)=>v==='aa'))(aTree))
+    .toEqual({"0":"a","1":{"1":{"0":"aaa"}}});
+    expect(transduceDF(tdOmit((v,k)=>k===1))(aTree))
+    .toEqual({"0":"a"});
     
-    const objectInputResult=reduceDepthFirst(tree).root;
-    expect(objectInputResult).toEqual({a:{a1:{a11:true},a2:true},b:{b1:true}});
+    expect(transduceDF()(oTree))
+    .toEqual({a:{a1:{a11:true},a2:true},b:{b1:true}});
     
-    const blankObjectResult=reduceDepthFirst({});
+    expect(transduceDF(tdOmit((v,k)=>k==='a1'))(oTree))
+    .toEqual({a:{a2:true},b:{b1:true}});
+
+    const blankObjectResult=transduceDF()({});
     expect(blankObjectResult).toEqual({});
     
-    const blankArrayResult=reduceDepthFirst([]);
+    const blankArrayResult=transduceDF()([]);
     expect(blankArrayResult).toEqual({});
   });
 });
