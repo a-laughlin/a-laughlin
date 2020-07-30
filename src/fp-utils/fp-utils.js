@@ -149,7 +149,7 @@ export const sort = coll=>_sortBy(coll,null);
 const makeCollectionFn=(arrayFn,objFn)=>(fn,...args)=>{
   const aFn=arrayFn(fn,...args);
   const oFn=objFn(fn,...args);
-  return coll=>isArray(coll)?aFn(coll):oFn(coll);
+  return ifElse(isArray,aFn,oFn);
 }
 const transArrayToObject = fn => (coll=[]) => {
   const l = coll.length, acc = Object.create(null);
