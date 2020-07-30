@@ -1,10 +1,10 @@
 import indexSchema from './indexSchema'
-import {isFunction,isObjectLike,not,reduce,transX,transToObject,cond,identity,isArray,and,stubTrue,diffBy, filterToArray, transToArray, omitToArray, tdMap, tdFilter, tdDPipeToArray, tdTap} from '@a-laughlin/fp-utils';
+import {isFunction,isObjectLike,not,reduce,transX,transToObject,cond,identity,isArray,and,stubTrue,diffBy, filterToArray, transToArray, omitToArray, tdMap, tdFilter, tdDPipeToArray, tdTap, transduceDF} from '@a-laughlin/fp-utils';
 import _matchesProperty from 'lodash-es/matchesProperty'
 import _matches from 'lodash-es/matches';
 import _property from 'lodash-es/property';
 import { isObject } from 'util';
-
+import { useState,useEffect } from 'react';
 export const extendSchemaWithQueryAndMutationDefinitions=( schema )=>{};
 
 // normalize collectionTree,ArrayTree,item,value
@@ -39,7 +39,7 @@ const schemaToActionNormalizers=schema=>{
 
 const keyDiff=(v,k)=>k;
 export const schemaToStateOpsMapper=(
-  schema = gql('type DefaultType {id:ID!}')
+  schema=gql('type DefaultType {id:ID!}')
 )=>(
   ops={
     ADD:nextReducer=>(prevState,action)=>{
@@ -116,7 +116,7 @@ export const getMemoizedObjectQuerier=(
     // https://lodash.com/docs/4.17.15#filter
     // where Person(id:"a") is equivalent to filter({id:"a"})
     filter:filterIteratees,
-    omit:fn=>filterIteratees(not(fn))
+    omit:predicate=>filterIteratees(not(predicate))
   }
 )=>{
   const {objectFieldMeta,definitionsByName}=indexSchema(schema);
@@ -241,49 +241,30 @@ export const getMemoizedObjectQuerier=(
       : (opResults[varsKey] = querier(state,operation,vars));
   }
 }
-// acc[dName]=(prevState=null,action={type:GET,payload:{}})=>{
-//   let {type=GET,payload={}}=action;
-//   if (type===GET) return prevState;
 
-//   if (type===SET) return payload;
+// instead of useMutation, use a built in reducer, or add one
+export const getUseQuery=(store,querier)=>{
+  return (query,variables)=>{
+    const [state,setState] = useState(querier(store.getState(),query,variables));
+    useEffect(()=>store.subscribe(()=> { // returns the unsubscribe function
+      const result = querier(store.getState(),query,variables);
+      if (result!==state) setState({...state,...result});
+    }),[]);
+    return state;
+  }
+}
+export const triggerStorePermutationUpdates = (store,schema,query,act)=>{
+  const idx=indexSchema(schema);
+  // traverse the query, collecting paths and boundary values for each path
+  // transduceDF(
+  //   tdMap()
+  // )(query)
+  // loop over permutations
+  // act(()=>{store.dispatch({type:'SET_STORE',payload:1})});
   
-//   if(idKey===undefined)return prevState;
-//   if(payload===null)return prevState;
-//   if (typeof payload !== 'object') payload={[payload]:{[idKey]:payload}}; // convert number to collection shape
-//   else if (idKey in payload) payload={[payload[idKey]]:payload}; // convert item to collection shape
-//   else if(Array.isArray(payload))
-  
-//   if (type===ADD) return {...prevState,...payload};
-  
-//   const diff = collDiffer([prevState,payload]);
-//   let nextState={},k;
-  
-//   if (type===SUBTRACT) {
-//     if (diff.aibc===0) return prevState; // no intersection to remove
-//     if (diff.aibc===diff.aubc) return nextState; // complete intersection. remove everything
-//     for (k in diff.anb)nextState[k]=prevState[k]; // copy non-intersecting collection items to new state
-//     return nextState;
-//   }
-  
-//   if (type===UNION){
-//     for (k in diff.aub)nextState[k]=payload[k]??prevState[k];
-//     return diff.changedc===0?prevState:nextState;
-//   }
-  
-//   if (type===INTERSECTION){
-//     for (k in diff.aib)nextState[k]=payload[k];
-//     return diff.changedc===0?prevState:nextState;
-//   }
-//   // select partial collections to update?
-//   // select partial trees to update (mutation syntax)??
-//   // how compose directives handlers, like boundary values?
-//   // denormalize
-//   // normalize
-//   return prevState;
-// };
-// return acc;
-
-
+  // using actual events related to the query would be better
+  // though how to know what events trigger related property updates in testing?
+}
 
 
 

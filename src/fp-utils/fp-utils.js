@@ -402,17 +402,17 @@ export const tdDPipeToObject = (coll,...fns)=>tdToObject(compose(...fns))(coll);
 
 export const transduceDF = (
   preOrderTransducer=tdIdentity,
+  reduceChildren=(dfReducer,v)=> isObjectLike(v) ? reduceAny(dfReducer,v,{}) : v,
   postOrderTransducer=tdIdentity,
   postOrderCombiner=appendObjectReducer,
-  reduceChildren=(reduceRecursive,v)=>reduceAny(reduceRecursive,v,{}),
 )=>{
   const dfReducer = compose(
     preOrderTransducer,
-    tdMap(v=>isObjectLike(v) ? reduceChildren(dfReducer,v) : v),
+    tdMap(v=>reduceChildren(dfReducer,v)),
     postOrderTransducer,
   )(postOrderCombiner);
 
-  return coll=>reduceChildren(dfReducer,coll,{});
+  return v=>reduceChildren(dfReducer,v);
 }
 
 

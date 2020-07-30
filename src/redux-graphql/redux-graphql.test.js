@@ -2,24 +2,22 @@
 // /* globals jest:false,describe:false,it:false,expect:false */
 import gql from 'graphql-tag';
 import { renderHook, act } from '@testing-library/react-hooks'
-import { useState,useEffect } from 'react';
 import {createStore,combineReducers} from 'redux';
 import {
   schemaToStateOpsMapper,
-  getMemoizedObjectQuerier
+  getMemoizedObjectQuerier,
+  getUseQuery
 } from './redux-graphql';
 // import configureStore from 'redux-mock-store';
 
 
-const dedent = str=>str.split('\n').map(s=>s.trim()).join('\n');
-
 describe("schemaToStateOpsMapper", () => {
   let state;
-  let schema=gql(dedent(`
+  let schema=gql(`
     type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
     type Pet{id:ID,name:String}
     scalar SomeScalar
-  `));
+  `);
   let reducerMap = schemaToStateOpsMapper(schema)();
   
   beforeEach(()=>{
@@ -207,17 +205,7 @@ describe("getMemoizedObjectQuerier", () => {
   });
 });
 
-// instead of useMutation, use a built in reducer, or add one
-const getUseQuery=(store,querier)=>{
-  return (query,variables)=>{
-    const [state,setState] = useState(querier(store.getState(),query,variables));
-    useEffect(()=>store.subscribe(()=> { // returns the unsubscribe function
-      const result = querier(store.getState(),query,variables);
-      if (result!==state) setState({...state,...result});
-    }),[]);
-    return state;
-  }
-}
+
 
 describe("getUseQuery: integration test React.useState,redux.combineReducers(schemaReducerMap),getMemoizedObjectQuerier(schema)",()=>{
   let store,useQuery,querier,reducerMap;
