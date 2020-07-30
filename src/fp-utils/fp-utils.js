@@ -404,12 +404,11 @@ export const transduceDF = (
   preOrderTransducer=tdIdentity,
   postOrderTransducer=tdIdentity,
   postOrderCombiner=appendObjectReducer,
-  reduceChildren=reduceAny,
-  getAcc=stubObject,
+  reduceChildren=(reduceRecursive,v)=>reduceAny(reduceRecursive,v,{}),
 )=>{
   const dfReducer = compose(
     preOrderTransducer,
-    tdMap(v=>isObjectLike(v) ? reduceChildren(dfReducer,v,getAcc()) : v),
+    tdMap(v=>isObjectLike(v) ? reduceChildren(dfReducer,v) : v),
     postOrderTransducer,
   )(postOrderCombiner);
 
