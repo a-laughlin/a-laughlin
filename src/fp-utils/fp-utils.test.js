@@ -23,7 +23,11 @@ import {
   partition,
   partitionObject,
   partitionArray,
-  tdOmit
+  tdOmit,
+  over,
+  isObjectLike,
+  reduceAny,
+  mapToObject
 } from './fp-utils'
 describe("and", () => {
   it('should ensure multiple predicates pass', () =>{
@@ -207,24 +211,33 @@ describe("transduceDF", () => {
     const oTree={a:{a1:{a11:true},a2:true},b:{b1:true}};
     const aTree=['a',['aa',['aaa']]];
 
-    expect(transduceDF()(aTree))
+    expect(transduceDF()({},aTree))
     .toEqual({"0":"a","1":{"0":"aa","1":{"0":"aaa"}}});
     
-    expect(transduceDF(tdOmit((v,k)=>v==='aa'))(aTree))
+    expect(transduceDF(tdOmit((v,k)=>v==='aa'))({},aTree))
     .toEqual({"0":"a","1":{"1":{"0":"aaa"}}});
-    expect(transduceDF(tdOmit((v,k)=>k===1))(aTree))
+    expect(transduceDF(tdOmit((v,k)=>k===1))({},aTree))
     .toEqual({"0":"a"});
     
-    expect(transduceDF()(oTree))
+    expect(transduceDF()({},oTree))
     .toEqual({a:{a1:{a11:true},a2:true},b:{b1:true}});
     
-    expect(transduceDF(tdOmit((v,k)=>k==='a1'))(oTree))
+    expect(transduceDF(tdOmit((v,k)=>k==='a1'))({},oTree))
     .toEqual({a:{a2:true},b:{b1:true}});
+    
+    // map to flattened tree
+    expect(transduceDF(
+      identity,
+      dfReducer=>(a,v,k,c)=>isObjectLike(v) ? reduceAny(dfReducer,v,a) : v,
+      identity,
+      (acc={},v,k)=>{acc[k]=1; return acc; }
+    )({},oTree))
+    .toEqual({a:1,a1:1,a11:1,a2:1,b:1,b1:1});
 
-    const blankObjectResult=transduceDF()({});
+    const blankObjectResult=transduceDF()({},{});
     expect(blankObjectResult).toEqual({});
     
-    const blankArrayResult=transduceDF()([]);
+    const blankArrayResult=transduceDF()({},[]);
     expect(blankArrayResult).toEqual({});
   });
 });
@@ -236,5 +249,15 @@ describe("partition", () => {
     expect(partition(isEven,isOdd)([0,1,2,3,4])).toEqual([[0,2,4],[1,3],[]]);
     expect(partition(isEven)({a:0,b:1,c:2,d:3,e:4})).toEqual([{a:0,c:2,e:4},{b:1,d:3}]);
     expect(partition(isEven)([0,1,2,3,4])).toEqual([[0,2,4],[1,3]]);
+  });
+});
+describe("over", () => {
+  it("should produce expected results",()=>{
+    const isEven = x=>x%2===0;
+    const isOdd = x=>x%2===1;
+    expect(over({x:isEven,y:isOdd})(1)).toEqual({x:false,y:true});
+    expect(over([isEven,isOdd])(1)).toEqual([false,true]);
+    expect(over([isEven,isOdd])({a:0,b:1})).toEqual([false,false]);
+    expect(over({x:isEven,y:isOdd})([0,1])).toEqual({x:false,y:false});
   });
 });

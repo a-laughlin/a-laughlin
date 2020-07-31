@@ -97,7 +97,7 @@ export const isTruthy = arg=>!!arg;
 export const is = val1=>val2=>val1===val2;
 export const isUndefOrNull = val => val === undefined || val === null;
 export const isProductionEnv = ()=>process.env.NODE_ENV === 'production';
-
+export const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';
 
 // debugging
 export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
@@ -106,13 +106,20 @@ export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
 export const dpipe = (data,...args)=>pipe(...args)(data);
 
 // functions
+const makeCollectionFn=(arrayFn,objFn)=>(...args)=>{
+  const aFn=arrayFn(...args);
+  const oFn=objFn(...args);
+  return ifElse(isArray,aFn,oFn);
+}
 export const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(...args);
 export const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 export const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
 export const mergeToBlank = acceptArrayOrArgs(vals => _merge({},...vals));
 
-export const overObj = obj=>(...args)=>mo(f=>f(...args))(obj);
-export const converge = (arg)=>(isArray(arg)?_over:overObj)(arg);
+export const overObj = fnsObj=>(...args)=>mo(f=>f(...args))(fnsObj);
+export const overArray = fnsArray=>(...args)=>ma(f=>f(...args))(fnsArray);
+export const over = x=>isArray(x)?overArray(x):overObj(x);
+export const converge = over;//backwards compat;
 
 // casting
 export const constant = x=>_=>x;
@@ -146,11 +153,7 @@ export const sort = coll=>_sortBy(coll,null);
 
 
 // collections
-const makeCollectionFn=(arrayFn,objFn)=>(fn,...args)=>{
-  const aFn=arrayFn(fn,...args);
-  const oFn=objFn(fn,...args);
-  return ifElse(isArray,aFn,oFn);
-}
+
 const transArrayToObject = fn => (coll=[]) => {
   const l = coll.length, acc = Object.create(null);
   let k = -1;
@@ -198,13 +201,14 @@ export const immutableFilterObjectToObject = (pred=(v,k,c)=>true) => (coll={}) =
   return changed===true?acc:coll;
 }
 
-export const transToSame = makeCollectionFn(transArrayToArray,transObjectToObject);
 export const transToObject = makeCollectionFn(transArrayToObject,transObjectToObject);
 export const ro=transToObject; // backward compatability 
 export const transToArray = makeCollectionFn(transArrayToArray,transObjectToArray);
 export const ra=transToArray; // backward compatability
+export const transToSame = makeCollectionFn(transArrayToArray,transObjectToObject);
+export const rx = transToSame; // backward compatability
 export const filterToArray =pred=>transToArray((a,v,k)=>pred(v,k)&&(a[a.length]=v)); // _ equiv filter
-export const fa=filterToArray;
+export const fa=filterToArray; // backward compatability
 export const filterToObject=pred=>transToObject((a,v,k)=>pred(v,k)&&(a[k]=v)); // _ equiv pickBy
 export const fo=filterToObject; // backward compatability
 export const filterToSame=makeCollectionFn(filterToArray,filterToObject);
@@ -222,28 +226,14 @@ export const mo=mapToObject; // backward compatability
 export const mapToSame=makeCollectionFn(mapToArray,mapToObject);
 export const mx=mapToSame; // backward compatability
 export const filterMapToArray = (pred,mapper)=>transToArray((a,v,k)=>pred(v,k)&&(a[a.length]=mapper(v,k)));
+export const fma = filterMapToArray; // backward compatability
 export const filterMapToObject = (pred,mapper)=>transToObject((o,v,k)=>pred(v,k)&&(o[k]=mapper(v,k)));
+export const fmo = filterMapToObject; // backward compatability
 export const filterMapToSame=makeCollectionFn(filterMapToArray,filterMapToObject);
 export const fmx=filterMapToSame; // backward compatability
-// utility functions that return the same type. For performance, user fn is only call in loop.
-// equivalent to lodash reduce(coll,isArray(coll)[]?{},fn)
-export const reduce = (fn,getInitial) => (coll,acc) => {
-  if(isFunction(getInitial)) acc=getInitial(coll);
-  let k = -1;
-  if (isArray(coll)) {
-    const l = coll.length;
-    while (++k < l) (acc = fn(acc, coll[k], k, coll));
-  } else for (k in coll) (acc = fn(acc, coll[k], k, coll));
-  return acc;
-}
-export const reduceAny = (fn,coll,acc)=>{
-  let k = -1;
-  if (isArray(coll)) {
-    const l = coll.length;
-    while (++k < l) (acc = fn(acc, coll[k], k, coll));
-  } else for (k in coll) (acc = fn(acc, coll[k], k, coll));
-  return acc;
-}
+
+export const reduce = (fn) => (coll,acc) => reduceAny(fn,coll,acc);
+
 export const first = c=>{
   if (isArray(c)) return c[0];
   for (const k in c)return c[k];
@@ -355,30 +345,13 @@ export {default as uniqueId} from 'lodash-es/uniqueId'
 
 
 
-export const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';
 
-export const transduce = (acc, itemCombiner , transducer, collection) =>{
-  let k,l;
-  const reducer = transducer(itemCombiner);
-  if (Array.isArray(collection))
-    for (k=-1, l = collection.length;++k < l;){
-      // (acc=isPromise(acc)
-      //   ? acc.then(a=>reducer(a, collection[k], k, collection))
-      //   : reducer(acc, collection[k], k, collection));
-        (acc=reducer(acc, collection[k], k, collection));
-    }
-  else if (typeof collection === 'object')
-    for (k in collection){
-      // (acc=isPromise(acc)
-      //   ? acc.then(a=>reducer(a, collection[k], k, collection))
-      //   : reducer(acc, collection[k], k, collection));
-      (acc=reducer(acc, collection[k], k, collection));
-    }
-  return acc;
-}
 
-export const appendArrayReducer = (acc=[],v)=>{if (v!==undefined)acc[acc.length]=v;return acc;}
-export const appendObjectReducer = (acc={},v,k)=>{if (v!==undefined){acc[k]=v};return acc;}
+export const transduce = (acc, itemCombiner , transducer, collection) =>
+  reduceAny(transducer(itemCombiner),collection,acc);
+
+export const appendArrayReducer = (acc=[],v)=>{acc[acc.length]=v;return acc;}
+export const appendObjectReducer = (acc={},v,k)=>{acc[k]=v;return acc;}
 export const tdToArray = transducer=>collection=>transduce([], appendArrayReducer, transducer, collection);
 export const tdToObject = transducer=>collection=>transduce(({}), appendObjectReducer, transducer, collection);
 export const tdToSame = transducer=>collection=>(Array.isArray(collection)?tdToArray:tdToObject)(transducer)(collection);
@@ -399,20 +372,48 @@ export const tdPipeToArray = (...fns)=>tdToArray(compose(...fns));
 export const tdPipeToObject = (...fns)=>tdToObject(compose(...fns));
 export const tdDPipeToArray = (coll,...fns)=>tdToArray(compose(...fns))(coll);
 export const tdDPipeToObject = (coll,...fns)=>tdToObject(compose(...fns))(coll);
+export const reduceAny = (reducer,v,acc)=>{
+  if (isPromise(v)||isPromise(acc)){
+    return Promise.all([v,acc]).then(([vv,aa])=>reduceAny(reducer,vv,aa));
+  }
+  if (isArray(v)) {
+    for (let k=-1, l=v.length;++k < l;){
+      (acc=isPromise(acc)
+      ? Promise.all([v[k],acc]).then(([vv,aa])=>reducer(aa, vv, k, v))
+      : reducer(acc, v[k], k, v));
+    }
+    return acc;
+  }
+  if (isObjectLike(v)){
+    let k;
+    for (k in v){
+      (acc=isPromise(acc)
+        ? Promise.all([v[k],acc]).then(([vv,aa])=>reducer(aa, vv, k, v))
+        : reducer(acc, v[k], k, v));
+    }
+    return acc;
+  }
+  return reducer(acc, v);
+}
+
 
 export const transduceDF = (
   preOrderTransducer=tdIdentity,
-  reduceChildren=(dfReducer,v)=> isObjectLike(v) ? reduceAny(dfReducer,v,{}) : v,
+  childTransducer=dfReducer=>(a,v,k,c)=> isObjectLike(v) ? reduceAny(dfReducer,v,{}) : v,
   postOrderTransducer=tdIdentity,
   postOrderCombiner=appendObjectReducer,
 )=>{
+  let childReducer;
   const dfReducer = compose(
     preOrderTransducer,
-    tdMap(v=>reduceChildren(dfReducer,v)),
+    nextReducer=>(a,v,k,c)=>nextReducer(a,childReducer(a,v,k,c),k,c),
     postOrderTransducer,
   )(postOrderCombiner);
 
-  return v=>reduceChildren(dfReducer,v);
+  return (acc,v)=>{
+    if(childReducer===undefined)childReducer = childTransducer(dfReducer);
+    return childReducer(acc,v);
+  }
 }
 
 
