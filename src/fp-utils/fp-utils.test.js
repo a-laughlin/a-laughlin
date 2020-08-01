@@ -21,13 +21,17 @@ import {
   compose,
   transduceDF,
   partition,
+  isString,
   partitionObject,
   partitionArray,
   tdOmit,
+  tdMapWithAcc,
   over,
   isObjectLike,
   reduceAny,
-  mapToObject
+  mapToObject,
+  tdLog,
+  appendArrayReducer
 } from './fp-utils'
 describe("and", () => {
   it('should ensure multiple predicates pass', () =>{
@@ -207,39 +211,75 @@ describe("tdToObject", () => {
   });
 });
 describe("transduceDF", () => {
-  it("transduceDF should produce expected results",()=>{
+  it("transduceDF should map trees",()=>{
     const oTree={a:{a1:{a11:true},a2:true},b:{b1:true}};
     const aTree=['a',['aa',['aaa']]];
-
+    
     expect(transduceDF()({},aTree))
     .toEqual({"0":"a","1":{"0":"aa","1":{"0":"aaa"}}});
-    
-    expect(transduceDF(tdOmit((v,k)=>v==='aa'))({},aTree))
-    .toEqual({"0":"a","1":{"1":{"0":"aaa"}}});
-    expect(transduceDF(tdOmit((v,k)=>k===1))({},aTree))
-    .toEqual({"0":"a"});
     
     expect(transduceDF()({},oTree))
     .toEqual({a:{a1:{a11:true},a2:true},b:{b1:true}});
     
-    expect(transduceDF(tdOmit((v,k)=>k==='a1'))({},oTree))
+    
+    expect(transduceDF({descentTransducer:tdOmit((v,k)=>v==='aa')})({},aTree))
+    .toEqual({"0":"a","1":{"1":{"0":"aaa"}}});
+    expect(transduceDF({descentTransducer:tdOmit((v,k)=>k===1)})({},aTree))
+    .toEqual({"0":"a"});
+    
+    
+    expect(transduceDF({descentTransducer:tdOmit((v,k)=>k==='a1')})({},oTree))
     .toEqual({a:{a2:true},b:{b1:true}});
     
-    // map to flattened tree
-    expect(transduceDF(
-      identity,
-      dfReducer=>(a,v,k,c)=>isObjectLike(v) ? reduceAny(dfReducer,v,a) : v,
-      identity,
-      (acc={},v,k)=>{acc[k]=1; return acc; }
-    )({},oTree))
-    .toEqual({a:1,a1:1,a11:1,a2:1,b:1,b1:1});
-
     const blankObjectResult=transduceDF()({},{});
     expect(blankObjectResult).toEqual({});
     
     const blankArrayResult=transduceDF()({},[]);
     expect(blankArrayResult).toEqual({});
   });
+  it("transduceDF should fold trees",()=>{
+    // map to flattened tree
+    const oTree={a:{a1:{a11:true},a2:true},b:{b1:true}};
+    expect(transduceDF({
+      visitTransducer:tdMapWithAcc((a,v,k,c,dfReducer)=>isObjectLike(v) ? dfReducer(a,v) : v),
+      edgeCombiner:(acc={},v,k)=>(acc[k]=1)&&acc
+    })({},oTree))
+    .toEqual({a:1,a1:1,a11:1,a2:1,b:1,b1:1});
+    
+    const aTree=['a',['aa',['aaa']]];
+    expect(transduceDF({
+      visitTransducer:tdMapWithAcc((a,v,k,c,dfReducer)=>isObjectLike(v) ? dfReducer(a,v) : v),
+      ascentTransducer:tdFilter(isString),
+      edgeCombiner:(acc={},v,k)=>(acc[v]=1)&&acc
+    })({},aTree))
+    .toEqual({a:1,aa:1,aaa:1});
+  })
+  it("transduceDF should unfold trees",()=>{
+    // map to flattened tree
+    expect(
+      transduceDF({
+        descentTransducer: tdFilter((v) => v < 5),
+        visitTransducer: tdMap((v, k, c, dfReducer) =>
+          dfReducer([], new Array(v + 1).fill(v + 1))
+        ),
+        edgeCombiner: appendArrayReducer,
+      })([], 1)
+    ).toEqual([
+      [
+        [ // 2 rows
+          [[], [], [], []], // 3 rows of 4
+          [[], [], [], []],
+          [[], [], [], []],
+        ],
+        [
+          [[], [], [], []],
+          [[], [], [], []],
+          [[], [], [], []],
+        ],
+      ],
+    ]);
+  })
+
 });
 describe("partition", () => {
   it("partition should produce expected results",()=>{

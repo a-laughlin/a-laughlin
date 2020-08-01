@@ -11,6 +11,7 @@ import _over from 'lodash-es/over';
 import isError from 'lodash-es/isError';
 import isInteger from 'lodash-es/isInteger';
 import isNumber from 'lodash-es/isNumber';
+import _nthArg from 'lodash-es/nthArg';
 
 // curry/compose/pipe, for later fns
 let curry,compose,pipe;
@@ -104,7 +105,6 @@ export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
 
 // flow
 export const dpipe = (data,...args)=>pipe(...args)(data);
-
 // functions
 const makeCollectionFn=(arrayFn,objFn)=>(...args)=>{
   const aFn=arrayFn(...args);
@@ -232,7 +232,7 @@ export const fmo = filterMapToObject; // backward compatability
 export const filterMapToSame=makeCollectionFn(filterMapToArray,filterMapToObject);
 export const fmx=filterMapToSame; // backward compatability
 
-export const reduce = (fn) => (coll,acc) => reduceAny(fn,coll,acc);
+export const reduce = (fn) => (coll,acc) => reduceAny(fn)(acc,coll);
 
 export const first = c=>{
   if (isArray(c)) return c[0];
@@ -348,7 +348,7 @@ export {default as uniqueId} from 'lodash-es/uniqueId'
 
 
 export const transduce = (acc, itemCombiner , transducer, collection) =>
-  reduceAny(transducer(itemCombiner),collection,acc);
+  reduceAny(transducer(itemCombiner))(acc,collection);
 
 export const appendArrayReducer = (acc=[],v)=>{acc[acc.length]=v;return acc;}
 export const appendObjectReducer = (acc={},v,k)=>{acc[k]=v;return acc;}
@@ -357,65 +357,76 @@ export const tdToObject = transducer=>collection=>transduce(({}), appendObjectRe
 export const tdToSame = transducer=>collection=>(Array.isArray(collection)?tdToArray:tdToObject)(transducer)(collection);
 export const tdValue = transducer=>value=>transduce(undefined, identity, transducer, [value]);
 
-export const tdMap = mapper => nextReducer => (a,v,k,c) =>
-  nextReducer(a,mapper(v,k,c),k,c);
+export const tdMap = mapper => nextReducer => (a,v,...kc) =>
+  nextReducer(a,mapper(v,...kc),...kc);
+export const tdMapWithAcc = mapper => nextReducer => (a,v,...kc) =>
+  nextReducer(a,mapper(a,v,...kc),...kc);
+export const tdReduce = reducer => nextReducer => (a,...vkc) =>
+  nextReducer(reducer(a,...vkc),...vkc);
 export const tdIdentity = identity;
-export const tdTap = fn => nextReducer => (a,v,k,c) => {
-  fn(a,v,k,c);
-  return nextReducer(a,v,k,c);
+export const tdTap = fn => nextReducer => (...args) => {
+  fn(...args);
+  return nextReducer(...args);
 };
-export const tdLog = (msg='log')=>tdTap((a,v,k,c)=>console.log(msg,a,v,k));
-export const tdFilter = (pred=(v,k,c)=>true) => nextReducer => (a,v,k,c) =>
-  pred(v,k,c) ? nextReducer(a,v,k,c) : a;
+export const tdLog = (msg='log',pred=stubTrue)=>tdTap((...args)=>pred(...args)&&console.log(msg,...args));
+export const tdFilter = (pred=stubTrue) => nextReducer => (a,...args) =>
+  pred(...args) ? nextReducer(a,...args) : a;
+export const tdFilterWithAcc = (pred=stubTrue) => nextReducer => (...args) =>
+  pred(...args) ? nextReducer(...args) : args[0];
 export const tdOmit = pred=>tdFilter(not(pred));
+export const tdOmitWithAcc = pred=>tdFilterWithAcc(not(pred));
 export const tdPipeToArray = (...fns)=>tdToArray(compose(...fns));
 export const tdPipeToObject = (...fns)=>tdToObject(compose(...fns));
 export const tdDPipeToArray = (coll,...fns)=>tdToArray(compose(...fns))(coll);
 export const tdDPipeToObject = (coll,...fns)=>tdToObject(compose(...fns))(coll);
-export const reduceAny = (reducer,v,acc)=>{
-  if (isPromise(v)||isPromise(acc)){
-    return Promise.all([v,acc]).then(([vv,aa])=>reduceAny(reducer,vv,aa));
-  }
-  if (isArray(v)) {
-    for (let k=-1, l=v.length;++k < l;){
-      (acc=isPromise(acc)
-      ? Promise.all([v[k],acc]).then(([vv,aa])=>reducer(aa, vv, k, v))
-      : reducer(acc, v[k], k, v));
+export const reduceAny = reducer=>{
+  const inner = (acc,v,...args)=>{
+    if (isPromise(v)||isPromise(acc)){
+      return Promise.all([v,acc]).then(([vv,aa])=>inner(vv,aa,...args));
     }
-    return acc;
-  }
-  if (isObjectLike(v)){
-    let k;
-    for (k in v){
-      (acc=isPromise(acc)
+    if (isArray(v)) {
+      for (let k=-1, l=v.length;++k < l;){
+        (acc=isPromise(acc)
         ? Promise.all([v[k],acc]).then(([vv,aa])=>reducer(aa, vv, k, v))
         : reducer(acc, v[k], k, v));
+      }
+      return acc;
     }
-    return acc;
+    if (isObjectLike(v)){
+      let k;
+      for (k in v){
+        (acc=isPromise(acc)
+          ? Promise.all([v[k],acc]).then(([vv,aa])=>reducer(aa, vv, k, v))
+          : reducer(acc, v[k], k, v));
+      }
+      return acc;
+    }
+    return reducer(acc, v,...args);
   }
-  return reducer(acc, v);
+  return inner;
 }
 
 
-export const transduceDF = (
-  preOrderTransducer=tdIdentity,
-  childTransducer=dfReducer=>(a,v,k,c)=> isObjectLike(v) ? reduceAny(dfReducer,v,{}) : v,
-  postOrderTransducer=tdIdentity,
-  postOrderCombiner=appendObjectReducer,
-)=>{
-  let childReducer;
-  const dfReducer = compose(
-    preOrderTransducer,
-    nextReducer=>(a,v,k,c)=>nextReducer(a,childReducer(a,v,k,c),k,c),
-    postOrderTransducer,
-  )(postOrderCombiner);
-
-  return (acc,v)=>{
-    if(childReducer===undefined)childReducer = childTransducer(dfReducer);
-    return childReducer(acc,v);
-  }
+export const transduceDF = ({
+  descentTransducer=tdIdentity,
+  visitTransducer=nextReducer=>(a,v,k,c,dfReducer)=>{
+    v = isObjectLike(v) ? dfReducer({},v) : v;
+    return nextReducer(a,v,k,c);
+  },
+  ascentTransducer=tdIdentity,
+  edgeCombiner=(acc={},v,k)=>{acc[k]=v;return acc;},
+  childrenLoopReducer=reduceAny
+}={})=>{
+  const tempdfReducer = compose(
+    descentTransducer,
+    nextReducer=>(a,v,k,c)=>nextReducer(a,v,k,c,dfReducer),
+    visitTransducer,
+    ascentTransducer,
+  )(edgeCombiner);
+  const dfReducer = childrenLoopReducer(tempdfReducer);
+  return dfReducer;
+  // return (a,v,k,c)=>isObjectLike(v) ? dfReducer(a,v,k,c) : tempdfReducer(a,v,k,c);
 }
-
 
 // lodash equivalents
 export const memoize = (fn, by = identity) => {
