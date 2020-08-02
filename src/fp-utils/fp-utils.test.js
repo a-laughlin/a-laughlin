@@ -212,8 +212,8 @@ describe("tdToObject", () => {
     expect(blankObjectResult).toEqual({});
   });
 });
-describe("transduceDF", () => {
-  it("transduceDF should map trees",()=>{
+describe("transduceDF/BF", () => {
+  it("should map synchronous trees",()=>{
     const oTree={a:{a1:{a11:true},a2:true},b:{b1:true}};
     const aTree=['a',['aa',['aaa']]];
     
@@ -240,7 +240,7 @@ describe("transduceDF", () => {
     const blankArrayResult=transduceDF()({},[]);
     expect(blankArrayResult).toEqual({});
   });
-  it("transduceDF should fold trees",()=>{
+  it("should fold synchronous trees",()=>{
     // map to flattened tree
     const oTree={a:{a1:{a11:true},a2:true},b:{b1:true}};
     expect(transduceDF({
@@ -257,7 +257,7 @@ describe("transduceDF", () => {
     })({},aTree))
     .toEqual({a:1,aa:1,aaa:1});
   })
-  it("transduceDF should unfold trees",()=>{
+  it("should unfold synchronous trees",()=>{
     // map to flattened tree
     expect(
       transduceDF({
@@ -279,8 +279,7 @@ describe("transduceDF", () => {
         ],
       ],
     ]);
-  })
-
+  });
 });
 describe("partition", () => {
   it("partition should produce expected results",()=>{
