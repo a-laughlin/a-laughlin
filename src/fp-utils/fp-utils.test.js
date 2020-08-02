@@ -31,7 +31,9 @@ import {
   reduceAny,
   mapToObject,
   tdLog,
-  appendArrayReducer
+  appendArrayReducer,
+  tdDfObjectLikeValuesWith,
+  transduceBF
 } from './fp-utils'
 describe("and", () => {
   it('should ensure multiple predicates pass', () =>{
@@ -215,8 +217,9 @@ describe("transduceDF", () => {
     const oTree={a:{a1:{a11:true},a2:true},b:{b1:true}};
     const aTree=['a',['aa',['aaa']]];
     
-    expect(transduceDF()({},aTree))
-    .toEqual({"0":"a","1":{"0":"aa","1":{"0":"aaa"}}});
+    let expected = {"0":"a","1":{"0":"aa","1":{"0":"aaa"}}};
+    expect(transduceDF()({},aTree)).toEqual(expected);
+    expect(transduceBF()({},aTree)).toEqual(expected);
     
     expect(transduceDF()({},oTree))
     .toEqual({a:{a1:{a11:true},a2:true},b:{b1:true}});
@@ -241,7 +244,7 @@ describe("transduceDF", () => {
     // map to flattened tree
     const oTree={a:{a1:{a11:true},a2:true},b:{b1:true}};
     expect(transduceDF({
-      visitTransducer:tdMapWithAcc((a,v,k,c,dfReducer)=>isObjectLike(v) ? dfReducer(a,v) : v),
+      visitTransducer:tdDfObjectLikeValuesWith(identity),
       edgeCombiner:(acc={},v,k)=>(acc[k]=1)&&acc
     })({},oTree))
     .toEqual({a:1,a1:1,a11:1,a2:1,b:1,b1:1});
@@ -250,7 +253,7 @@ describe("transduceDF", () => {
     expect(transduceDF({
       visitTransducer:tdMapWithAcc((a,v,k,c,dfReducer)=>isObjectLike(v) ? dfReducer(a,v) : v),
       ascentTransducer:tdFilter(isString),
-      edgeCombiner:(acc={},v,k)=>(acc[v]=1)&&acc
+      edgeCombiner:(acc,v)=>(acc[v]=1)&&acc
     })({},aTree))
     .toEqual({a:1,aa:1,aaa:1});
   })
@@ -259,9 +262,7 @@ describe("transduceDF", () => {
     expect(
       transduceDF({
         descentTransducer: tdFilter((v) => v < 5),
-        visitTransducer: tdMap((v, k, c, dfReducer) =>
-          dfReducer([], new Array(v + 1).fill(v + 1))
-        ),
+        visitTransducer: tdMap((v, k, c, dfReducer) =>dfReducer([], new Array(v + 1).fill(v + 1))),
         edgeCombiner: appendArrayReducer,
       })([], 1)
     ).toEqual([
