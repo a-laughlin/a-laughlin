@@ -3,4 +3,3 @@ coverage
 __pycache__
 .vscode
 *.log
-*.lock
