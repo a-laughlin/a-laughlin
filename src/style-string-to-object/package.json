@@ -1,11 +1,11 @@
 {
   "name": "@a-laughlin/style-string-to-object",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "short style syntax for efficient object styles",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
   "license": "ISC",
-  "type":"module",
+  "type": "module",
   "main": "style-string-to-object.js",
   "browser": "style-string-to-object.js",
   "module": "style-string-to-object.js",

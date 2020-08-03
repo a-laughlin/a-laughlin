@@ -1,11 +1,11 @@
 {
   "name": "@a-laughlin/observable-utils",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "functional reactive programming utils (aka streams,observables)",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
   "license": "ISC",
-  "type":"module",
+  "type": "module",
   "main": "observable-utils.js",
   "module": "observable-utils.js",
   "browser": "observable-utils.js",

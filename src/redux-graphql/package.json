@@ -1,6 +1,6 @@
 {
   "name": "redux-graphql",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "auto-generate and query redux with a graphql schema",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
@@ -14,7 +14,7 @@
   },
   "//graphql-tag requires graphql": true,
   "dependencies": {
-    "@a-laughlin/fp-utils": "*",
+    "@a-laughlin/fp-utils": "^0.0.2",
     "@testing-library/react-hooks": "^3.3.0",
     "es-dev-server": "^1.57.1",
     "graphql": "^15.3.0",

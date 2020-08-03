@@ -1,16 +1,16 @@
 {
   "name": "@a-laughlin/react-utils",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "react utils",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
   "license": "ISC",
-  "type":"module",
+  "type": "module",
   "module": "react-utils.js",
   "main": "react-utils.js",
   "browser": "react-utils.js",
   "dependencies": {
-    "@a-laughlin/fp-utils": "*",
+    "@a-laughlin/fp-utils": "^0.0.2",
     "react": ">=16.9"
   }
 }
