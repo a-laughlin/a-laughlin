@@ -9,12 +9,18 @@
   "main": "redux-graphql.js",
   "browser": "redux-graphql.js",
   "module": "redux-graphql.js",
+  "scripts": {
+    "example": "es-dev-server --root-dir ./src/redux-graphql/ --app-index redux-graphql-example.html --node-resolve --watch --open --preserve-symlinks --module-dirs ./src/**"
+  },
   "//graphql-tag requires graphql": true,
   "dependencies": {
+    "@a-laughlin/fp-utils": "*",
     "@testing-library/react-hooks": "^3.3.0",
+    "es-dev-server": "^1.57.1",
     "graphql": "^15.3.0",
     "graphql-tag": "^2.10.4",
     "react": "^16.13.1",
+    "react-dom": "^16.13.1",
     "react-test-renderer": "^16.13.1",
     "redux": "^4.0.5",
     "redux-mock-store": "^1.5.4"

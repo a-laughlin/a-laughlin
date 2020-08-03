@@ -51,23 +51,27 @@
   "//@babel/cli": "^7.4.4",
   "dependencies": {
     "@rollup/plugin-commonjs": "^14.0.0",
+    "@rollup/plugin-html": "^0.2.0",
     "@rollup/plugin-multi-entry": "^3.0.1",
     "@rollup/plugin-node-resolve": "^8.4.0",
-    "rollup": "^2.22.1"
+    "@rollup/plugin-sucrase": "^3.1.0",
+    "rollup": "^2.22.1",
+    "rollup-plugin-visualizer": "^4.0.4"
   },
   "scripts": {
     "story": "",
     "watch": "webpack --mode='development' --watch",
     "start": "webpack-dev-server --mode='development' --open",
+    "example": "es-dev-server --root-dir ./dist/es/redux-graphql/ --app-index index.html --node-resolve --watch --open --preserve-symlinks --module-dirs src",
     "server": "node server.js",
-    "build": "webpack --mode='production'",
+    "build": "rm -rf ./dist && rollup -c rollup.config.js",
     "test:clearcache": "jest --clear-cache",
     "test:exp:nowatch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --no-cache --no-watch ./src/**/*.test.js",
     "test:exp:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --no-cache --watch ./src/**/*.test.js",
     "test:nowatch": "jest --no-cache --no-watch ./src/**/*.test.js",
     "test:watch": "jest --watch ./src/**/*.test.js",
-    "// test:debug requires going to chrome://inspect and opening chrome devtools for node":"",
-    "// can also just use node debug in vscode with f5":"",
+    "// test:debug requires going to chrome://inspect and opening chrome devtools for node": "",
+    "// can also just use node debug in vscode with f5": "",
     "test:debug": "node --inspect node_modules/.bin/jest --watch --runInBand ./src/**/*.test.js",
     "test": "jest --watch ./src/**/*.test.js"
   }

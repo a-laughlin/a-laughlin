@@ -1,11 +1,9 @@
 import indexSchema from './indexSchema'
-import {isFunction,isObjectLike,not,reduce,transX,transToObject,cond,identity,isArray,and,stubTrue,diffBy, filterToArray, transToArray, omitToArray, tdMap, tdFilter, tdDPipeToArray, tdTap, transduceDF} from '@a-laughlin/fp-utils';
+import {isFunction,isObjectLike,not,reduce,transToObject,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, tdTap, transduceDF} from '@a-laughlin/fp-utils';
 import _matchesProperty from 'lodash-es/matchesProperty'
 import _matches from 'lodash-es/matches';
 import _property from 'lodash-es/property';
-import { isObject } from 'util';
 import { useState,useEffect } from 'react';
-export const extendSchemaWithQueryAndMutationDefinitions=( schema )=>{};
 
 // normalize collectionTree,ArrayTree,item,value
 // normalize tree,set,value
@@ -168,10 +166,8 @@ export const getMemoizedObjectQuerier=(
 
       const queryMatcherFns=tdDPipeToArray(
         args,
-        // tdTap((a,v,k,c)=>console.log('before',a,v,k,c)),
         tdFilter((v,k)=>k in queryMatchers),
         tdMap((v,k)=>queryMatchers[k](args[k])),
-        // tdTap((a,v,k,c)=>console.log('after',a,v,k,c)),
       );
       queryMatcherFns[0]||(queryMatcherFns[0]=queryMatchers.filter(args));
       const matchesFn = and(...queryMatcherFns);

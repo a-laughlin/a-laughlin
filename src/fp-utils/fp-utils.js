@@ -1,18 +1,14 @@
 
 import _merge from 'lodash-es/merge';
-import {default as _set} from 'lodash-es/set';
 import _overEvery from 'lodash-es/overEvery';
 import _overSome from 'lodash-es/overSome';
 import _sortBy from 'lodash-es/sortBy';
-import _pick from 'lodash-es/pick';
 import _isPlainObject from 'lodash-es/isPlainObject';
 import _matches from 'lodash-es/matches';
 import _over from 'lodash-es/over';
 import isError from 'lodash-es/isError';
 import isInteger from 'lodash-es/isInteger';
 import isNumber from 'lodash-es/isNumber';
-import _nthArg from 'lodash-es/nthArg';
-import { isObject } from 'util';
 
 // curry/compose/pipe, for later fns
 let curry,compose,pipe;

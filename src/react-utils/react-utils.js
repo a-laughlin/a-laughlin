@@ -1,5 +1,5 @@
 import {useState,useEffect,createElement} from 'react';
-import {styleStringToObj} from '@a-laughlin/style-string-to-obj'
+import {styleStringToObj} from '@a-laughlin/style-string-to-object'
 
 export const toHookComposer = (component)=>(...hooks)=>{
   function hookComposer (...props){

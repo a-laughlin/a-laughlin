@@ -1,5 +1,5 @@
 {
-  "name": "style-string-to-object",
+  "name": "@a-laughlin/style-string-to-object",
   "version": "0.0.1",
   "description": "short style syntax for efficient object styles",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
