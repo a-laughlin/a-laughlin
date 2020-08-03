@@ -32,22 +32,14 @@ const examplePlugin = getExamplePlugin();
 
 export default [
   ...modules.map(p=>({
-    external:['lodash-es'],
+    external:[
+      'lodash-es',
+    ],
     input:[p],
-    plugins:[resolvePlugin,commonjsPlugin],
+    plugins:[resolvePlugin,commonjsPlugin,visualizerPlugin],
     output:[{
       dir: 'dist/es', format:'es', compact:true,
       entryFileNames:"[name]/[name].js",
-      // manualChunks:(id,{getModuleIds,getModuleInfo})=>{
-      //   // if (id.includes('node_modules/'))return id.replace(/^.*node_modules\/(.*?)\//,'$1');
-      //   // if (id.includes('node_modules/lodash-es/'))return id.replace(/^.*node_modules\//,p.replace(/^src\/(.*?)\/.*$/,'$1/'));
-      //   if (id.includes('node_modules/'))return id.replace(/^.*node_modules\//,'');
-      //   // if (id.includes('a-laughlin/src/')){
-      //   //   const {dirName,fileName} = id.match(/^.*\/(?<dirName>.*?)\/(?<fileName>.*?)$/).groups;
-      //   //   return `${dirName}/${fileName}`;
-      //   // }
-      //   return id;
-      // }
     }]
   })),
   {

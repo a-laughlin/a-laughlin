@@ -11,5 +11,6 @@
   "module": "style-string-to-object.js",
   "dependencies": {
     "lodash-es": "^4"
-  }
+  },
+  "gitHead": "fa60911fd1d49d4e370499c842e1bdce64ac8798"
 }
