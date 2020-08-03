@@ -1,19 +1,13 @@
 
-import _merge from 'lodash-es/merge';
-import _overEvery from 'lodash-es/overEvery';
-import _overSome from 'lodash-es/overSome';
-import _sortBy from 'lodash-es/sortBy';
-import _isPlainObject from 'lodash-es/isPlainObject';
-import _matches from 'lodash-es/matches';
-import _over from 'lodash-es/over';
-import isError from 'lodash-es/isError';
 import isInteger from 'lodash-es/isInteger';
 import isNumber from 'lodash-es/isNumber';
-
 // curry/compose/pipe, for later fns
 let curry,compose,pipe;
 export const identity=x=>x;
-if (process.env.NODE_ENV !== 'production') {
+if(typeof globalThis.process==='undefined'){
+  globalThis.process={env:{NODE_ENV:'production'}}
+}
+if (globalThis.process.env.NODE_ENV !== 'production') {
   // debugging versions
   const fToString = fn => fn.name ? fn.name : fn.toString();
   curry =(fn) => {
@@ -83,9 +77,8 @@ export const frozenEmptyObject = Object.freeze(Object.create(null));
 
 
 // primitive predicates
-// export {isError,isInteger,isNumber,isObjectLike,hasIn,has,isWeakMap,isWeakSet,isMap,
-//   isSet,isEmpty,isString,isPlainObject,isFunction,isNull,isUndefined,every,conforms} from 'lodash-es';
-export {isInteger,isNumber,isError};
+export {isInteger,isNumber};
+export const isError = and(isObjectLike,e=>typeof e.message === 'string')
 export const isString = arg=>typeof arg==='string';
 export const isFunction = arg=>typeof arg==='function';
 export const isObjectLike = arg=>typeof arg==='object' && arg !== null;
@@ -96,6 +89,7 @@ export const is = val1=>val2=>val1===val2;
 export const isUndefOrNull = val => val === undefined || val === null;
 export const isProductionEnv = ()=>process.env.NODE_ENV === 'production';
 export const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';
+
 
 // debugging
 export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
@@ -111,7 +105,6 @@ const makeCollectionFn=(arrayFn,objFn)=>(...args)=>{
 export const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(...args);
 export const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 export const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
-export const mergeToBlank = acceptArrayOrArgs(vals => _merge({},...vals));
 
 export const overObj = fnsObj=>(...args)=>mo(f=>f(...args))(fnsObj);
 export const overArray = fnsArray=>(...args)=>ma(f=>f(...args))(fnsArray);
@@ -132,8 +125,14 @@ export const ensurePropIsObject = ensurePropWith(stubObject);
 export const not = fn=>(...args)=>!fn(...args);
 export const ifElseUnary = (pred,T,F=identity)=>arg=>pred(arg)?T(arg):F(arg);
 export const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
-export const and = (...args)=>_overEvery(args);
-export const or = (...fns)=>_overSome(fns);
+export const and = (...preds)=>(...args)=>{
+  for (const p of preds)if(p(...args)!==true)return false;
+  return true;
+}
+export const or = (...preds)=>(...args)=>{
+  for (const p of preds)if(p(...args)===true)return true;
+  return false;
+}
 export const none = (...fns)=>not(or(...fns));
 export const xor = fn=>pipe(filter(fn),len1);
 export const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (let [pred,val] of arrs){if(pred(...x)){return val;}}});
@@ -229,7 +228,7 @@ export const fmo = filterMapToObject; // backward compatability
 export const filterMapToSame=makeCollectionFn(filterMapToArray,filterMapToObject);
 export const fmx=filterMapToSame; // backward compatability
 
-export const reduce = (fn) => (coll,acc) => tdReduceListValue(fn)(acc,coll);
+
 
 export const first = c=>{
   if (isArray(c)) return c[0];
@@ -239,9 +238,8 @@ export const last = c =>{
   c=isArray(c)?c:Object.values(c);
   return c[c.length-1];
 }
-
-const partitionObject = (...preds)=>_over([...(preds.map(p=>fo(p))),fo(none(...preds))]);
-const partitionArray = (...preds)=>_over([...(preds.map(fa)),fa(none(...preds))]);
+const partitionObject = (...preds)=>overArray([...(preds.map(p=>fo(p))),fo(none(...preds))]);
+const partitionArray = (...preds)=>overArray([...(preds.map(fa)),fa(none(...preds))]);
 export const partition = makeCollectionFn(partitionArray,partitionObject);
 
 
@@ -295,7 +293,7 @@ export const pget = cond( // polymorphic get
     return targ=>str.reduce((t,s)=>isArray(t) && !isInteger(+s) ? t.map(o=>o[s]) : t[s], targ)
   }],
   [isArray,keys=>pick(keys)],
-  [_isPlainObject, obj=>target=>mo(f=>pget(f)(target))(obj)],
+  [isObjectLike, obj=>target=>mo(f=>pget(f)(target))(obj)],
   [stubTrue,identity], // handles the function case
 );
 export const pick=cond(
@@ -358,6 +356,8 @@ export const tdMap = mapper => nextReducer => (a,v,...kc) =>
   nextReducer(a,mapper(v,...kc),...kc);
 export const tdMapWithAcc = mapper => nextReducer => (a,v,...kc) =>
   nextReducer(a,mapper(a,v,...kc),...kc);
+export const tdAssign = f=>nextReducer => (a,v,...kc) =>nextReducer({...a,...f(a,v,...kc)},v,...kc);
+export const tdSet = (key,f)=>nextReducer => (a,v,...kc) =>nextReducer({...a,[key]:f(a,v,...kc)},v,...kc);
 export const tdReduce = reducer => nextReducer => (a,...vkc) =>
   nextReducer(reducer(a,...vkc),...vkc);
 export const tdIdentity = identity;
@@ -365,6 +365,7 @@ export const tdTap = fn => nextReducer => (...args) => {
   fn(...args);
   return nextReducer(...args);
 };
+
 export const tdLog = (msg='log',pred=stubTrue)=>tdTap((...args)=>pred(...args)&&console.log(msg,...args));
 export const tdFilter = (pred=stubTrue) => nextReducer => (a,...args) =>
   pred(...args) ? nextReducer(a,...args) : a;
@@ -405,7 +406,9 @@ export const tdReduceListValue = nextReducer=>(acc,v,k,...args)=>{
       : nextReducer(acc, v[kk], kk, v));
   }
   return acc;
-}
+};
+
+export const reduce = (fn) => (coll,acc) => tdReduceListValue(fn)(acc,coll);
 export const tdIfElse=(pred,tdT,tdF=identity)=>nextReducer=>ifElse(pred,tdT(nextReducer),tdF(nextReducer));
 export const tdCond=acceptArrayOrArgs(predTransducerPairs=>{
   if(predTransducerPairs.length===0)
@@ -439,7 +442,7 @@ export const transduceDF = ({
   const dfReducer = childrenLoopReducer(tempdfReducer);
   return dfReducer;
   // return (a,v,k,c)=>isObjectLike(v) ? dfReducer(a,v,k,c) : tempdfReducer(a,v,k,c);
-}
+};
 
 
 export const transduceBF = ({

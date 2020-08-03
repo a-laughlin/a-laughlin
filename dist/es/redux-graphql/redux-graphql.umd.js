@@ -1,4 +1,4 @@
-import {useState,useEffect}from'react';/**
+(function(g,f){typeof exports==='object'&&typeof module!=='undefined'?f(exports,require('react')):typeof define==='function'&&define.amd?define(['exports','react'],f):(g=typeof globalThis!=='undefined'?globalThis:g||self,f(g.ReduxGraphql={},g.react));}(this,(function(exports, react){'use strict';/**
  * Checks if `value` is the
  * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
  * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
@@ -3699,8 +3699,8 @@ const getMemoizedObjectQuerier=(
 // instead of useMutation, use a built in reducer, or add one
 const getUseQuery=(store,querier)=>{
   return (query,variables)=>{
-    const [state,setState] = useState(querier(store.getState(),query,variables));
-    useEffect(()=>store.subscribe(()=> { // returns the unsubscribe function
+    const [state,setState] = react.useState(querier(store.getState(),query,variables));
+    react.useEffect(()=>store.subscribe(()=> { // returns the unsubscribe function
       const result = querier(store.getState(),query,variables);
       if (result!==state) setState({...state,...result});
     }),[]);
@@ -4205,4 +4205,4 @@ const triggerStorePermutationUpdates = (store,schema,query,act)=>{
 //   definition: { read: identity, write: identity },
 //   selection: { read: identity, write: identity },
 // });
-export{getMemoizedObjectQuerier,getUseQuery,schemaToStateOpsMapper,triggerStorePermutationUpdates};
+exports.getMemoizedObjectQuerier=getMemoizedObjectQuerier;exports.getUseQuery=getUseQuery;exports.schemaToStateOpsMapper=schemaToStateOpsMapper;exports.triggerStorePermutationUpdates=triggerStorePermutationUpdates;Object.defineProperty(exports,'__esModule',{value:true});})));

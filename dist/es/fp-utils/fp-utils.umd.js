@@ -1,4 +1,4 @@
-/**
+(function(g,f){typeof exports==='object'&&typeof module!=='undefined'?f(exports):typeof define==='function'&&define.amd?define(['exports'],f):(g=typeof globalThis!=='undefined'?globalThis:g||self,f(g.FpUtils={}));}(this,(function(exports){'use strict';/**
  * Checks if `value` is the
  * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
  * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
@@ -467,7 +467,7 @@ function uniqueId(prefix) {
   var id = ++idCounter;
   return toString(prefix) + id;
 }// curry/compose/pipe, for later fns
-let curry,compose,pipe;
+
 const identity=x=>x;
 if(typeof globalThis.process==='undefined'){
   globalThis.process={env:{NODE_ENV:'production'}};
@@ -475,7 +475,7 @@ if(typeof globalThis.process==='undefined'){
 if (globalThis.process.env.NODE_ENV !== 'production') {
   // debugging versions
   const fToString = fn => fn.name ? fn.name : fn.toString();
-  curry =(fn) => {
+  exports.curry =(fn) => {
     const f1 = (...args) => {
       if (args.length >= fn.length) { return fn(...args) }      const f2 = (...more) => f1(...args, ...more);
       f2.toString = () => `${fToString(fn)}(${args.join(', ')})`;
@@ -487,7 +487,7 @@ if (globalThis.process.env.NODE_ENV !== 'production') {
 
   // based on https://dev.to/ascorbic/creating-a-typed-compose-function-in-typescript-3-351i
 
-  compose = (...fns) => {
+  exports.compose = (...fns) => {
     if (fns.length===0)return identity;
     if (fns.length===1)return fns[0];
     const fn=fns[fns.length-1];
@@ -496,7 +496,7 @@ if (globalThis.process.env.NODE_ENV !== 'production') {
     composed.toString = () => `compose(${fns.map(fToString).join(', ')})`;
     return composed;
   };
-  pipe = (fn=identity,...fns) => {
+  exports.pipe = (fn=identity,...fns) => {
     if (fns.length===0)return fn;
     const piped = (...args) => fns.reduce((acc, f) => f(acc), fn(...args));
     piped.toString = () => `pipe(${fns.reverse().map(fToString).join(', ')})`;
@@ -504,15 +504,15 @@ if (globalThis.process.env.NODE_ENV !== 'production') {
   };
 } else {
   // eslint-disable-next-line
-  curry = fn => (...args) => args.length >= fn.length ? fn(...args) : curry(fn.bind(null, ...args));
+  exports.curry = fn => (...args) => args.length >= fn.length ? fn(...args) : exports.curry(fn.bind(null, ...args));
   // eslint-disable-next-line
-  compose = (...fns) => (...args) =>{
+  exports.compose = (...fns) => (...args) =>{
     if (fns.length===0)return identity;
     if (fns.length===1)return fns[0];
     return fns.slice(0,fns.length-1).reduceRight((acc, f) => f(acc), fns[fns.length-1](...args));
   };
   // eslint-disable-next-line
-  pipe = (fn=identity,...fns) => (...args) => {
+  exports.pipe = (fn=identity,...fns) => (...args) => {
     if (fns.length===0)return fn;
     return fns.reduce((acc, f) => f(acc), fn(...args));
   };
@@ -554,7 +554,7 @@ const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';
 const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
 
 // flow
-const dpipe = (data,...args)=>pipe(...args)(data);
+const dpipe = (data,...args)=>exports.pipe(...args)(data);
 // functions
 const makeCollectionFn=(arrayFn,objFn)=>(...args)=>{
   const aFn=arrayFn(...args);
@@ -593,7 +593,7 @@ const or = (...preds)=>(...args)=>{
   return false;
 };
 const none = (...fns)=>not(or(...fns));
-const xor = fn=>pipe(filter(fn),len1);
+const xor = fn=>exports.pipe(filter(fn),len1);
 const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (let [pred,val] of arrs){if(pred(...x)){return val;}}});
 const cond = acceptArrayOrArgs(arrs=>(...args)=>ensureFunction(condNoExec(...arrs)(...args))(...args));
 
@@ -840,10 +840,10 @@ const tdNormalizePromises = nextReducer => (acc,v,...args)=>{
 };
 const tdOmit = pred=>tdFilter(not(pred));
 const tdOmitWithAcc = pred=>tdFilterWithAcc(not(pred));
-const tdPipeToArray = (...fns)=>tdToArray(compose(...fns));
-const tdPipeToObject = (...fns)=>tdToObject(compose(...fns));
-const tdDPipeToArray = (coll,...fns)=>tdToArray(compose(...fns))(coll);
-const tdDPipeToObject = (coll,...fns)=>tdToObject(compose(...fns))(coll);
+const tdPipeToArray = (...fns)=>tdToArray(exports.compose(...fns));
+const tdPipeToObject = (...fns)=>tdToObject(exports.compose(...fns));
+const tdDPipeToArray = (coll,...fns)=>tdToArray(exports.compose(...fns))(coll);
+const tdDPipeToObject = (coll,...fns)=>tdToObject(exports.compose(...fns))(coll);
 const tdReduceListValue = nextReducer=>(acc,v,k,...args)=>{
   if (!isObjectLike$1(v))
     return nextReducer(acc, v,k,...args);
@@ -889,7 +889,7 @@ const transduceDF = ({
   edgeCombiner=(acc={},v,k)=>{acc[k]=v;return acc;},
   childrenLoopReducer=tdReduceListValue
 }={})=>{
-  const tempdfReducer = compose(
+  const tempdfReducer = exports.compose(
     descentTransducer,
     nextReducer=>(a,v,k,c)=>nextReducer(a,v,k,c,dfReducer),
     visitTransducer,
@@ -913,7 +913,7 @@ const transduceBF = ({
     pushToArray(queue,[aa,vv,kk,cc]);
     return aa;
   });
-  const reduceItem = compose(
+  const reduceItem = exports.compose(
     preVisitTransducer,
     nextReducer=>(a,v,k,c)=>{
       if (isObjectLike$1(v)){
@@ -962,4 +962,4 @@ const diffObjs = (a={},b={}) => {
 };
 
 // TODO decide behavior when collections are arrays and no "by" key to diff them by
-const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);export{acceptArrayOrArgs,and,appendArrayReducer,appendObjectReducer,compose,cond,condNoExec,constant,converge,curry,diffBy,diffObjs,dpipe,ensureArray,ensureFunction,ensureProp,ensurePropIsArray,ensurePropIsObject,ensurePropWith,ensureString,fa,filterMapToArray,filterMapToObject,filterMapToSame,filterToArray,filterToObject,filterToSame,first,fma,fmo,fmx,fo,frozenEmptyArray,frozenEmptyObject,fx,groupBy,groupByKeys,groupByValues,has,identity,ifElse,ifElseUnary,immutableFilterObjectToObject,immutableTransArrayToArray,immutableTransObjectToObject,invokeArgsOnObj,invokeObjectWithArgs,is,isArray$1 as isArray,isDeepEqual,isError,isFalsy,isFunction,isInteger,isNumber,isObjectLike$1 as isObjectLike,isProductionEnv,isPromise,isString,isTruthy,isUndefOrNull,keyBy,last,len,len0,len1,ma,mapToArray,mapToObject,mapToSame,memoize,mo,mx,none,noop,not,oa,objStringifierFactory,objToUrlParams,omitToArray,omitToObject,omitToSame,oo,or,over,overArray,overObj,ox,partition,pget,pick,pipe,plog,ra,range,reduce,renameProps,reverse,ro,rx,slice,sort,stubArray,stubFalse,stubNull,stubObject,stubString,stubTrue,tdAssign,tdCond,tdDPipeToArray,tdDPipeToObject,tdDfObjectLikeValuesWith,tdFilter,tdFilterWithAcc,tdIdentity,tdIfElse,tdIfValueObjectLike,tdKeyBy,tdLog,tdMap,tdMapWithAcc,tdNormalizePromises,tdOmit,tdOmitWithAcc,tdPipeToArray,tdPipeToObject,tdReduce,tdReduceListValue,tdSet,tdTap,tdToArray,tdToObject,tdToSame,tdValue,transToArray,transToObject,transToSame,transduce,transduceBF,transduceDF,uniqueId,xor};
+const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);exports.acceptArrayOrArgs=acceptArrayOrArgs;exports.and=and;exports.appendArrayReducer=appendArrayReducer;exports.appendObjectReducer=appendObjectReducer;exports.cond=cond;exports.condNoExec=condNoExec;exports.constant=constant;exports.converge=converge;exports.diffBy=diffBy;exports.diffObjs=diffObjs;exports.dpipe=dpipe;exports.ensureArray=ensureArray;exports.ensureFunction=ensureFunction;exports.ensureProp=ensureProp;exports.ensurePropIsArray=ensurePropIsArray;exports.ensurePropIsObject=ensurePropIsObject;exports.ensurePropWith=ensurePropWith;exports.ensureString=ensureString;exports.fa=fa;exports.filterMapToArray=filterMapToArray;exports.filterMapToObject=filterMapToObject;exports.filterMapToSame=filterMapToSame;exports.filterToArray=filterToArray;exports.filterToObject=filterToObject;exports.filterToSame=filterToSame;exports.first=first;exports.fma=fma;exports.fmo=fmo;exports.fmx=fmx;exports.fo=fo;exports.frozenEmptyArray=frozenEmptyArray;exports.frozenEmptyObject=frozenEmptyObject;exports.fx=fx;exports.groupBy=groupBy;exports.groupByKeys=groupByKeys;exports.groupByValues=groupByValues;exports.has=has;exports.identity=identity;exports.ifElse=ifElse;exports.ifElseUnary=ifElseUnary;exports.immutableFilterObjectToObject=immutableFilterObjectToObject;exports.immutableTransArrayToArray=immutableTransArrayToArray;exports.immutableTransObjectToObject=immutableTransObjectToObject;exports.invokeArgsOnObj=invokeArgsOnObj;exports.invokeObjectWithArgs=invokeObjectWithArgs;exports.is=is;exports.isArray=isArray$1;exports.isDeepEqual=isDeepEqual;exports.isError=isError;exports.isFalsy=isFalsy;exports.isFunction=isFunction;exports.isInteger=isInteger;exports.isNumber=isNumber;exports.isObjectLike=isObjectLike$1;exports.isProductionEnv=isProductionEnv;exports.isPromise=isPromise;exports.isString=isString;exports.isTruthy=isTruthy;exports.isUndefOrNull=isUndefOrNull;exports.keyBy=keyBy;exports.last=last;exports.len=len;exports.len0=len0;exports.len1=len1;exports.ma=ma;exports.mapToArray=mapToArray;exports.mapToObject=mapToObject;exports.mapToSame=mapToSame;exports.memoize=memoize;exports.mo=mo;exports.mx=mx;exports.none=none;exports.noop=noop;exports.not=not;exports.oa=oa;exports.objStringifierFactory=objStringifierFactory;exports.objToUrlParams=objToUrlParams;exports.omitToArray=omitToArray;exports.omitToObject=omitToObject;exports.omitToSame=omitToSame;exports.oo=oo;exports.or=or;exports.over=over;exports.overArray=overArray;exports.overObj=overObj;exports.ox=ox;exports.partition=partition;exports.pget=pget;exports.pick=pick;exports.plog=plog;exports.ra=ra;exports.range=range;exports.reduce=reduce;exports.renameProps=renameProps;exports.reverse=reverse;exports.ro=ro;exports.rx=rx;exports.slice=slice;exports.sort=sort;exports.stubArray=stubArray;exports.stubFalse=stubFalse;exports.stubNull=stubNull;exports.stubObject=stubObject;exports.stubString=stubString;exports.stubTrue=stubTrue;exports.tdAssign=tdAssign;exports.tdCond=tdCond;exports.tdDPipeToArray=tdDPipeToArray;exports.tdDPipeToObject=tdDPipeToObject;exports.tdDfObjectLikeValuesWith=tdDfObjectLikeValuesWith;exports.tdFilter=tdFilter;exports.tdFilterWithAcc=tdFilterWithAcc;exports.tdIdentity=tdIdentity;exports.tdIfElse=tdIfElse;exports.tdIfValueObjectLike=tdIfValueObjectLike;exports.tdKeyBy=tdKeyBy;exports.tdLog=tdLog;exports.tdMap=tdMap;exports.tdMapWithAcc=tdMapWithAcc;exports.tdNormalizePromises=tdNormalizePromises;exports.tdOmit=tdOmit;exports.tdOmitWithAcc=tdOmitWithAcc;exports.tdPipeToArray=tdPipeToArray;exports.tdPipeToObject=tdPipeToObject;exports.tdReduce=tdReduce;exports.tdReduceListValue=tdReduceListValue;exports.tdSet=tdSet;exports.tdTap=tdTap;exports.tdToArray=tdToArray;exports.tdToObject=tdToObject;exports.tdToSame=tdToSame;exports.tdValue=tdValue;exports.transToArray=transToArray;exports.transToObject=transToObject;exports.transToSame=transToSame;exports.transduce=transduce;exports.transduceBF=transduceBF;exports.transduceDF=transduceDF;exports.uniqueId=uniqueId;exports.xor=xor;Object.defineProperty(exports,'__esModule',{value:true});})));

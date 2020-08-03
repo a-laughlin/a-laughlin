@@ -1,4 +1,4 @@
-/**
+(function(g,f){typeof exports==='object'&&typeof module!=='undefined'?f(exports,require('react')):typeof define==='function'&&define.amd?define(['exports','react'],f):(g=typeof globalThis!=='undefined'?globalThis:g||self,f(g.ReactUtils={},g.react));}(this,(function(exports, react){'use strict';/**
  * Checks if `value` is the
  * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
  * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
@@ -342,15 +342,15 @@ function isInteger(value) {
  * // => false
  */
 var isArray = Array.isArray;// curry/compose/pipe, for later fns
-let pipe;
-const identity=x=>x;
+let pipe$1;
+const identity$1=x=>x;
 if(typeof globalThis.process==='undefined'){
   globalThis.process={env:{NODE_ENV:'production'}};
 }
 if (globalThis.process.env.NODE_ENV !== 'production') {
   // debugging versions
   const fToString = fn => fn.name ? fn.name : fn.toString();
-  pipe = (fn=identity,...fns) => {
+  pipe$1 = (fn=identity$1,...fns) => {
     if (fns.length===0)return fn;
     const piped = (...args) => fns.reduce((acc, f) => f(acc), fn(...args));
     piped.toString = () => `pipe(${fns.reverse().map(fToString).join(', ')})`;
@@ -358,18 +358,18 @@ if (globalThis.process.env.NODE_ENV !== 'production') {
   };
 } else {
   // eslint-disable-next-line
-  pipe = (fn=identity,...fns) => (...args) => {
+  pipe$1 = (fn=identity$1,...fns) => (...args) => {
     if (fns.length===0)return fn;
     return fns.reduce((acc, f) => f(acc), fn(...args));
   };
 }
-const stubTrue = ()=>true;
+const stubTrue$1 = ()=>true;
 
 // const stubs
 const frozenEmptyArray = Object.freeze([]);
 const frozenEmptyObject = Object.freeze(Object.create(null));
-const isString = arg=>typeof arg==='string';
-const isFunction = arg=>typeof arg==='function';
+const isString$1 = arg=>typeof arg==='string';
+const isFunction$1 = arg=>typeof arg==='function';
 const isObjectLike$1 = arg=>typeof arg==='object' && arg !== null;
 const isArray$1 = Array.isArray.bind(Array);
 // functions
@@ -383,11 +383,11 @@ const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(...args);
 // casting
 const constant = x=>_=>x;
 const ensureArray = (val=[])=>isArray$1(val) ? val : [val];
-const ensureString = (val)=>isString(val) ? val : `${val}`;
+const ensureString = (val)=>isString$1(val) ? val : `${val}`;
 const ensureFunction = (arg)=>typeof arg==='function'?arg:constant(arg);
-const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
+const ifElse = (pred,T,F=identity$1)=>(...args)=>(pred(...args) ? T : F)(...args);
 const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (let [pred,val] of arrs){if(pred(...x)){return val;}}});
-const cond = acceptArrayOrArgs(arrs=>(...args)=>ensureFunction(condNoExec(...arrs)(...args))(...args));
+const cond$1 = acceptArrayOrArgs(arrs=>(...args)=>ensureFunction(condNoExec(...arrs)(...args))(...args));
 
 
 
@@ -450,19 +450,19 @@ const groupByValues = transToObject((o,v)=>{
 
 
 // getters
-const pget = cond( // polymorphic get
-  [isString,str=>{
+const pget = cond$1( // polymorphic get
+  [isString$1,str=>{
     str=str.split('.');
     return targ=>str.reduce((t,s)=>isArray$1(t) && !isInteger(+s) ? t.map(o=>o[s]) : t[s], targ)
   }],
   [isArray$1,keys=>pick(keys)],
   [isObjectLike$1, obj=>target=>mo(f=>pget(f)(target))(obj)],
-  [stubTrue,identity], // handles the function case
+  [stubTrue$1,identity$1], // handles the function case
 );
-const pick=cond(
+const pick=cond$1(
   [isArray$1,keys=>obj=>transToSame((o,k)=>o[k]=obj[k])(keys)],
-  [isString,k=>pick([k])],
-  [isFunction,filterToSame],
+  [isString$1,k=>pick([k])],
+  [isFunction$1,filterToSame],
 );/**
  * Removes all key-value entries from the list cache.
  *
@@ -692,7 +692,7 @@ var asyncTag = '[object AsyncFunction]',
  * _.isFunction(/abc/);
  * // => false
  */
-function isFunction$1(value) {
+function isFunction$2(value) {
   if (!isObject(value)) {
     return false;
   }
@@ -776,7 +776,7 @@ function baseIsNative(value) {
   if (!isObject(value) || isMasked(value)) {
     return false;
   }
-  var pattern = isFunction$1(value) ? reIsNative : reIsHostCtor;
+  var pattern = isFunction$2(value) ? reIsNative : reIsHostCtor;
   return pattern.test(toSource(value));
 }/**
  * Gets the value at `key` of `object`.
@@ -1374,7 +1374,7 @@ function isLength(value) {
  * // => false
  */
 function isArrayLike(value) {
-  return value != null && isLength(value.length) && !isFunction$1(value);
+  return value != null && isLength(value.length) && !isFunction$2(value);
 }/**
  * This method is like `_.isArrayLike` except that it also checks if `value`
  * is an object.
@@ -1493,7 +1493,7 @@ var objectCtorString = funcToString$2.call(Object);
  * _.isPlainObject(Object.create(null));
  * // => true
  */
-function isPlainObject(value) {
+function isPlainObject$1(value) {
   if (!isObjectLike(value) || baseGetTag(value) != objectTag) {
     return false;
   }
@@ -1914,12 +1914,12 @@ function baseMergeDeep(object, source, key, srcIndex, mergeFunc, customizer, sta
         newValue = [];
       }
     }
-    else if (isPlainObject(srcValue) || isArguments(srcValue)) {
+    else if (isPlainObject$1(srcValue) || isArguments(srcValue)) {
       newValue = objValue;
       if (isArguments(objValue)) {
         newValue = toPlainObject(objValue);
       }
-      else if (!isObject(objValue) || isFunction$1(objValue)) {
+      else if (!isObject(objValue) || isFunction$2(objValue)) {
         newValue = initCloneObject(srcValue);
       }
     }
@@ -1981,7 +1981,7 @@ function baseMerge(object, source, srcIndex, customizer, stack) {
  * console.log(_.identity(object) === object);
  * // => true
  */
-function identity$1(value) {
+function identity$2(value) {
   return value;
 }/**
  * A faster alternative to `Function#apply`, this function invokes `func`
@@ -2063,7 +2063,7 @@ function constant$1(value) {
  * @param {Function} string The `toString` result.
  * @returns {Function} Returns `func`.
  */
-var baseSetToString = !defineProperty ? identity$1 : function(func, string) {
+var baseSetToString = !defineProperty ? identity$2 : function(func, string) {
   return defineProperty(func, 'toString', {
     'configurable': true,
     'enumerable': false,
@@ -2121,7 +2121,7 @@ var setToString = shortOut(baseSetToString);/**
  * @returns {Function} Returns the new function.
  */
 function baseRest(func, start) {
-  return setToString(overRest(func, start, identity$1), func + '');
+  return setToString(overRest(func, start, identity$2), func + '');
 }/**
  * Checks if the given arguments are from an iteratee call.
  *
@@ -2206,11 +2206,11 @@ function createAssigner(assigner) {
  * _.merge(object, other);
  * // => { 'a': [{ 'b': 2, 'c': 3 }, { 'd': 4, 'e': 5 }] }
  */
-var merge = createAssigner(function(object, source, srcIndex) {
+var merge$1 = createAssigner(function(object, source, srcIndex) {
   baseMerge(object, source, srcIndex);
 });const styleStringToObj = (()=>{
   const styleMatcher = /^([a-z]+)([A-Z0-9.:#+-]+)?(.*)$/;
-  const valSetterFactory = fn=>(...keys)=>pipe(fn,sz=>keys.reduce((o,k)=>{o[k]=sz;return o;},{}));
+  const valSetterFactory = fn=>(...keys)=>pipe$1(fn,sz=>keys.reduce((o,k)=>{o[k]=sz;return o;},{}));
   const parseColor = (num,unit)=>{
     if (num==='T') return 'transparent';
     if (num==='N') return 'none';
@@ -2243,7 +2243,7 @@ var merge = createAssigner(function(object, source, srcIndex) {
   const styleSeparator = ' ';
   const getCachedOrParseThenCache = (str)=>{
     if(str.raw) str=str.raw[0]; // handle tagged template strings e.g., s`w100px`;
-    return cache[str]||(cache[str]=merge({},...str.split(styleSeparator).filter(s=>!!s).map(s=>cache[s]||(cache[s]=parser(s)))));
+    return cache[str]||(cache[str]=merge$1({},...str.split(styleSeparator).filter(s=>!!s).map(s=>cache[s]||(cache[s]=parser(s)))));
   };
   const parseNested = str=>styleStringToObj(str.replace(nestedSplitter,styleSeparator));
   const nestedSplitter = /_/g;
@@ -2288,8 +2288,8 @@ var merge = createAssigner(function(object, source, srcIndex) {
     strk:getColorObj('stroke'),
     strkw:getSizeObj('strokeWidth'),
     strkdsh:getSizeObj('strokeDasharray'),
-    transx:pipe(getSizeVal,sz=>({transform:`translateX(${sz})`})),
-    transy:pipe(getSizeVal,sz=>({transform:`translateY(${sz})`})),
+    transx:pipe$1(getSizeVal,sz=>({transform:`translateX(${sz})`})),
+    transy:pipe$1(getSizeVal,sz=>({transform:`translateY(${sz})`})),
     gtc:(num,unit)=>({ display:'grid', gridTemplateColumns:getGridTemplateVal(num,unit)}),
     gtr:(num,unit)=>({ display:'grid', gridTemplateRows:getGridTemplateVal(num,unit)}),
     vl:(num,unit)=>({display:'grid', gridTemplateColumns:'100%',gridTemplateRows:getGridTemplateVal(num,unit)}),
@@ -2505,4 +2505,51 @@ var merge = createAssigner(function(object, source, srcIndex) {
 
 
   return getCachedOrParseThenCache;
-})();export default styleStringToObj;export{styleStringToObj};
+})();const toHookComposer = (component)=>(...hooks)=>{
+  function hookComposer (...props){
+    if(!isPlainObject(props[0])) return toHookComposer(component)(...hooks,...props);
+    return react.createElement(component, pipe(...hooks.map(ife(isString,s=>children(s))))(...props));
+  }
+  hookComposer.isHookComposer=true;
+  if (process.env.NODE_ENV !== 'production'){
+    // add dev friendly names for debugging
+    return Object.defineProperty(hookComposer,'name', {
+      value: component.name || (typeof component === 'string' ? component : 'hookComposer'), writable: false
+    });
+  }
+  return hookComposer;
+};
+
+const isHookComposer = fn=>fn.isHookComposer===true;
+
+const [Div,Span,Ul,Ol,Dt,Dd,Dl,Article,P,H1,H2,H3,H4,H5,H6,Li,Input,A,Label,Pre,Textarea] = (
+             'div,span,ul,ol,dt,dd,dl,article,p,h1,h2,h3,h4,h5,h6,li,input,a,label,pre,textarea'
+             .split(',').map(toHookComposer));
+const [Button,Img,Header,Svg,G,Path,Polyline,Rect,Line,Circle,Text,Table,Td,Th,Tr] = (
+             'button,img,header,svg,g,path,polyline,rect,line,circle,text,table,td,th,tr'
+             .split(',').map(toHookComposer));
+
+const style = cond(
+  [isString,str=>style(styleStringToObj(str))],
+  [isFunction,fn=>p=>style(fn(p))(p)],
+  [isPlainObject,obj=>p=>merge({},p,{style:obj})],
+  [stubTrue,arg=>{throw new TypeError('styles only works with objects, strings, or functions that return those');}]
+);
+
+
+const eventFactory = evtName => (fn=identity)=>p=>
+  ({...p,[evtName]:evt=>console.log(`p,evtName`, p,evtName)||fn(p,evt)});
+
+const [onClick,onChange,onKeydown,onKeyup,onKeyPress,onSubmit,onInput] = (
+             'onClick,onChange,onKeydown,onKeyup,onKeyPress,onSubmit,onInput'
+             .split(',').map(s=>eventFactory(s)));
+
+
+const useObservable = (observable, initialValue) => {
+  const [value, setValue] = react.useState(initialValue);
+  react.useEffect(()=>{
+    const subscription = observable.subscribe(setValue);
+    return subscription.unsubscribe.bind(subscription);
+  }, [observable] );
+  return value;
+};exports.A=A;exports.Article=Article;exports.Button=Button;exports.Circle=Circle;exports.Dd=Dd;exports.Div=Div;exports.Dl=Dl;exports.Dt=Dt;exports.G=G;exports.H1=H1;exports.H2=H2;exports.H3=H3;exports.H4=H4;exports.H5=H5;exports.H6=H6;exports.Header=Header;exports.Img=Img;exports.Input=Input;exports.Label=Label;exports.Li=Li;exports.Line=Line;exports.Ol=Ol;exports.P=P;exports.Path=Path;exports.Polyline=Polyline;exports.Pre=Pre;exports.Rect=Rect;exports.Span=Span;exports.Svg=Svg;exports.Table=Table;exports.Td=Td;exports.Text=Text;exports.Textarea=Textarea;exports.Th=Th;exports.Tr=Tr;exports.Ul=Ul;exports.eventFactory=eventFactory;exports.isHookComposer=isHookComposer;exports.onChange=onChange;exports.onClick=onClick;exports.onInput=onInput;exports.onKeyPress=onKeyPress;exports.onKeydown=onKeydown;exports.onKeyup=onKeyup;exports.onSubmit=onSubmit;exports.style=style;exports.toHookComposer=toHookComposer;exports.useObservable=useObservable;Object.defineProperty(exports,'__esModule',{value:true});})));

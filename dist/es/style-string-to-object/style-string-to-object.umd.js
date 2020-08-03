@@ -1,4 +1,4 @@
-/**
+(function(g,f){typeof exports==='object'&&typeof module!=='undefined'?f(exports):typeof define==='function'&&define.amd?define(['exports'],f):(g=typeof globalThis!=='undefined'?globalThis:g||self,f(g.StyleStringToObject={}));}(this,(function(exports){'use strict';/**
  * Checks if `value` is the
  * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
  * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
@@ -2505,4 +2505,4 @@ var merge = createAssigner(function(object, source, srcIndex) {
 
 
   return getCachedOrParseThenCache;
-})();export default styleStringToObj;export{styleStringToObj};
+})();exports.default=styleStringToObj;exports.styleStringToObj=styleStringToObj;Object.defineProperty(exports,'__esModule',{value:true});})));

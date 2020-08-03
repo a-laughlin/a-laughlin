@@ -14,7 +14,7 @@ const schemaToActionNormalizers=schema=>{
   return transToObject((o,_,dName)=>{
     const notGQLObject = action=>!(dName in objectFieldMeta);
     
-    const idKey=objectFieldMeta[dName]?.idKey;
+    const idKey=(objectFieldMeta[dName]??{}).idKey;
     o[dName] =  cond(
       // leave scalars and other non-object types
       [notGQLObject,identity],
@@ -140,7 +140,7 @@ export const getMemoizedObjectQuerier=(
     // default per spec is returning only what's in variableDefinitions, but this eliminates the duplicate definitions in each query to pass a variable, given it's usually specified in the schema already.  Can always change it to the more verbose version and add validation if necessary.
     if (variableDefinitions.length===0) return passedVariables;
     for ({variable:{name:{value:name}},defaultValue} of variableDefinitions)
-      vars[name]=passedVariables[name]!==undefined ? passedVariables[name] : defaultValue?.value;
+      vars[name]=passedVariables[name]??((defaultValue??{}).value);
       // may need to de-null and de-list here.f
     return vars;
   };
