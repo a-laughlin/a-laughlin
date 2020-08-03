@@ -300,6 +300,3 @@ export const styleStringToObj = (()=>{
 
   return getCachedOrParseThenCache;
 })();
-
-
-export default styleStringToObj;

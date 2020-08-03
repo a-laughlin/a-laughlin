@@ -46,9 +46,9 @@ const modules = readdirSync('./src')
     visualizer({ template:"network", filename:join(outDir,'stats-network.html')}),
   ],
   output:[
-    // {format:'es', file:join(outDir,file.replace('.js','.min.js')),compact:true, entryFileNames:dirFile, plugins:[terser()]},
+    {format:'es', file:join(outDir,file.replace('.js','.min.js')),compact:true, entryFileNames:dirFile, plugins:[terser()]},
     {format:'es', file:join(outDir,file),compact:true, entryFileNames:dirFile},
-    // {format:'umd', file:join(outDir,file.replace('.js','umd.min.js')),compact:true, entryFileNames:dirFile, plugins:[terser()]},
+    {format:'umd', file:join(outDir,file.replace('.js','.umd.min.js')),compact:true, entryFileNames:dirFile, plugins:[terser()],name:snakeToStartCase(dir)},
     {format:'umd', file:join(outDir,file.replace('.js','.umd.js')),compact:true, entryFileNames:dirFile,name:snakeToStartCase(dir)},
   ]
 }));

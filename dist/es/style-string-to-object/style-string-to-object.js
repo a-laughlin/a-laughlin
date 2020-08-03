@@ -2505,4 +2505,4 @@ var merge = createAssigner(function(object, source, srcIndex) {
 
 
   return getCachedOrParseThenCache;
-})();export default styleStringToObj;export{styleStringToObj};
+})();export{styleStringToObj};
