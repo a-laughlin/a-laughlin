@@ -128,8 +128,8 @@ export const or = (...preds)=>(...args)=>{
 }
 export const none = (...fns)=>not(or(...fns));
 export const xor = fn=>pipe(filter(fn),len1);
-export const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (let [pred,val] of arrs){if(pred(...x)){return val;}}});
-export const cond = acceptArrayOrArgs(arrs=>(...args)=>ensureFunction(condNoExec(...arrs)(...args))(...args));
+export const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred,val] of arrs) if(pred(...x)) return val;});
+export const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);});
 
 
 
@@ -285,7 +285,7 @@ export const pget = cond( // polymorphic get
 );
 export const pick=cond(
   [isArray,keys=>obj=>transToSame((o,k)=>o[k]=obj[k])(keys)],
-  [isString,k=>pick([k])],
+  [isString,key=>obj=>obj[key]],
   [isFunction,filterToSame],
 );
 

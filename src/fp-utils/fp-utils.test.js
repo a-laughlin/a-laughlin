@@ -123,15 +123,22 @@ describe("condNoExec", () => {
 });
 
 describe("cond", () => {
-  const pred = x=>x===1
-  const fn1 = cond([ [pred,'is_1'], [stubTrue,'not_1'] ]);
-  it('returns values when passed non-function values', () =>  expect(fn1(1)).toBe('is_1'));
-  const fn2 = cond([ [pred,()=>'is_1'], [stubTrue,()=>'not_1'] ]);
+  const pred = x=>x===1;
+  const is1=()=>'is_1',not1=()=>'not_1';
+  const fn1 = cond([ [pred,is1], [stubTrue,not1] ]);
+  it('works with and without wrapping arrays', () =>  {
+    expect(cond([ [pred,is1], [stubTrue,not1] ])(2)).toBe('not_1');
+    expect(cond([pred,is1], [stubTrue,not1])(2)).toBe('not_1');
+  });
+  it('errors when passed non-function values', () =>  {
+    [undefined,null,[],{},1,''].forEach(v=>expect(() => { cond([pred,v])(1) }).toThrow());
+  });
+  const fn2 = cond([ [pred,is1], [stubTrue,not1] ]);
   it('calls functions with passed args', () =>  expect(fn2(1)).toBe('is_1'));
-  const fn3 = cond([ [pred,'is_1'], [stubTrue,'not_1'] ]);
+  const fn3 = cond([ [pred,is1], [stubTrue,not1] ]);
   it('stops after the first passing predicate and returns the value', () =>expect(fn3(1)).toBe('is_1'));
   const fn4 = cond([ [stubFalse,1], [stubFalse,2], [stubFalse,3] ]);
-  it('returns nothing when no predicates pass', () =>expect(fn4(2)).toBe(undefined));
+  it('returns undefined when no predicates pass', () =>expect(fn4(2)).toBe(undefined));
 });
 
 describe("groupByKeys", () => {
