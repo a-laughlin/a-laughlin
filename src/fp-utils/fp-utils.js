@@ -1,10 +1,7 @@
-
-import isInteger from 'lodash-es/isInteger';
-import isNumber from 'lodash-es/isNumber';
 // curry/compose/pipe, for later fns
 let curry,compose,pipe;
 export const identity=x=>x;
-if(typeof globalThis.process==='undefined'){
+if(globalThis.process===undefined){
   globalThis.process={env:{NODE_ENV:'production'}}
 }
 if (globalThis.process.env.NODE_ENV !== 'production') {
@@ -77,14 +74,14 @@ export const frozenEmptyObject = Object.freeze(Object.create(null));
 
 
 // primitive predicates
-export {isInteger,isNumber};
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isFinite
+export const isFinite = Number.isFinite || (v=>typeof value === 'number' && isFinite(value));
+export const isInteger = Number.isInteger || (v => isFinite(v) && v % 1 === 0);
 export const isError = and(isObjectLike,e=>typeof e.message === 'string')
 export const isString = arg=>typeof arg==='string';
 export const isFunction = arg=>typeof arg==='function';
 export const isObjectLike = arg=>typeof arg==='object' && arg !== null;
 export const isArray = Array.isArray.bind(Array);
-export const isFalsy = arg=>!arg;
-export const isTruthy = arg=>!!arg;
 export const is = val1=>val2=>val1===val2;
 export const isUndefOrNull = val => val === undefined || val === null;
 export const isProductionEnv = ()=>process.env.NODE_ENV === 'production';
