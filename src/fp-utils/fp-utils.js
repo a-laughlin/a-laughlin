@@ -100,7 +100,7 @@ export const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 export const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
 
 export const overObj = fnsObj=>(...args)=>mo(f=>f(...args))(fnsObj);
-export const overArray = fnsArray=>(...args)=>ma(f=>f(...args))(fnsArray);
+export const overArray = (...args)=>ma(f=>f(...args));
 export const over = x=>isArray(x)?overArray(x):overObj(x);
 export const converge = over;//backwards compat;
 
