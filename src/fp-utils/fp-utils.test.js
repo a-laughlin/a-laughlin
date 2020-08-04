@@ -232,13 +232,13 @@ describe("transduceDF/BF", () => {
     .toEqual({a:{a1:{a11:true},a2:true},b:{b1:true}});
     
     
-    expect(transduceDF({descentTransducer:tdOmit((v,k)=>v==='aa')})({},aTree))
+    expect(transduceDF({preVisit:tdOmit((v,k)=>v==='aa')})({},aTree))
     .toEqual({"0":"a","1":{"1":{"0":"aaa"}}});
-    expect(transduceDF({descentTransducer:tdOmit((v,k)=>k===1)})({},aTree))
+    expect(transduceDF({preVisit:tdOmit((v,k)=>k===1)})({},aTree))
     .toEqual({"0":"a"});
     
     
-    expect(transduceDF({descentTransducer:tdOmit((v,k)=>k==='a1')})({},oTree))
+    expect(transduceDF({preVisit:tdOmit((v,k)=>k==='a1')})({},oTree))
     .toEqual({a:{a2:true},b:{b1:true}});
     
     const blankObjectResult=transduceDF()({},{});
@@ -251,15 +251,15 @@ describe("transduceDF/BF", () => {
     // map to flattened tree
     const oTree={a:{a1:{a11:true},a2:true},b:{b1:true}};
     expect(transduceDF({
-      visitTransducer:tdDfObjectLikeValuesWith(identity),
+      visit:tdDfObjectLikeValuesWith(identity),
       edgeCombiner:(acc={},v,k)=>(acc[k]=1)&&acc
     })({},oTree))
     .toEqual({a:1,a1:1,a11:1,a2:1,b:1,b1:1});
     
     const aTree=['a',['aa',['aaa']]];
     expect(transduceDF({
-      visitTransducer:tdMapWithAcc((a,v,k,c,dfReducer)=>isObjectLike(v) ? dfReducer(a,v) : v),
-      ascentTransducer:tdFilter(isString),
+      visit:tdMapWithAcc((a,v,k,c,dfReducer)=>isObjectLike(v) ? dfReducer(a,v) : v),
+      postVisit:tdFilter(isString),
       edgeCombiner:(acc,v)=>(acc[v]=1)&&acc
     })({},aTree))
     .toEqual({a:1,aa:1,aaa:1});
@@ -268,8 +268,8 @@ describe("transduceDF/BF", () => {
     // map to flattened tree
     expect(
       transduceDF({
-        descentTransducer: tdFilter((v) => v < 5),
-        visitTransducer: tdMap((v, k, c, dfReducer) =>dfReducer([], new Array(v + 1).fill(v + 1))),
+        preVisit: tdFilter((v) => v < 5),
+        visit: tdMap((v, k, c, dfReducer) =>dfReducer([], new Array(v + 1).fill(v + 1))),
         edgeCombiner: appendArrayReducer,
       })([], 1)
     ).toEqual([

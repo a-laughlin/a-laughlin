@@ -370,34 +370,23 @@ export const tdReduceListValue = nextReducer=>(acc,v,k,...args)=>{
 };
 export const reduce = (fn) => (coll,acc) => tdReduceListValue(fn)(acc,coll);
 export const tdIfElse=(pred,tdT,tdF=identity)=>nextReducer=>ifElse(pred,tdT(nextReducer),tdF(nextReducer));
-export const tdCond=acceptArrayOrArgs(predTransducerPairs=>{
-  if(predTransducerPairs.length===0)
-      return itentity; // noop
-  if(predTransducerPairs.length===1) // single function passed, act like filterWithAcc
-    return ifElse(predTransducerPairs[0],identity,noop);
-  if(predTransducerPairs.length===2) // conditionally reduce
-    return tdIfElse(predTransducerPairs[0],predTransducerPairs[1]);
-  return nextReducer=>cond(
-    pushToArray(predTransducerPairs.map(([pred,td])=>[pred,td(nextReducer)]),[stubTrue,nextReducer])
-  );
-});
 const isReducerValueObjectLike=(a,v)=>isObjectLike(v);
 export const tdIfValueObjectLike=transducer=>tdIfElse(isReducerValueObjectLike,transducer);
 export const tdDfObjectLikeValuesWith=(getChildAcc=stubObject)=>tdIfValueObjectLike(
   nextReducer=>(a,v,k,c,childReducer)=>nextReducer(a,childReducer(getChildAcc(a,v,k,c),v),k,c),
 );
 export const transduceDF = ({
-  descentTransducer=tdIdentity,
-  visitTransducer=tdDfObjectLikeValuesWith(stubObject),
-  ascentTransducer=tdIdentity,
+  preVisit=tdIdentity,
+  visit=tdDfObjectLikeValuesWith(stubObject),
+  postVisit=tdIdentity,
   edgeCombiner=(acc={},v,k)=>{acc[k]=v;return acc;},
   childrenLoopReducer=tdReduceListValue
 }={})=>{
   const tempdfReducer = compose(
-    descentTransducer,
+    preVisit,
     nextReducer=>(a,v,k,c)=>nextReducer(a,v,k,c,dfReducer),
-    visitTransducer,
-    ascentTransducer,
+    visit,
+    postVisit,
   )(edgeCombiner);
   const dfReducer = childrenLoopReducer(tempdfReducer);
   return dfReducer;
@@ -406,9 +395,9 @@ export const transduceDF = ({
 
 
 export const transduceBF = ({
-  preVisitTransducer=tdIdentity,
-  visitTransducer=tdIdentity,//tdBfObjectLikeValuesWith(stubObject),
-  postVisitTransducer=tdIdentity,
+  preVisit=tdIdentity,
+  visit=tdIdentity,//tdBfObjectLikeValuesWith(stubObject),
+  postVisit=tdIdentity,
   edgeCombiner=(acc={},v,k)=>{acc[k]=v;return acc;},
   childrenLoopReducer=tdReduceListValue,
 }={})=>{
@@ -418,7 +407,7 @@ export const transduceBF = ({
     return aa;
   });
   const reduceItem = compose(
-    preVisitTransducer,
+    preVisit,
     nextReducer=>(a,v,k,c)=>{
       if (isObjectLike(v)){
         const childAcc={};
@@ -430,7 +419,7 @@ export const transduceBF = ({
       if(queue.length>0)
         reduceItem(...queue.shift());
     },
-    postVisitTransducer
+    postVisit
   )(edgeCombiner);
   return childrenLoopReducer((a,v,k,c)=>{
     reduceItem(a,v,k,c);
