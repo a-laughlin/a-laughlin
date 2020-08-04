@@ -1,420 +1,7 @@
-import {useState,useEffect}from'react';/**
- * Checks if `value` is the
- * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
- * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is an object, else `false`.
- * @example
- *
- * _.isObject({});
- * // => true
- *
- * _.isObject([1, 2, 3]);
- * // => true
- *
- * _.isObject(_.noop);
- * // => true
- *
- * _.isObject(null);
- * // => false
- */
-function isObject(value) {
-  var type = typeof value;
-  return value != null && (type == 'object' || type == 'function');
-}/** Detect free variable `global` from Node.js. */
-var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;/** Detect free variable `self`. */
-var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
-
-/** Used as a reference to the global object. */
-var root = freeGlobal || freeSelf || Function('return this')();/** Built-in value references. */
-var Symbol = root.Symbol;/** Used for built-in method references. */
-var objectProto = Object.prototype;
-
-/** Used to check objects for own properties. */
-var hasOwnProperty = objectProto.hasOwnProperty;
-
-/**
- * Used to resolve the
- * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
- * of values.
- */
-var nativeObjectToString = objectProto.toString;
-
-/** Built-in value references. */
-var symToStringTag = Symbol ? Symbol.toStringTag : undefined;
-
-/**
- * A specialized version of `baseGetTag` which ignores `Symbol.toStringTag` values.
- *
- * @private
- * @param {*} value The value to query.
- * @returns {string} Returns the raw `toStringTag`.
- */
-function getRawTag(value) {
-  var isOwn = hasOwnProperty.call(value, symToStringTag),
-      tag = value[symToStringTag];
-
-  try {
-    value[symToStringTag] = undefined;
-    var unmasked = true;
-  } catch (e) {}
-
-  var result = nativeObjectToString.call(value);
-  if (unmasked) {
-    if (isOwn) {
-      value[symToStringTag] = tag;
-    } else {
-      delete value[symToStringTag];
-    }
-  }
-  return result;
-}/** Used for built-in method references. */
-var objectProto$1 = Object.prototype;
-
-/**
- * Used to resolve the
- * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
- * of values.
- */
-var nativeObjectToString$1 = objectProto$1.toString;
-
-/**
- * Converts `value` to a string using `Object.prototype.toString`.
- *
- * @private
- * @param {*} value The value to convert.
- * @returns {string} Returns the converted string.
- */
-function objectToString(value) {
-  return nativeObjectToString$1.call(value);
-}/** `Object#toString` result references. */
-var nullTag = '[object Null]',
-    undefinedTag = '[object Undefined]';
-
-/** Built-in value references. */
-var symToStringTag$1 = Symbol ? Symbol.toStringTag : undefined;
-
-/**
- * The base implementation of `getTag` without fallbacks for buggy environments.
- *
- * @private
- * @param {*} value The value to query.
- * @returns {string} Returns the `toStringTag`.
- */
-function baseGetTag(value) {
-  if (value == null) {
-    return value === undefined ? undefinedTag : nullTag;
-  }
-  return (symToStringTag$1 && symToStringTag$1 in Object(value))
-    ? getRawTag(value)
-    : objectToString(value);
-}/**
- * Checks if `value` is object-like. A value is object-like if it's not `null`
- * and has a `typeof` result of "object".
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
- * @example
- *
- * _.isObjectLike({});
- * // => true
- *
- * _.isObjectLike([1, 2, 3]);
- * // => true
- *
- * _.isObjectLike(_.noop);
- * // => false
- *
- * _.isObjectLike(null);
- * // => false
- */
-function isObjectLike(value) {
-  return value != null && typeof value == 'object';
-}/** `Object#toString` result references. */
-var symbolTag = '[object Symbol]';
-
-/**
- * Checks if `value` is classified as a `Symbol` primitive or object.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
- * @example
- *
- * _.isSymbol(Symbol.iterator);
- * // => true
- *
- * _.isSymbol('abc');
- * // => false
- */
-function isSymbol(value) {
-  return typeof value == 'symbol' ||
-    (isObjectLike(value) && baseGetTag(value) == symbolTag);
-}/** Used as references for various `Number` constants. */
-var NAN = 0 / 0;
-
-/** Used to match leading and trailing whitespace. */
-var reTrim = /^\s+|\s+$/g;
-
-/** Used to detect bad signed hexadecimal string values. */
-var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
-
-/** Used to detect binary string values. */
-var reIsBinary = /^0b[01]+$/i;
-
-/** Used to detect octal string values. */
-var reIsOctal = /^0o[0-7]+$/i;
-
-/** Built-in method references without a dependency on `root`. */
-var freeParseInt = parseInt;
-
-/**
- * Converts `value` to a number.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to process.
- * @returns {number} Returns the number.
- * @example
- *
- * _.toNumber(3.2);
- * // => 3.2
- *
- * _.toNumber(Number.MIN_VALUE);
- * // => 5e-324
- *
- * _.toNumber(Infinity);
- * // => Infinity
- *
- * _.toNumber('3.2');
- * // => 3.2
- */
-function toNumber(value) {
-  if (typeof value == 'number') {
-    return value;
-  }
-  if (isSymbol(value)) {
-    return NAN;
-  }
-  if (isObject(value)) {
-    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
-    value = isObject(other) ? (other + '') : other;
-  }
-  if (typeof value != 'string') {
-    return value === 0 ? value : +value;
-  }
-  value = value.replace(reTrim, '');
-  var isBinary = reIsBinary.test(value);
-  return (isBinary || reIsOctal.test(value))
-    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
-    : (reIsBadHex.test(value) ? NAN : +value);
-}/** Used as references for various `Number` constants. */
-var INFINITY = 1 / 0,
-    MAX_INTEGER = 1.7976931348623157e+308;
-
-/**
- * Converts `value` to a finite number.
- *
- * @static
- * @memberOf _
- * @since 4.12.0
- * @category Lang
- * @param {*} value The value to convert.
- * @returns {number} Returns the converted number.
- * @example
- *
- * _.toFinite(3.2);
- * // => 3.2
- *
- * _.toFinite(Number.MIN_VALUE);
- * // => 5e-324
- *
- * _.toFinite(Infinity);
- * // => 1.7976931348623157e+308
- *
- * _.toFinite('3.2');
- * // => 3.2
- */
-function toFinite(value) {
-  if (!value) {
-    return value === 0 ? value : 0;
-  }
-  value = toNumber(value);
-  if (value === INFINITY || value === -INFINITY) {
-    var sign = (value < 0 ? -1 : 1);
-    return sign * MAX_INTEGER;
-  }
-  return value === value ? value : 0;
-}/**
- * Converts `value` to an integer.
- *
- * **Note:** This method is loosely based on
- * [`ToInteger`](http://www.ecma-international.org/ecma-262/7.0/#sec-tointeger).
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to convert.
- * @returns {number} Returns the converted integer.
- * @example
- *
- * _.toInteger(3.2);
- * // => 3
- *
- * _.toInteger(Number.MIN_VALUE);
- * // => 0
- *
- * _.toInteger(Infinity);
- * // => 1.7976931348623157e+308
- *
- * _.toInteger('3.2');
- * // => 3
- */
-function toInteger(value) {
-  var result = toFinite(value),
-      remainder = result % 1;
-
-  return result === result ? (remainder ? result - remainder : result) : 0;
-}/**
- * Checks if `value` is an integer.
- *
- * **Note:** This method is based on
- * [`Number.isInteger`](https://mdn.io/Number/isInteger).
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is an integer, else `false`.
- * @example
- *
- * _.isInteger(3);
- * // => true
- *
- * _.isInteger(Number.MIN_VALUE);
- * // => false
- *
- * _.isInteger(Infinity);
- * // => false
- *
- * _.isInteger('3');
- * // => false
- */
-function isInteger(value) {
-  return typeof value == 'number' && value == toInteger(value);
-}/**
- * A specialized version of `_.map` for arrays without support for iteratee
- * shorthands.
- *
- * @private
- * @param {Array} [array] The array to iterate over.
- * @param {Function} iteratee The function invoked per iteration.
- * @returns {Array} Returns the new mapped array.
- */
-function arrayMap(array, iteratee) {
-  var index = -1,
-      length = array == null ? 0 : array.length,
-      result = Array(length);
-
-  while (++index < length) {
-    result[index] = iteratee(array[index], index, array);
-  }
-  return result;
-}/**
- * Checks if `value` is classified as an `Array` object.
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is an array, else `false`.
- * @example
- *
- * _.isArray([1, 2, 3]);
- * // => true
- *
- * _.isArray(document.body.children);
- * // => false
- *
- * _.isArray('abc');
- * // => false
- *
- * _.isArray(_.noop);
- * // => false
- */
-var isArray = Array.isArray;/** Used as references for various `Number` constants. */
-var INFINITY$1 = 1 / 0;
-
-/** Used to convert symbols to primitives and strings. */
-var symbolProto = Symbol ? Symbol.prototype : undefined,
-    symbolToString = symbolProto ? symbolProto.toString : undefined;
-
-/**
- * The base implementation of `_.toString` which doesn't convert nullish
- * values to empty strings.
- *
- * @private
- * @param {*} value The value to process.
- * @returns {string} Returns the string.
- */
-function baseToString(value) {
-  // Exit early for strings to avoid a performance hit in some environments.
-  if (typeof value == 'string') {
-    return value;
-  }
-  if (isArray(value)) {
-    // Recursively convert values (susceptible to call stack limits).
-    return arrayMap(value, baseToString) + '';
-  }
-  if (isSymbol(value)) {
-    return symbolToString ? symbolToString.call(value) : '';
-  }
-  var result = (value + '');
-  return (result == '0' && (1 / value) == -INFINITY$1) ? '-0' : result;
-}/**
- * Converts `value` to a string. An empty string is returned for `null`
- * and `undefined` values. The sign of `-0` is preserved.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to convert.
- * @returns {string} Returns the converted string.
- * @example
- *
- * _.toString(null);
- * // => ''
- *
- * _.toString(-0);
- * // => '-0'
- *
- * _.toString([1, 2, 3]);
- * // => '1,2,3'
- */
-function toString(value) {
-  return value == null ? '' : baseToString(value);
-}// curry/compose/pipe, for later fns
+import {useState,useEffect}from'react';// curry/compose/pipe, for later fns
 let compose;
 const identity=x=>x;
-if(typeof globalThis.process==='undefined'){
+if(globalThis.process===undefined){
   globalThis.process={env:{NODE_ENV:'production'}};
 }
 if (globalThis.process.env.NODE_ENV !== 'production') {
@@ -446,24 +33,21 @@ const stubTrue = ()=>true;
 // const stubs
 const frozenEmptyArray = Object.freeze([]);
 const frozenEmptyObject = Object.freeze(Object.create(null));
+
+
+// primitive predicates
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isFinite
+const isFinite = Number.isFinite || (v=>typeof value === 'number' && isFinite(value));
+const isInteger = Number.isInteger || (v => isFinite(v) && v % 1 === 0);
 const isString = arg=>typeof arg==='string';
 const isFunction = arg=>typeof arg==='function';
-const isObjectLike$1 = arg=>typeof arg==='object' && arg !== null;
-const isArray$1 = Array.isArray.bind(Array);
-const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';
+const isObjectLike = arg=>typeof arg==='object' && arg !== null;
+const isArray = Array.isArray.bind(Array);
 // functions
-const makeCollectionFn=(arrayFn,objFn)=>(...args)=>{
-  const aFn=arrayFn(...args);
-  const oFn=objFn(...args);
-  return ifElse(isArray$1,aFn,oFn);
-};
+const makeCollectionFn=(arrayFn,objFn)=>(...args)=>ifElse(isArray,arrayFn(...args),objFn(...args));
 const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(...args);
-
-// casting
-const constant = x=>_=>x;
-const ensureArray = (val=[])=>isArray$1(val) ? val : [val];
+const ensureArray = (val=[])=>isArray(val) ? val : [val];
 const ensureString = (val)=>isString(val) ? val : `${val}`;
-const ensureFunction = (arg)=>typeof arg==='function'?arg:constant(arg);
 const ensureProp = (obj,key,val)=>{obj.hasOwnProperty(key) ? obj[key] : (obj[key]=val);return obj;};
 const ensurePropWith = fn=>(obj,key,val)=>ensureProp(obj,key,fn(obj,key,val));
 const ensurePropIsObject = ensurePropWith(stubObject);
@@ -476,11 +60,11 @@ const and = (...preds)=>(...args)=>{
   for (const p of preds)if(p(...args)!==true)return false;
   return true;
 };
-const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (let [pred,val] of arrs){if(pred(...x)){return val;}}});
-const cond = acceptArrayOrArgs(arrs=>(...args)=>ensureFunction(condNoExec(...arrs)(...args))(...args));
+const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);});
 
 
 
+// Array methods
 
 // collections
 
@@ -549,15 +133,15 @@ const groupByValues = transToObject((o,v)=>{
 const pget = cond( // polymorphic get
   [isString,str=>{
     str=str.split('.');
-    return targ=>str.reduce((t,s)=>isArray$1(t) && !isInteger(+s) ? t.map(o=>o[s]) : t[s], targ)
+    return targ=>str.reduce((t,s)=>isArray(t) && !isInteger(+s) ? t.map(o=>o[s]) : t[s], targ)
   }],
-  [isArray$1,keys=>pick(keys)],
-  [isObjectLike$1, obj=>target=>mo(f=>pget(f)(target))(obj)],
+  [isArray,keys=>pick(keys)],
+  [isObjectLike, obj=>target=>mo(f=>pget(f)(target))(obj)],
   [stubTrue,identity], // handles the function case
 );
 const pick=cond(
-  [isArray$1,keys=>obj=>transToSame((o,k)=>o[k]=obj[k])(keys)],
-  [isString,k=>pick([k])],
+  [isArray,keys=>obj=>transToSame((o,k)=>o[k]=obj[k])(keys)],
+  [isString,key=>obj=>obj[key]],
   [isFunction,filterToSame],
 );
 
@@ -575,29 +159,17 @@ const tdToArray = transducer=>collection=>transduce([], appendArrayReducer, tran
 
 const tdMap = mapper => nextReducer => (a,v,...kc) =>
   nextReducer(a,mapper(v,...kc),...kc);
-const tdFilter = (pred=stubTrue) => nextReducer => (a,...args) =>
-  pred(...args) ? nextReducer(a,...args) : a;
+const tdFilter = (pred=stubTrue) => nextReducer => (a,...args) => pred(...args) ? nextReducer(a,...args) : a;
 const tdDPipeToArray = (coll,...fns)=>tdToArray(compose(...fns))(coll);
 const tdReduceListValue = nextReducer=>(acc,v,k,...args)=>{
-  if (!isObjectLike$1(v))
+  if (!isObjectLike(v))
     return nextReducer(acc, v,k,...args);
-  if (isArray$1(v)) {
-    for (let kk=-1, l=v.length;++kk < l;){
-      (acc=isPromise(acc)
-        ? Promise.all([acc,v[kk]]).then(([aa,vv])=>nextReducer(aa, vv, kk, v))
-        : nextReducer(acc, v[kk], kk, v));
-    }
-    return acc;
-  }
-  let kk;
-  for (kk in v){
-    (acc=isPromise(acc)
-      ? Promise.all([acc,v[kk]]).then(([aa,vv])=>nextReducer(aa, vv, kk, v))
-      : nextReducer(acc, v[kk], kk, v));
-  }
+  if (isArray(v))
+    for(let kk=-1,l=v.length;++kk<l;) acc=nextReducer(acc, v[kk], kk, v);
+  else
+    for (const kk in v) acc=nextReducer(acc, v[kk], kk, v);
   return acc;
 };
-
 const reduce = (fn) => (coll,acc) => tdReduceListValue(fn)(acc,coll);
 
 // lodash equivalents
@@ -871,6 +443,121 @@ function stackGet(key) {
  */
 function stackHas(key) {
   return this.__data__.has(key);
+}/** Detect free variable `global` from Node.js. */
+var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;/** Detect free variable `self`. */
+var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+/** Used as a reference to the global object. */
+var root = freeGlobal || freeSelf || Function('return this')();/** Built-in value references. */
+var Symbol = root.Symbol;/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var nativeObjectToString = objectProto.toString;
+
+/** Built-in value references. */
+var symToStringTag = Symbol ? Symbol.toStringTag : undefined;
+
+/**
+ * A specialized version of `baseGetTag` which ignores `Symbol.toStringTag` values.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the raw `toStringTag`.
+ */
+function getRawTag(value) {
+  var isOwn = hasOwnProperty.call(value, symToStringTag),
+      tag = value[symToStringTag];
+
+  try {
+    value[symToStringTag] = undefined;
+    var unmasked = true;
+  } catch (e) {}
+
+  var result = nativeObjectToString.call(value);
+  if (unmasked) {
+    if (isOwn) {
+      value[symToStringTag] = tag;
+    } else {
+      delete value[symToStringTag];
+    }
+  }
+  return result;
+}/** Used for built-in method references. */
+var objectProto$1 = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var nativeObjectToString$1 = objectProto$1.toString;
+
+/**
+ * Converts `value` to a string using `Object.prototype.toString`.
+ *
+ * @private
+ * @param {*} value The value to convert.
+ * @returns {string} Returns the converted string.
+ */
+function objectToString(value) {
+  return nativeObjectToString$1.call(value);
+}/** `Object#toString` result references. */
+var nullTag = '[object Null]',
+    undefinedTag = '[object Undefined]';
+
+/** Built-in value references. */
+var symToStringTag$1 = Symbol ? Symbol.toStringTag : undefined;
+
+/**
+ * The base implementation of `getTag` without fallbacks for buggy environments.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the `toStringTag`.
+ */
+function baseGetTag(value) {
+  if (value == null) {
+    return value === undefined ? undefinedTag : nullTag;
+  }
+  return (symToStringTag$1 && symToStringTag$1 in Object(value))
+    ? getRawTag(value)
+    : objectToString(value);
+}/**
+ * Checks if `value` is the
+ * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+ * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(_.noop);
+ * // => true
+ *
+ * _.isObject(null);
+ * // => false
+ */
+function isObject(value) {
+  var type = typeof value;
+  return value != null && (type == 'object' || type == 'function');
 }/** `Object#toString` result references. */
 var asyncTag = '[object AsyncFunction]',
     funcTag = '[object Function]',
@@ -1387,6 +1074,32 @@ function baseTimes(n, iteratee) {
     result[index] = iteratee(index);
   }
   return result;
+}/**
+ * Checks if `value` is object-like. A value is object-like if it's not `null`
+ * and has a `typeof` result of "object".
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ * @example
+ *
+ * _.isObjectLike({});
+ * // => true
+ *
+ * _.isObjectLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isObjectLike(_.noop);
+ * // => false
+ *
+ * _.isObjectLike(null);
+ * // => false
+ */
+function isObjectLike$1(value) {
+  return value != null && typeof value == 'object';
 }/** `Object#toString` result references. */
 var argsTag = '[object Arguments]';
 
@@ -1398,7 +1111,7 @@ var argsTag = '[object Arguments]';
  * @returns {boolean} Returns `true` if `value` is an `arguments` object,
  */
 function baseIsArguments(value) {
-  return isObjectLike(value) && baseGetTag(value) == argsTag;
+  return isObjectLike$1(value) && baseGetTag(value) == argsTag;
 }/** Used for built-in method references. */
 var objectProto$6 = Object.prototype;
 
@@ -1427,9 +1140,32 @@ var propertyIsEnumerable = objectProto$6.propertyIsEnumerable;
  * // => false
  */
 var isArguments = baseIsArguments(function() { return arguments; }()) ? baseIsArguments : function(value) {
-  return isObjectLike(value) && hasOwnProperty$5.call(value, 'callee') &&
+  return isObjectLike$1(value) && hasOwnProperty$5.call(value, 'callee') &&
     !propertyIsEnumerable.call(value, 'callee');
 };/**
+ * Checks if `value` is classified as an `Array` object.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an array, else `false`.
+ * @example
+ *
+ * _.isArray([1, 2, 3]);
+ * // => true
+ *
+ * _.isArray(document.body.children);
+ * // => false
+ *
+ * _.isArray('abc');
+ * // => false
+ *
+ * _.isArray(_.noop);
+ * // => false
+ */
+var isArray$1 = Array.isArray;/**
  * This method returns `false`.
  *
  * @static
@@ -1581,7 +1317,7 @@ typedArrayTags[weakMapTag] = false;
  * @returns {boolean} Returns `true` if `value` is a typed array, else `false`.
  */
 function baseIsTypedArray(value) {
-  return isObjectLike(value) &&
+  return isObjectLike$1(value) &&
     isLength(value.length) && !!typedArrayTags[baseGetTag(value)];
 }/**
  * The base implementation of `_.unary` without support for storing metadata.
@@ -1654,7 +1390,7 @@ var hasOwnProperty$6 = objectProto$7.hasOwnProperty;
  * @returns {Array} Returns the array of property names.
  */
 function arrayLikeKeys(value, inherited) {
-  var isArr = isArray(value),
+  var isArr = isArray$1(value),
       isArg = !isArr && isArguments(value),
       isBuff = !isArr && !isArg && isBuffer(value),
       isType = !isArr && !isArg && !isBuff && isTypedArray(value),
@@ -2058,7 +1794,7 @@ function copySymbolsIn(source, object) {
  */
 function baseGetAllKeys(object, keysFunc, symbolsFunc) {
   var result = keysFunc(object);
-  return isArray(object) ? result : arrayPush(result, symbolsFunc(object));
+  return isArray$1(object) ? result : arrayPush(result, symbolsFunc(object));
 }/**
  * Creates an array of own enumerable property names and symbols of `object`.
  *
@@ -2080,7 +1816,7 @@ function getAllKeysIn(object) {
   return baseGetAllKeys(object, keysIn$1, getSymbolsIn);
 }/* Built-in method references that are verified to be native. */
 var DataView = getNative(root, 'DataView');/* Built-in method references that are verified to be native. */
-var Promise$1 = getNative(root, 'Promise');/* Built-in method references that are verified to be native. */
+var Promise = getNative(root, 'Promise');/* Built-in method references that are verified to be native. */
 var Set$1 = getNative(root, 'Set');/* Built-in method references that are verified to be native. */
 var WeakMap$1 = getNative(root, 'WeakMap');/** `Object#toString` result references. */
 var mapTag$1 = '[object Map]',
@@ -2094,7 +1830,7 @@ var dataViewTag$1 = '[object DataView]';
 /** Used to detect maps, sets, and weakmaps. */
 var dataViewCtorString = toSource(DataView),
     mapCtorString = toSource(Map),
-    promiseCtorString = toSource(Promise$1),
+    promiseCtorString = toSource(Promise),
     setCtorString = toSource(Set$1),
     weakMapCtorString = toSource(WeakMap$1);
 
@@ -2110,7 +1846,7 @@ var getTag = baseGetTag;
 // Fallback for data views, maps, sets, and weak maps in IE 11 and promises in Node.js < 6.
 if ((DataView && getTag(new DataView(new ArrayBuffer(1))) != dataViewTag$1) ||
     (Map && getTag(new Map) != mapTag$1) ||
-    (Promise$1 && getTag(Promise$1.resolve()) != promiseTag) ||
+    (Promise && getTag(Promise.resolve()) != promiseTag) ||
     (Set$1 && getTag(new Set$1) != setTag$1) ||
     (WeakMap$1 && getTag(new WeakMap$1) != weakMapTag$1)) {
   getTag = function(value) {
@@ -2192,8 +1928,8 @@ function cloneRegExp(regexp) {
   result.lastIndex = regexp.lastIndex;
   return result;
 }/** Used to convert symbols to primitives and strings. */
-var symbolProto$1 = Symbol ? Symbol.prototype : undefined,
-    symbolValueOf = symbolProto$1 ? symbolProto$1.valueOf : undefined;
+var symbolProto = Symbol ? Symbol.prototype : undefined,
+    symbolValueOf = symbolProto ? symbolProto.valueOf : undefined;
 
 /**
  * Creates a clone of the `symbol` object.
@@ -2223,7 +1959,7 @@ var boolTag$1 = '[object Boolean]',
     regexpTag$1 = '[object RegExp]',
     setTag$2 = '[object Set]',
     stringTag$1 = '[object String]',
-    symbolTag$1 = '[object Symbol]';
+    symbolTag = '[object Symbol]';
 
 var arrayBufferTag$1 = '[object ArrayBuffer]',
     dataViewTag$2 = '[object DataView]',
@@ -2280,7 +2016,7 @@ function initCloneByTag(object, tag, isDeep) {
     case setTag$2:
       return new Ctor;
 
-    case symbolTag$1:
+    case symbolTag:
       return cloneSymbol(object);
   }
 }/** Built-in value references. */
@@ -2330,7 +2066,7 @@ var mapTag$3 = '[object Map]';
  * @returns {boolean} Returns `true` if `value` is a map, else `false`.
  */
 function baseIsMap(value) {
-  return isObjectLike(value) && getTag$1(value) == mapTag$3;
+  return isObjectLike$1(value) && getTag$1(value) == mapTag$3;
 }/* Node.js helper references. */
 var nodeIsMap = nodeUtil && nodeUtil.isMap;
 
@@ -2362,7 +2098,7 @@ var setTag$3 = '[object Set]';
  * @returns {boolean} Returns `true` if `value` is a set, else `false`.
  */
 function baseIsSet(value) {
-  return isObjectLike(value) && getTag$1(value) == setTag$3;
+  return isObjectLike$1(value) && getTag$1(value) == setTag$3;
 }/* Node.js helper references. */
 var nodeIsSet = nodeUtil && nodeUtil.isSet;
 
@@ -2402,7 +2138,7 @@ var argsTag$2 = '[object Arguments]',
     regexpTag$2 = '[object RegExp]',
     setTag$4 = '[object Set]',
     stringTag$2 = '[object String]',
-    symbolTag$2 = '[object Symbol]',
+    symbolTag$1 = '[object Symbol]',
     weakMapTag$2 = '[object WeakMap]';
 
 var arrayBufferTag$2 = '[object ArrayBuffer]',
@@ -2427,7 +2163,7 @@ cloneableTags[int8Tag$2] = cloneableTags[int16Tag$2] =
 cloneableTags[int32Tag$2] = cloneableTags[mapTag$4] =
 cloneableTags[numberTag$2] = cloneableTags[objectTag$2] =
 cloneableTags[regexpTag$2] = cloneableTags[setTag$4] =
-cloneableTags[stringTag$2] = cloneableTags[symbolTag$2] =
+cloneableTags[stringTag$2] = cloneableTags[symbolTag$1] =
 cloneableTags[uint8Tag$2] = cloneableTags[uint8ClampedTag$2] =
 cloneableTags[uint16Tag$2] = cloneableTags[uint32Tag$2] = true;
 cloneableTags[errorTag$1] = cloneableTags[funcTag$2] =
@@ -2464,7 +2200,7 @@ function baseClone(value, bitmask, customizer, key, object, stack) {
   if (!isObject(value)) {
     return value;
   }
-  var isArr = isArray(value);
+  var isArr = isArray$1(value);
   if (isArr) {
     result = initCloneArray(value);
     if (!isDeep) {
@@ -2719,14 +2455,14 @@ var boolTag$3 = '[object Boolean]',
     regexpTag$3 = '[object RegExp]',
     setTag$5 = '[object Set]',
     stringTag$3 = '[object String]',
-    symbolTag$3 = '[object Symbol]';
+    symbolTag$2 = '[object Symbol]';
 
 var arrayBufferTag$3 = '[object ArrayBuffer]',
     dataViewTag$4 = '[object DataView]';
 
 /** Used to convert symbols to primitives and strings. */
-var symbolProto$2 = Symbol ? Symbol.prototype : undefined,
-    symbolValueOf$1 = symbolProto$2 ? symbolProto$2.valueOf : undefined;
+var symbolProto$1 = Symbol ? Symbol.prototype : undefined,
+    symbolValueOf$1 = symbolProto$1 ? symbolProto$1.valueOf : undefined;
 
 /**
  * A specialized version of `baseIsEqualDeep` for comparing objects of
@@ -2802,7 +2538,7 @@ function equalByTag(object, other, tag, bitmask, customizer, equalFunc, stack) {
       stack['delete'](object);
       return result;
 
-    case symbolTag$3:
+    case symbolTag$2:
       if (symbolValueOf$1) {
         return symbolValueOf$1.call(object) == symbolValueOf$1.call(other);
       }
@@ -2921,8 +2657,8 @@ var hasOwnProperty$b = objectProto$e.hasOwnProperty;
  * @returns {boolean} Returns `true` if the objects are equivalent, else `false`.
  */
 function baseIsEqualDeep(object, other, bitmask, customizer, equalFunc, stack) {
-  var objIsArr = isArray(object),
-      othIsArr = isArray(other),
+  var objIsArr = isArray$1(object),
+      othIsArr = isArray$1(other),
       objTag = objIsArr ? arrayTag$2 : getTag$1(object),
       othTag = othIsArr ? arrayTag$2 : getTag$1(other);
 
@@ -2981,10 +2717,33 @@ function baseIsEqual(value, other, bitmask, customizer, stack) {
   if (value === other) {
     return true;
   }
-  if (value == null || other == null || (!isObjectLike(value) && !isObjectLike(other))) {
+  if (value == null || other == null || (!isObjectLike$1(value) && !isObjectLike$1(other))) {
     return value !== value && other !== other;
   }
   return baseIsEqualDeep(value, other, bitmask, customizer, baseIsEqual, stack);
+}/** `Object#toString` result references. */
+var symbolTag$3 = '[object Symbol]';
+
+/**
+ * Checks if `value` is classified as a `Symbol` primitive or object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+ * @example
+ *
+ * _.isSymbol(Symbol.iterator);
+ * // => true
+ *
+ * _.isSymbol('abc');
+ * // => false
+ */
+function isSymbol(value) {
+  return typeof value == 'symbol' ||
+    (isObjectLike$1(value) && baseGetTag(value) == symbolTag$3);
 }/** Used to match property names within property paths. */
 var reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]/,
     reIsPlainProp = /^\w*$/;
@@ -2998,7 +2757,7 @@ var reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]/,
  * @returns {boolean} Returns `true` if `value` is a property name, else `false`.
  */
 function isKey(value, object) {
-  if (isArray(value)) {
+  if (isArray$1(value)) {
     return false;
   }
   var type = typeof value;
@@ -3120,6 +2879,76 @@ var stringToPath = memoizeCapped(function(string) {
   });
   return result;
 });/**
+ * A specialized version of `_.map` for arrays without support for iteratee
+ * shorthands.
+ *
+ * @private
+ * @param {Array} [array] The array to iterate over.
+ * @param {Function} iteratee The function invoked per iteration.
+ * @returns {Array} Returns the new mapped array.
+ */
+function arrayMap(array, iteratee) {
+  var index = -1,
+      length = array == null ? 0 : array.length,
+      result = Array(length);
+
+  while (++index < length) {
+    result[index] = iteratee(array[index], index, array);
+  }
+  return result;
+}/** Used as references for various `Number` constants. */
+var INFINITY = 1 / 0;
+
+/** Used to convert symbols to primitives and strings. */
+var symbolProto$2 = Symbol ? Symbol.prototype : undefined,
+    symbolToString = symbolProto$2 ? symbolProto$2.toString : undefined;
+
+/**
+ * The base implementation of `_.toString` which doesn't convert nullish
+ * values to empty strings.
+ *
+ * @private
+ * @param {*} value The value to process.
+ * @returns {string} Returns the string.
+ */
+function baseToString(value) {
+  // Exit early for strings to avoid a performance hit in some environments.
+  if (typeof value == 'string') {
+    return value;
+  }
+  if (isArray$1(value)) {
+    // Recursively convert values (susceptible to call stack limits).
+    return arrayMap(value, baseToString) + '';
+  }
+  if (isSymbol(value)) {
+    return symbolToString ? symbolToString.call(value) : '';
+  }
+  var result = (value + '');
+  return (result == '0' && (1 / value) == -INFINITY) ? '-0' : result;
+}/**
+ * Converts `value` to a string. An empty string is returned for `null`
+ * and `undefined` values. The sign of `-0` is preserved.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to convert.
+ * @returns {string} Returns the converted string.
+ * @example
+ *
+ * _.toString(null);
+ * // => ''
+ *
+ * _.toString(-0);
+ * // => '-0'
+ *
+ * _.toString([1, 2, 3]);
+ * // => '1,2,3'
+ */
+function toString(value) {
+  return value == null ? '' : baseToString(value);
+}/**
  * Casts `value` to a path array if it's not one.
  *
  * @private
@@ -3128,12 +2957,12 @@ var stringToPath = memoizeCapped(function(string) {
  * @returns {Array} Returns the cast property path array.
  */
 function castPath(value, object) {
-  if (isArray(value)) {
+  if (isArray$1(value)) {
     return value;
   }
   return isKey(value, object) ? [value] : stringToPath(toString(value));
 }/** Used as references for various `Number` constants. */
-var INFINITY$2 = 1 / 0;
+var INFINITY$1 = 1 / 0;
 
 /**
  * Converts `value` to a string key if it's not a string or symbol.
@@ -3147,7 +2976,7 @@ function toKey(value) {
     return value;
   }
   var result = (value + '');
-  return (result == '0' && (1 / value) == -INFINITY$2) ? '-0' : result;
+  return (result == '0' && (1 / value) == -INFINITY$1) ? '-0' : result;
 }/**
  * The base implementation of `_.get` without support for default values.
  *
@@ -3232,7 +3061,7 @@ function hasPath(object, path, hasFunc) {
   }
   length = object == null ? 0 : object.length;
   return !!length && isLength(length) && isIndex(key, length) &&
-    (isArray(object) || isArguments(object));
+    (isArray$1(object) || isArguments(object));
 }/**
  * Checks if `path` is a direct or inherited property of `object`.
  *
@@ -3482,7 +3311,7 @@ const schemaToActionNormalizers=schema=>{
       [action=>idKey in action.payload,
         action=>({...action,payload:{[action.payload[idKey]]:action.payload}})],
       // convert array to collection
-      [isArray$1,transToObject((o,v)=>{
+      [isArray,transToObject((o,v)=>{
         v=normalizePayload(v);
         o[v[idKey]]=v;
       })],
@@ -3558,8 +3387,8 @@ const schemaToStateOpsMapper=(
 // appropriate fn when writing the filter? // let's see how it works
 const filterIteratees = cond(
   [isFunction,pred=>v=>pred(v)],
-  [isArray$1,matchesProperty],
-  [isObjectLike$1,matches],
+  [isArray,matchesProperty],
+  [isObjectLike,matches],
   [stubTrue,k=>v=>k in v],
 );
 const getMemoizedObjectQuerier=(

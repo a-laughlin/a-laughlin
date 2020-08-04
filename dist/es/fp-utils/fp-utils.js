@@ -1,475 +1,7 @@
-/**
- * Checks if `value` is the
- * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
- * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is an object, else `false`.
- * @example
- *
- * _.isObject({});
- * // => true
- *
- * _.isObject([1, 2, 3]);
- * // => true
- *
- * _.isObject(_.noop);
- * // => true
- *
- * _.isObject(null);
- * // => false
- */
-function isObject(value) {
-  var type = typeof value;
-  return value != null && (type == 'object' || type == 'function');
-}/** Detect free variable `global` from Node.js. */
-var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;/** Detect free variable `self`. */
-var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
-
-/** Used as a reference to the global object. */
-var root = freeGlobal || freeSelf || Function('return this')();/** Built-in value references. */
-var Symbol = root.Symbol;/** Used for built-in method references. */
-var objectProto = Object.prototype;
-
-/** Used to check objects for own properties. */
-var hasOwnProperty = objectProto.hasOwnProperty;
-
-/**
- * Used to resolve the
- * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
- * of values.
- */
-var nativeObjectToString = objectProto.toString;
-
-/** Built-in value references. */
-var symToStringTag = Symbol ? Symbol.toStringTag : undefined;
-
-/**
- * A specialized version of `baseGetTag` which ignores `Symbol.toStringTag` values.
- *
- * @private
- * @param {*} value The value to query.
- * @returns {string} Returns the raw `toStringTag`.
- */
-function getRawTag(value) {
-  var isOwn = hasOwnProperty.call(value, symToStringTag),
-      tag = value[symToStringTag];
-
-  try {
-    value[symToStringTag] = undefined;
-    var unmasked = true;
-  } catch (e) {}
-
-  var result = nativeObjectToString.call(value);
-  if (unmasked) {
-    if (isOwn) {
-      value[symToStringTag] = tag;
-    } else {
-      delete value[symToStringTag];
-    }
-  }
-  return result;
-}/** Used for built-in method references. */
-var objectProto$1 = Object.prototype;
-
-/**
- * Used to resolve the
- * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
- * of values.
- */
-var nativeObjectToString$1 = objectProto$1.toString;
-
-/**
- * Converts `value` to a string using `Object.prototype.toString`.
- *
- * @private
- * @param {*} value The value to convert.
- * @returns {string} Returns the converted string.
- */
-function objectToString(value) {
-  return nativeObjectToString$1.call(value);
-}/** `Object#toString` result references. */
-var nullTag = '[object Null]',
-    undefinedTag = '[object Undefined]';
-
-/** Built-in value references. */
-var symToStringTag$1 = Symbol ? Symbol.toStringTag : undefined;
-
-/**
- * The base implementation of `getTag` without fallbacks for buggy environments.
- *
- * @private
- * @param {*} value The value to query.
- * @returns {string} Returns the `toStringTag`.
- */
-function baseGetTag(value) {
-  if (value == null) {
-    return value === undefined ? undefinedTag : nullTag;
-  }
-  return (symToStringTag$1 && symToStringTag$1 in Object(value))
-    ? getRawTag(value)
-    : objectToString(value);
-}/**
- * Checks if `value` is object-like. A value is object-like if it's not `null`
- * and has a `typeof` result of "object".
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
- * @example
- *
- * _.isObjectLike({});
- * // => true
- *
- * _.isObjectLike([1, 2, 3]);
- * // => true
- *
- * _.isObjectLike(_.noop);
- * // => false
- *
- * _.isObjectLike(null);
- * // => false
- */
-function isObjectLike(value) {
-  return value != null && typeof value == 'object';
-}/** `Object#toString` result references. */
-var symbolTag = '[object Symbol]';
-
-/**
- * Checks if `value` is classified as a `Symbol` primitive or object.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
- * @example
- *
- * _.isSymbol(Symbol.iterator);
- * // => true
- *
- * _.isSymbol('abc');
- * // => false
- */
-function isSymbol(value) {
-  return typeof value == 'symbol' ||
-    (isObjectLike(value) && baseGetTag(value) == symbolTag);
-}/** Used as references for various `Number` constants. */
-var NAN = 0 / 0;
-
-/** Used to match leading and trailing whitespace. */
-var reTrim = /^\s+|\s+$/g;
-
-/** Used to detect bad signed hexadecimal string values. */
-var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
-
-/** Used to detect binary string values. */
-var reIsBinary = /^0b[01]+$/i;
-
-/** Used to detect octal string values. */
-var reIsOctal = /^0o[0-7]+$/i;
-
-/** Built-in method references without a dependency on `root`. */
-var freeParseInt = parseInt;
-
-/**
- * Converts `value` to a number.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to process.
- * @returns {number} Returns the number.
- * @example
- *
- * _.toNumber(3.2);
- * // => 3.2
- *
- * _.toNumber(Number.MIN_VALUE);
- * // => 5e-324
- *
- * _.toNumber(Infinity);
- * // => Infinity
- *
- * _.toNumber('3.2');
- * // => 3.2
- */
-function toNumber(value) {
-  if (typeof value == 'number') {
-    return value;
-  }
-  if (isSymbol(value)) {
-    return NAN;
-  }
-  if (isObject(value)) {
-    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
-    value = isObject(other) ? (other + '') : other;
-  }
-  if (typeof value != 'string') {
-    return value === 0 ? value : +value;
-  }
-  value = value.replace(reTrim, '');
-  var isBinary = reIsBinary.test(value);
-  return (isBinary || reIsOctal.test(value))
-    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
-    : (reIsBadHex.test(value) ? NAN : +value);
-}/** Used as references for various `Number` constants. */
-var INFINITY = 1 / 0,
-    MAX_INTEGER = 1.7976931348623157e+308;
-
-/**
- * Converts `value` to a finite number.
- *
- * @static
- * @memberOf _
- * @since 4.12.0
- * @category Lang
- * @param {*} value The value to convert.
- * @returns {number} Returns the converted number.
- * @example
- *
- * _.toFinite(3.2);
- * // => 3.2
- *
- * _.toFinite(Number.MIN_VALUE);
- * // => 5e-324
- *
- * _.toFinite(Infinity);
- * // => 1.7976931348623157e+308
- *
- * _.toFinite('3.2');
- * // => 3.2
- */
-function toFinite(value) {
-  if (!value) {
-    return value === 0 ? value : 0;
-  }
-  value = toNumber(value);
-  if (value === INFINITY || value === -INFINITY) {
-    var sign = (value < 0 ? -1 : 1);
-    return sign * MAX_INTEGER;
-  }
-  return value === value ? value : 0;
-}/**
- * Converts `value` to an integer.
- *
- * **Note:** This method is loosely based on
- * [`ToInteger`](http://www.ecma-international.org/ecma-262/7.0/#sec-tointeger).
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to convert.
- * @returns {number} Returns the converted integer.
- * @example
- *
- * _.toInteger(3.2);
- * // => 3
- *
- * _.toInteger(Number.MIN_VALUE);
- * // => 0
- *
- * _.toInteger(Infinity);
- * // => 1.7976931348623157e+308
- *
- * _.toInteger('3.2');
- * // => 3
- */
-function toInteger(value) {
-  var result = toFinite(value),
-      remainder = result % 1;
-
-  return result === result ? (remainder ? result - remainder : result) : 0;
-}/**
- * Checks if `value` is an integer.
- *
- * **Note:** This method is based on
- * [`Number.isInteger`](https://mdn.io/Number/isInteger).
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is an integer, else `false`.
- * @example
- *
- * _.isInteger(3);
- * // => true
- *
- * _.isInteger(Number.MIN_VALUE);
- * // => false
- *
- * _.isInteger(Infinity);
- * // => false
- *
- * _.isInteger('3');
- * // => false
- */
-function isInteger(value) {
-  return typeof value == 'number' && value == toInteger(value);
-}/** `Object#toString` result references. */
-var numberTag = '[object Number]';
-
-/**
- * Checks if `value` is classified as a `Number` primitive or object.
- *
- * **Note:** To exclude `Infinity`, `-Infinity`, and `NaN`, which are
- * classified as numbers, use the `_.isFinite` method.
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a number, else `false`.
- * @example
- *
- * _.isNumber(3);
- * // => true
- *
- * _.isNumber(Number.MIN_VALUE);
- * // => true
- *
- * _.isNumber(Infinity);
- * // => true
- *
- * _.isNumber('3');
- * // => false
- */
-function isNumber(value) {
-  return typeof value == 'number' ||
-    (isObjectLike(value) && baseGetTag(value) == numberTag);
-}/**
- * A specialized version of `_.map` for arrays without support for iteratee
- * shorthands.
- *
- * @private
- * @param {Array} [array] The array to iterate over.
- * @param {Function} iteratee The function invoked per iteration.
- * @returns {Array} Returns the new mapped array.
- */
-function arrayMap(array, iteratee) {
-  var index = -1,
-      length = array == null ? 0 : array.length,
-      result = Array(length);
-
-  while (++index < length) {
-    result[index] = iteratee(array[index], index, array);
-  }
-  return result;
-}/**
- * Checks if `value` is classified as an `Array` object.
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is an array, else `false`.
- * @example
- *
- * _.isArray([1, 2, 3]);
- * // => true
- *
- * _.isArray(document.body.children);
- * // => false
- *
- * _.isArray('abc');
- * // => false
- *
- * _.isArray(_.noop);
- * // => false
- */
-var isArray = Array.isArray;/** Used as references for various `Number` constants. */
-var INFINITY$1 = 1 / 0;
-
-/** Used to convert symbols to primitives and strings. */
-var symbolProto = Symbol ? Symbol.prototype : undefined,
-    symbolToString = symbolProto ? symbolProto.toString : undefined;
-
-/**
- * The base implementation of `_.toString` which doesn't convert nullish
- * values to empty strings.
- *
- * @private
- * @param {*} value The value to process.
- * @returns {string} Returns the string.
- */
-function baseToString(value) {
-  // Exit early for strings to avoid a performance hit in some environments.
-  if (typeof value == 'string') {
-    return value;
-  }
-  if (isArray(value)) {
-    // Recursively convert values (susceptible to call stack limits).
-    return arrayMap(value, baseToString) + '';
-  }
-  if (isSymbol(value)) {
-    return symbolToString ? symbolToString.call(value) : '';
-  }
-  var result = (value + '');
-  return (result == '0' && (1 / value) == -INFINITY$1) ? '-0' : result;
-}/**
- * Converts `value` to a string. An empty string is returned for `null`
- * and `undefined` values. The sign of `-0` is preserved.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to convert.
- * @returns {string} Returns the converted string.
- * @example
- *
- * _.toString(null);
- * // => ''
- *
- * _.toString(-0);
- * // => '-0'
- *
- * _.toString([1, 2, 3]);
- * // => '1,2,3'
- */
-function toString(value) {
-  return value == null ? '' : baseToString(value);
-}/** Used to generate unique IDs. */
-var idCounter = 0;
-
-/**
- * Generates a unique ID. If `prefix` is given, the ID is appended to it.
- *
- * @static
- * @since 0.1.0
- * @memberOf _
- * @category Util
- * @param {string} [prefix=''] The value to prefix the ID with.
- * @returns {string} Returns the unique ID.
- * @example
- *
- * _.uniqueId('contact_');
- * // => 'contact_104'
- *
- * _.uniqueId();
- * // => '105'
- */
-function uniqueId(prefix) {
-  var id = ++idCounter;
-  return toString(prefix) + id;
-}// curry/compose/pipe, for later fns
+// curry/compose/pipe, for later fns
 let curry,compose,pipe;
 const identity=x=>x;
-if(typeof globalThis.process==='undefined'){
+if(globalThis.process===undefined){
   globalThis.process={env:{NODE_ENV:'production'}};
 }
 if (globalThis.process.env.NODE_ENV !== 'production') {
@@ -537,13 +69,17 @@ const range=(end=10,start=0,step=1,mapper=identity)=>{
 // const stubs
 const frozenEmptyArray = Object.freeze([]);
 const frozenEmptyObject = Object.freeze(Object.create(null));
-const isError = and(isObjectLike$1,e=>typeof e.message === 'string');
+
+
+// primitive predicates
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isFinite
+const isFinite = Number.isFinite || (v=>typeof value === 'number' && isFinite(value));
+const isInteger = Number.isInteger || (v => isFinite(v) && v % 1 === 0);
+const isError = e=>isObjectLike(e) && typeof e.message === 'string';
 const isString = arg=>typeof arg==='string';
 const isFunction = arg=>typeof arg==='function';
-const isObjectLike$1 = arg=>typeof arg==='object' && arg !== null;
-const isArray$1 = Array.isArray.bind(Array);
-const isFalsy = arg=>!arg;
-const isTruthy = arg=>!!arg;
+const isObjectLike = arg=>typeof arg==='object' && arg !== null;
+const isArray = Array.isArray.bind(Array);
 const is = val1=>val2=>val1===val2;
 const isUndefOrNull = val => val === undefined || val === null;
 const isProductionEnv = ()=>process.env.NODE_ENV === 'production';
@@ -556,23 +92,19 @@ const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
 // flow
 const dpipe = (data,...args)=>pipe(...args)(data);
 // functions
-const makeCollectionFn=(arrayFn,objFn)=>(...args)=>{
-  const aFn=arrayFn(...args);
-  const oFn=objFn(...args);
-  return ifElse(isArray$1,aFn,oFn);
-};
+const makeCollectionFn=(arrayFn,objFn)=>(...args)=>ifElse(isArray,arrayFn(...args),objFn(...args));
 const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(...args);
 const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
 
 const overObj = fnsObj=>(...args)=>mo(f=>f(...args))(fnsObj);
 const overArray = fnsArray=>(...args)=>ma(f=>f(...args))(fnsArray);
-const over = x=>isArray$1(x)?overArray(x):overObj(x);
+const over = x=>isArray(x)?overArray(x):overObj(x);
 const converge = over;//backwards compat;
 
 // casting
 const constant = x=>_=>x;
-const ensureArray = (val=[])=>isArray$1(val) ? val : [val];
+const ensureArray = (val=[])=>isArray(val) ? val : [val];
 const ensureString = (val)=>isString(val) ? val : `${val}`;
 const ensureFunction = (arg)=>typeof arg==='function'?arg:constant(arg);
 const ensureProp = (obj,key,val)=>{obj.hasOwnProperty(key) ? obj[key] : (obj[key]=val);return obj;};
@@ -594,18 +126,12 @@ const or = (...preds)=>(...args)=>{
 };
 const none = (...fns)=>not(or(...fns));
 const xor = fn=>pipe(filter(fn),len1);
-const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (let [pred,val] of arrs){if(pred(...x)){return val;}}});
-const cond = acceptArrayOrArgs(arrs=>(...args)=>ensureFunction(condNoExec(...arrs)(...args))(...args));
+const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred,val] of arrs) if(pred(...x)) return val;});
+const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);});
 
 
 
 // Array methods
-const slice = (...sliceArgs)=>arr=>arr.slice(...sliceArgs);
-const reverse = arr=>arr.slice(0).reverse(); // immutable array reverse
-const sort = coll=>_sortBy(coll,null);
-
-
-
 
 // collections
 
@@ -690,11 +216,11 @@ const fmx=filterMapToSame; // backward compatability
 
 
 const first = c=>{
-  if (isArray$1(c)) return c[0];
+  if (isArray(c)) return c[0];
   for (const k in c)return c[k];
 };
 const last = c =>{
-  c=isArray$1(c)?c:Object.values(c);
+  c=isArray(c)?c:Object.values(c);
   return c[c.length-1];
 };
 const partitionObject = (...preds)=>overArray([...(preds.map(p=>fo(p))),fo(none(...preds))]);
@@ -749,15 +275,15 @@ const groupByValues = transToObject((o,v)=>{
 const pget = cond( // polymorphic get
   [isString,str=>{
     str=str.split('.');
-    return targ=>str.reduce((t,s)=>isArray$1(t) && !isInteger(+s) ? t.map(o=>o[s]) : t[s], targ)
+    return targ=>str.reduce((t,s)=>isArray(t) && !isInteger(+s) ? t.map(o=>o[s]) : t[s], targ)
   }],
-  [isArray$1,keys=>pick(keys)],
-  [isObjectLike$1, obj=>target=>mo(f=>pget(f)(target))(obj)],
+  [isArray,keys=>pick(keys)],
+  [isObjectLike, obj=>target=>mo(f=>pget(f)(target))(obj)],
   [stubTrue,identity], // handles the function case
 );
 const pick=cond(
-  [isArray$1,keys=>obj=>transToSame((o,k)=>o[k]=obj[k])(keys)],
-  [isString,k=>pick([k])],
+  [isArray,keys=>obj=>transToSame((o,k)=>o[k]=obj[k])(keys)],
+  [isString,key=>obj=>obj[key]],
   [isFunction,filterToSame],
 );
 
@@ -766,15 +292,6 @@ const pick=cond(
 
 // Objects
 
-const renameProps = obj=>target=>{
-  let newKey,oldKey,targetCopy = {...target};
-  for (newKey in obj){
-    oldKey=obj[newKey];
-    targetCopy[newKey]=target[oldKey];
-    delete targetCopy[oldKey];
-  }
-  return targetCopy;
-};
 const objStringifierFactory = ({
   getPrefix=()=>'',
   getSuffix=()=>'',
@@ -791,6 +308,12 @@ const objToUrlParams = objStringifierFactory({
   getPrefix:(input,output)=>output ? '?' : '',
   mapPairs:encodeURIComponent,
 });
+
+// content
+const uniqueId = (()=>{
+  let id=0;
+  return (predix='')=>`${predix}${++id}`;
+})();
 
 
 
@@ -813,7 +336,10 @@ const tdMap = mapper => nextReducer => (a,v,...kc) =>
 const tdMapWithAcc = mapper => nextReducer => (a,v,...kc) =>
   nextReducer(a,mapper(a,v,...kc),...kc);
 const tdAssign = f=>nextReducer => (a,v,...kc) =>nextReducer({...a,...f(a,v,...kc)},v,...kc);
-const tdSet = (key,f)=>nextReducer => (a,v,...kc) =>nextReducer({...a,[key]:f(a,v,...kc)},v,...kc);
+const tdSet = (key,f)=>nextReducer => (a,v,...kc) =>{
+  const next = f(a,v,...kc);
+  return a[key]===next?nextReducer(a,v,k,c):nextReducer({...a,[key]:next},v,...kc);
+};
 const tdReduce = reducer => nextReducer => (a,...vkc) =>
   nextReducer(reducer(a,...vkc),...vkc);
 const tdIdentity = identity;
@@ -823,21 +349,8 @@ const tdTap = fn => nextReducer => (...args) => {
 };
 
 const tdLog = (msg='log',pred=stubTrue)=>tdTap((...args)=>pred(...args)&&console.log(msg,...args));
-const tdFilter = (pred=stubTrue) => nextReducer => (a,...args) =>
-  pred(...args) ? nextReducer(a,...args) : a;
-const tdFilterWithAcc = (pred=stubTrue) => nextReducer => (...args) =>
-  pred(...args) ? nextReducer(...args) : args[0];
-const tdNormalizePromises = nextReducer => (acc,v,...args)=>{
-  if (isPromise(acc)){
-    return isPromise(v)
-      ? Promise.all([acc,v]).then(([aa,vv])=>nextReducer(aa,vv,...args))
-      : acc.then(aa=>nextReducer(aa,v,...args));
-  }
-  if (isPromise(v)){
-    return v.then(vv=>nextReducer(acc,vv,...args))
-  }
-  return nextReducer(acc,v,...args);
-};
+const tdFilter = (pred=stubTrue) => nextReducer => (a,...args) => pred(...args) ? nextReducer(a,...args) : a;
+const tdFilterWithAcc = (pred=stubTrue) => nextReducer => (...args) => pred(...args) ? nextReducer(...args) : args[0];
 const tdOmit = pred=>tdFilter(not(pred));
 const tdOmitWithAcc = pred=>tdFilterWithAcc(not(pred));
 const tdPipeToArray = (...fns)=>tdToArray(compose(...fns));
@@ -845,55 +358,33 @@ const tdPipeToObject = (...fns)=>tdToObject(compose(...fns));
 const tdDPipeToArray = (coll,...fns)=>tdToArray(compose(...fns))(coll);
 const tdDPipeToObject = (coll,...fns)=>tdToObject(compose(...fns))(coll);
 const tdReduceListValue = nextReducer=>(acc,v,k,...args)=>{
-  if (!isObjectLike$1(v))
+  if (!isObjectLike(v))
     return nextReducer(acc, v,k,...args);
-  if (isArray$1(v)) {
-    for (let kk=-1, l=v.length;++kk < l;){
-      (acc=isPromise(acc)
-        ? Promise.all([acc,v[kk]]).then(([aa,vv])=>nextReducer(aa, vv, kk, v))
-        : nextReducer(acc, v[kk], kk, v));
-    }
-    return acc;
-  }
-  let kk;
-  for (kk in v){
-    (acc=isPromise(acc)
-      ? Promise.all([acc,v[kk]]).then(([aa,vv])=>nextReducer(aa, vv, kk, v))
-      : nextReducer(acc, v[kk], kk, v));
-  }
+  if (isArray(v))
+    for(let kk=-1,l=v.length;++kk<l;) acc=nextReducer(acc, v[kk], kk, v);
+  else
+    for (const kk in v) acc=nextReducer(acc, v[kk], kk, v);
   return acc;
 };
-
 const reduce = (fn) => (coll,acc) => tdReduceListValue(fn)(acc,coll);
 const tdIfElse=(pred,tdT,tdF=identity)=>nextReducer=>ifElse(pred,tdT(nextReducer),tdF(nextReducer));
-const tdCond=acceptArrayOrArgs(predTransducerPairs=>{
-  if(predTransducerPairs.length===0)
-      return itentity; // noop
-  if(predTransducerPairs.length===1) // single function passed, act like filterWithAcc
-    return ifElse(predTransducerPairs[0],identity,noop);
-  if(predTransducerPairs.length===2) // conditionally reduce
-    return tdIfElse(predTransducerPairs[0],predTransducerPairs[1]);
-  return nextReducer=>cond(
-    pushToArray(predTransducerPairs.map(([pred,td])=>[pred,td(nextReducer)]),[stubTrue,nextReducer])
-  );
-});
-const isReducerValueObjectLike=(a,v)=>isObjectLike$1(v);
+const isReducerValueObjectLike=(a,v)=>isObjectLike(v);
 const tdIfValueObjectLike=transducer=>tdIfElse(isReducerValueObjectLike,transducer);
 const tdDfObjectLikeValuesWith=(getChildAcc=stubObject)=>tdIfValueObjectLike(
   nextReducer=>(a,v,k,c,childReducer)=>nextReducer(a,childReducer(getChildAcc(a,v,k,c),v),k,c),
 );
 const transduceDF = ({
-  descentTransducer=tdIdentity,
-  visitTransducer=tdDfObjectLikeValuesWith(stubObject),
-  ascentTransducer=tdIdentity,
+  preVisit=tdIdentity,
+  visit=tdDfObjectLikeValuesWith(stubObject),
+  postVisit=tdIdentity,
   edgeCombiner=(acc={},v,k)=>{acc[k]=v;return acc;},
   childrenLoopReducer=tdReduceListValue
 }={})=>{
   const tempdfReducer = compose(
-    descentTransducer,
+    preVisit,
     nextReducer=>(a,v,k,c)=>nextReducer(a,v,k,c,dfReducer),
-    visitTransducer,
-    ascentTransducer,
+    visit,
+    postVisit,
   )(edgeCombiner);
   const dfReducer = childrenLoopReducer(tempdfReducer);
   return dfReducer;
@@ -902,9 +393,9 @@ const transduceDF = ({
 
 
 const transduceBF = ({
-  preVisitTransducer=tdIdentity,
-  visitTransducer=tdIdentity,//tdBfObjectLikeValuesWith(stubObject),
-  postVisitTransducer=tdIdentity,
+  preVisit=tdIdentity,
+  visit=tdIdentity,//tdBfObjectLikeValuesWith(stubObject),
+  postVisit=tdIdentity,
   edgeCombiner=(acc={},v,k)=>{acc[k]=v;return acc;},
   childrenLoopReducer=tdReduceListValue,
 }={})=>{
@@ -914,9 +405,9 @@ const transduceBF = ({
     return aa;
   });
   const reduceItem = compose(
-    preVisitTransducer,
+    preVisit,
     nextReducer=>(a,v,k,c)=>{
-      if (isObjectLike$1(v)){
+      if (isObjectLike(v)){
         const childAcc={};
         nextReducer(a,childAcc,k,c); // combine levels
         pushNextQueueItems(childAcc,v,k,c);
@@ -926,7 +417,7 @@ const transduceBF = ({
       if(queue.length>0)
         reduceItem(...queue.shift());
     },
-    postVisitTransducer
+    postVisit
   )(edgeCombiner);
   return childrenLoopReducer((a,v,k,c)=>{
     reduceItem(a,v,k,c);
@@ -962,4 +453,4 @@ const diffObjs = (a={},b={}) => {
 };
 
 // TODO decide behavior when collections are arrays and no "by" key to diff them by
-const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);export{acceptArrayOrArgs,and,appendArrayReducer,appendObjectReducer,compose,cond,condNoExec,constant,converge,curry,diffBy,diffObjs,dpipe,ensureArray,ensureFunction,ensureProp,ensurePropIsArray,ensurePropIsObject,ensurePropWith,ensureString,fa,filterMapToArray,filterMapToObject,filterMapToSame,filterToArray,filterToObject,filterToSame,first,fma,fmo,fmx,fo,frozenEmptyArray,frozenEmptyObject,fx,groupBy,groupByKeys,groupByValues,has,identity,ifElse,ifElseUnary,immutableFilterObjectToObject,immutableTransArrayToArray,immutableTransObjectToObject,invokeArgsOnObj,invokeObjectWithArgs,is,isArray$1 as isArray,isDeepEqual,isError,isFalsy,isFunction,isInteger,isNumber,isObjectLike$1 as isObjectLike,isProductionEnv,isPromise,isString,isTruthy,isUndefOrNull,keyBy,last,len,len0,len1,ma,mapToArray,mapToObject,mapToSame,memoize,mo,mx,none,noop,not,oa,objStringifierFactory,objToUrlParams,omitToArray,omitToObject,omitToSame,oo,or,over,overArray,overObj,ox,partition,pget,pick,pipe,plog,ra,range,reduce,renameProps,reverse,ro,rx,slice,sort,stubArray,stubFalse,stubNull,stubObject,stubString,stubTrue,tdAssign,tdCond,tdDPipeToArray,tdDPipeToObject,tdDfObjectLikeValuesWith,tdFilter,tdFilterWithAcc,tdIdentity,tdIfElse,tdIfValueObjectLike,tdKeyBy,tdLog,tdMap,tdMapWithAcc,tdNormalizePromises,tdOmit,tdOmitWithAcc,tdPipeToArray,tdPipeToObject,tdReduce,tdReduceListValue,tdSet,tdTap,tdToArray,tdToObject,tdToSame,tdValue,transToArray,transToObject,transToSame,transduce,transduceBF,transduceDF,uniqueId,xor};
+const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);export{acceptArrayOrArgs,and,appendArrayReducer,appendObjectReducer,compose,cond,condNoExec,constant,converge,curry,diffBy,diffObjs,dpipe,ensureArray,ensureFunction,ensureProp,ensurePropIsArray,ensurePropIsObject,ensurePropWith,ensureString,fa,filterMapToArray,filterMapToObject,filterMapToSame,filterToArray,filterToObject,filterToSame,first,fma,fmo,fmx,fo,frozenEmptyArray,frozenEmptyObject,fx,groupBy,groupByKeys,groupByValues,has,identity,ifElse,ifElseUnary,immutableFilterObjectToObject,immutableTransArrayToArray,immutableTransObjectToObject,invokeArgsOnObj,invokeObjectWithArgs,is,isArray,isDeepEqual,isError,isFinite,isFunction,isInteger,isObjectLike,isProductionEnv,isPromise,isString,isUndefOrNull,keyBy,last,len,len0,len1,ma,mapToArray,mapToObject,mapToSame,memoize,mo,mx,none,noop,not,oa,objStringifierFactory,objToUrlParams,omitToArray,omitToObject,omitToSame,oo,or,over,overArray,overObj,ox,partition,pget,pick,pipe,plog,ra,range,reduce,ro,rx,stubArray,stubFalse,stubNull,stubObject,stubString,stubTrue,tdAssign,tdDPipeToArray,tdDPipeToObject,tdDfObjectLikeValuesWith,tdFilter,tdFilterWithAcc,tdIdentity,tdIfElse,tdIfValueObjectLike,tdKeyBy,tdLog,tdMap,tdMapWithAcc,tdOmit,tdOmitWithAcc,tdPipeToArray,tdPipeToObject,tdReduce,tdReduceListValue,tdSet,tdTap,tdToArray,tdToObject,tdToSame,tdValue,transToArray,transToObject,transToSame,transduce,transduceBF,transduceDF,uniqueId,xor};
