@@ -1,4 +1,4 @@
-import s from './style-string-to-object.js'
+import {styleStringToObj as s} from './style-string-to-object.js'
 
 
 it("converts a string to a styles object", () => {
