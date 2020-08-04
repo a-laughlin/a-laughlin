@@ -77,7 +77,7 @@ export const frozenEmptyObject = Object.freeze(Object.create(null));
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isFinite
 export const isFinite = Number.isFinite || (v=>typeof value === 'number' && isFinite(value));
 export const isInteger = Number.isInteger || (v => isFinite(v) && v % 1 === 0);
-export const isError = and(isObjectLike,e=>typeof e.message === 'string')
+export const isError = e=>isObjectLike(e) && typeof e.message === 'string';
 export const isString = arg=>typeof arg==='string';
 export const isFunction = arg=>typeof arg==='function';
 export const isObjectLike = arg=>typeof arg==='object' && arg !== null;
@@ -94,11 +94,7 @@ export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
 // flow
 export const dpipe = (data,...args)=>pipe(...args)(data);
 // functions
-const makeCollectionFn=(arrayFn,objFn)=>(...args)=>{
-  const aFn=arrayFn(...args);
-  const oFn=objFn(...args);
-  return ifElse(isArray,aFn,oFn);
-}
+const makeCollectionFn=(arrayFn,objFn)=>(...args)=>ifElse(isArray,arrayFn(...args),objFn(...args));
 export const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(...args);
 export const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 export const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
@@ -138,12 +134,6 @@ export const cond = acceptArrayOrArgs(arrs=>(...args)=>ensureFunction(condNoExec
 
 
 // Array methods
-export const slice = (...sliceArgs)=>arr=>arr.slice(...sliceArgs);
-export const reverse = arr=>arr.slice(0).reverse(); // immutable array reverse
-export const sort = coll=>_sortBy(coll,null);
-
-
-
 
 // collections
 
@@ -304,15 +294,6 @@ export const pick=cond(
 
 // Objects
 
-export const renameProps = obj=>target=>{
-  let newKey,oldKey,targetCopy = {...target};
-  for (newKey in obj){
-    oldKey=obj[newKey]
-    targetCopy[newKey]=target[oldKey]
-    delete targetCopy[oldKey];
-  }
-  return targetCopy;
-}
 export const objStringifierFactory = ({
   getPrefix=()=>'',
   getSuffix=()=>'',
@@ -331,7 +312,10 @@ export const objToUrlParams = objStringifierFactory({
 });
 
 // content
-export {default as uniqueId} from 'lodash-es/uniqueId'
+export const uniqueId = (()=>{
+  let id=0;
+  return (predix='')=>`${predix}${++id}`;
+})();
 
 
 
