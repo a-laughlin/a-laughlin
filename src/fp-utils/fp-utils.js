@@ -100,7 +100,7 @@ export const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 export const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
 
 export const overObj = fnsObj=>(...args)=>mo(f=>f(...args))(fnsObj);
-export const overArray = (...args)=>ma(f=>f(...args));
+export const overArray = fnsArray=>(...args)=>ma(f=>f(...args))(fnsArray);
 export const over = x=>isArray(x)?overArray(x):overObj(x);
 export const converge = over;//backwards compat;
 
@@ -338,7 +338,10 @@ export const tdMap = mapper => nextReducer => (a,v,...kc) =>
 export const tdMapWithAcc = mapper => nextReducer => (a,v,...kc) =>
   nextReducer(a,mapper(a,v,...kc),...kc);
 export const tdAssign = f=>nextReducer => (a,v,...kc) =>nextReducer({...a,...f(a,v,...kc)},v,...kc);
-export const tdSet = (key,f)=>nextReducer => (a,v,...kc) =>nextReducer({...a,[key]:f(a,v,...kc)},v,...kc);
+export const tdSet = (key,f)=>nextReducer => (a,v,...kc) =>{
+  const next = f(a,v,...kc);
+  return a[key]===next?nextReducer(a,v,k,c):nextReducer({...a,[key]:next},v,...kc);
+};
 export const tdReduce = reducer => nextReducer => (a,...vkc) =>
   nextReducer(reducer(a,...vkc),...vkc);
 export const tdIdentity = identity;
@@ -348,21 +351,8 @@ export const tdTap = fn => nextReducer => (...args) => {
 };
 
 export const tdLog = (msg='log',pred=stubTrue)=>tdTap((...args)=>pred(...args)&&console.log(msg,...args));
-export const tdFilter = (pred=stubTrue) => nextReducer => (a,...args) =>
-  pred(...args) ? nextReducer(a,...args) : a;
-export const tdFilterWithAcc = (pred=stubTrue) => nextReducer => (...args) =>
-  pred(...args) ? nextReducer(...args) : args[0];
-export const tdNormalizePromises = nextReducer => (acc,v,...args)=>{
-  if (isPromise(acc)){
-    return isPromise(v)
-      ? Promise.all([acc,v]).then(([aa,vv])=>nextReducer(aa,vv,...args))
-      : acc.then(aa=>nextReducer(aa,v,...args));
-  }
-  if (isPromise(v)){
-    return v.then(vv=>nextReducer(acc,vv,...args))
-  }
-  return nextReducer(acc,v,...args);
-}
+export const tdFilter = (pred=stubTrue) => nextReducer => (a,...args) => pred(...args) ? nextReducer(a,...args) : a;
+export const tdFilterWithAcc = (pred=stubTrue) => nextReducer => (...args) => pred(...args) ? nextReducer(...args) : args[0];
 export const tdOmit = pred=>tdFilter(not(pred));
 export const tdOmitWithAcc = pred=>tdFilterWithAcc(not(pred));
 export const tdPipeToArray = (...fns)=>tdToArray(compose(...fns));
@@ -372,23 +362,12 @@ export const tdDPipeToObject = (coll,...fns)=>tdToObject(compose(...fns))(coll);
 export const tdReduceListValue = nextReducer=>(acc,v,k,...args)=>{
   if (!isObjectLike(v))
     return nextReducer(acc, v,k,...args);
-  if (isArray(v)) {
-    for (let kk=-1, l=v.length;++kk < l;){
-      (acc=isPromise(acc)
-        ? Promise.all([acc,v[kk]]).then(([aa,vv])=>nextReducer(aa, vv, kk, v))
-        : nextReducer(acc, v[kk], kk, v));
-    }
-    return acc;
-  }
-  let kk;
-  for (kk in v){
-    (acc=isPromise(acc)
-      ? Promise.all([acc,v[kk]]).then(([aa,vv])=>nextReducer(aa, vv, kk, v))
-      : nextReducer(acc, v[kk], kk, v));
-  }
+  if (isArray(v))
+    for(let kk=-1,l=v.length;++kk<l;) acc=nextReducer(acc, v[kk], kk, v);
+  else
+    for (const kk in v) acc=nextReducer(acc, v[kk], kk, v);
   return acc;
 };
-
 export const reduce = (fn) => (coll,acc) => tdReduceListValue(fn)(acc,coll);
 export const tdIfElse=(pred,tdT,tdF=identity)=>nextReducer=>ifElse(pred,tdT(nextReducer),tdF(nextReducer));
 export const tdCond=acceptArrayOrArgs(predTransducerPairs=>{
