@@ -1,6 +1,6 @@
 {
   "name": "redux-graphql",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "auto-generate redux graphql selector, reducers, and action creators from a graphql schema",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
@@ -11,7 +11,7 @@
   "module": "redux-graphql.js",
   "//graphql-tag requires graphql": "",
   "dependencies": {
-    "@a-laughlin/fp-utils": "^0.0.2",
+    "@a-laughlin/fp-utils": "^0.0.3",
     "@testing-library/react-hooks": "^3.3.0",
     "es-dev-server": "^1.57.1",
     "graphql": "^15.3.0",
