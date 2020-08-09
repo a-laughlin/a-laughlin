@@ -7,6 +7,8 @@ import {default as transpile} from '@rollup/plugin-sucrase';
 import {terser} from 'rollup-plugin-terser';
 import copy from 'rollup-plugin-cpy';
 import alias from '@rollup/plugin-alias';
+// const prettier = require('rollup-plugin-prettier');
+// const eslint = require('rollup-plugin-prettier');
 // import sourcemap from '@rollup/plugin-sourcemaps';
 
 const snakeToStartCase = s=>s.split('-').map(s=>s[0].toUpperCase()+s.slice(1)).join('');
