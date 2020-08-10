@@ -7,12 +7,13 @@ import {default as transpile} from '@rollup/plugin-sucrase';
 import {terser} from 'rollup-plugin-terser';
 import copy from 'rollup-plugin-cpy';
 import alias from '@rollup/plugin-alias';
+import analyze from 'rollup-plugin-analyzer';
 // const prettier = require('rollup-plugin-prettier');
 // const eslint = require('rollup-plugin-prettier');
 // import sourcemap from '@rollup/plugin-sourcemaps';
 
 const snakeToStartCase = s=>s.split('-').map(s=>s[0].toUpperCase()+s.slice(1)).join('');
-import {readdirSync} from 'fs';
+import {readdirSync,writeFileSync} from 'fs';
 import {join} from 'path';
 // import terser from '@rollup/plugin-terser';
 
@@ -21,6 +22,9 @@ import {join} from 'path';
 
 const resolvePlugin = resolve({customResolveOptions: {moduleDirectory: 'node_modules'}});
 const commonjsPlugin = commonjs({esmExternals:true});
+const analyzePlugin = analyze({
+  summaryOnly:true,
+});
 const aliasPlugin = alias({entries: [
   { find: '@a-laughlin/fp-utils', replacement: '../fp-utils/fp-utils.js' },
   { find: 'react', replacement: 'https://unpkg.com/react@16/umd/react.development.js' },
@@ -42,8 +46,13 @@ const modules = readdirSync('./src')
   plugins:[
     aliasPlugin,
     ...(dir!=='redux-graphql'?[]:[copy([ { files: join(inDir,'*.html'), dest: outDir }])]),
+    copy([ { files: join(inDir,'package.json'), dest: outDir }]),
     resolvePlugin,
     commonjsPlugin,
+    analyze({
+      onAnalysis:o=>writeFileSync(join(outDir,'stats.json'),JSON.stringify(o,null,2)),
+      writeTo:s=>writeFileSync(join(outDir,'stats.txt'),s)
+    }),
     visualizer({ template:"treemap", filename:join(outDir,'stats-treemap.html')}),
     visualizer({ template:"network", filename:join(outDir,'stats-network.html')}),
   ],

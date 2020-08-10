@@ -84,7 +84,13 @@ const is = val1=>val2=>val1===val2;
 const isUndefOrNull = val => val === undefined || val === null;
 const isProductionEnv = ()=>process.env.NODE_ENV === 'production';
 const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';
-
+const toPredicate = x=>{
+  if(isFunction(x)) return x;
+  if(isArray(x)) return matchesProperty(x);
+  if(isObjectLike(x)) return matches(x);
+  if(isString(x)) return hasKey(x)
+  return stubFalse;
+};
 
 // debugging
 const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
@@ -93,7 +99,8 @@ const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
 const dpipe = (data,...args)=>exports.pipe(...args)(data);
 // functions
 const makeCollectionFn=(arrayFn,objFn)=>(...args)=>ifElse(isArray,arrayFn(...args),objFn(...args));
-const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(...args);
+
+const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(ensureArray(args[0]));
 const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
 
@@ -113,19 +120,31 @@ const ensurePropIsArray = ensurePropWith(stubArray);
 const ensurePropIsObject = ensurePropWith(stubObject);
 
 // logic
+// export const matches=o=>mo(_is)(o)(v,k)=>ma(v)k=>o=>k in o;
+// const matches=o=>and(ma((v,k)=>is)(o),(o)
 const not = fn=>(...args)=>!fn(...args);
 const ifElseUnary = (pred,T,F=identity)=>arg=>pred(arg)?T(arg):F(arg);
 const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
-const and = (...preds)=>(...args)=>{
+const and = acceptArrayOrArgs((preds)=>(...args)=>{
+  // console.log(`preds`,preds)
   for (const p of preds)if(p(...args)!==true)return false;
   return true;
-};
-const or = (...preds)=>(...args)=>{
+});
+const or = acceptArrayOrArgs((preds)=>(...args)=>{
   for (const p of preds)if(p(...args)===true)return true;
   return false;
-};
-const none = (...fns)=>not(or(...fns));
-const xor = fn=>exports.pipe(filter(fn),len1);
+});
+const xor = acceptArrayOrArgs((preds)=>(...args)=>{
+  let p,trues=0;
+  for (p of preds)
+    (p(...args)===true && (++trues));
+  return trues===1;
+});
+const _is = (x) => (y) => x===y;
+const hasKey=(k='')=>(coll={})=>k in coll;
+const matchesProperty=([k,v]=[])=>(o={})=>o[k]===v;
+const matches=(coll={})=>and(...mapToArray((v,k)=>matchesProperty([k,v]))(coll));
+const none = exports.compose(not,or);
 const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred,val] of arrs) if(pred(...x)) return val;});
 const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);});
 
@@ -213,8 +232,14 @@ const fmo = filterMapToObject; // backward compatability
 const filterMapToSame=makeCollectionFn(filterMapToArray,filterMapToObject);
 const fmx=filterMapToSame; // backward compatability
 
-
-
+const scan=fn=>{
+  let lastValue;
+  return (value,...args)=>{
+    const result=fn(lastValue,value,...args);
+    lastValue=value;
+    return result;
+  }
+};
 const first = c=>{
   if (isArray(c)) return c[0];
   for (const k in c)return c[k];
@@ -453,4 +478,4 @@ const diffObjs = (a={},b={}) => {
 };
 
 // TODO decide behavior when collections are arrays and no "by" key to diff them by
-const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);exports.acceptArrayOrArgs=acceptArrayOrArgs;exports.and=and;exports.appendArrayReducer=appendArrayReducer;exports.appendObjectReducer=appendObjectReducer;exports.cond=cond;exports.condNoExec=condNoExec;exports.constant=constant;exports.converge=converge;exports.diffBy=diffBy;exports.diffObjs=diffObjs;exports.dpipe=dpipe;exports.ensureArray=ensureArray;exports.ensureFunction=ensureFunction;exports.ensureProp=ensureProp;exports.ensurePropIsArray=ensurePropIsArray;exports.ensurePropIsObject=ensurePropIsObject;exports.ensurePropWith=ensurePropWith;exports.ensureString=ensureString;exports.fa=fa;exports.filterMapToArray=filterMapToArray;exports.filterMapToObject=filterMapToObject;exports.filterMapToSame=filterMapToSame;exports.filterToArray=filterToArray;exports.filterToObject=filterToObject;exports.filterToSame=filterToSame;exports.first=first;exports.fma=fma;exports.fmo=fmo;exports.fmx=fmx;exports.fo=fo;exports.frozenEmptyArray=frozenEmptyArray;exports.frozenEmptyObject=frozenEmptyObject;exports.fx=fx;exports.groupBy=groupBy;exports.groupByKeys=groupByKeys;exports.groupByValues=groupByValues;exports.has=has;exports.identity=identity;exports.ifElse=ifElse;exports.ifElseUnary=ifElseUnary;exports.immutableFilterObjectToObject=immutableFilterObjectToObject;exports.immutableTransArrayToArray=immutableTransArrayToArray;exports.immutableTransObjectToObject=immutableTransObjectToObject;exports.invokeArgsOnObj=invokeArgsOnObj;exports.invokeObjectWithArgs=invokeObjectWithArgs;exports.is=is;exports.isArray=isArray;exports.isDeepEqual=isDeepEqual;exports.isError=isError;exports.isFinite=isFinite;exports.isFunction=isFunction;exports.isInteger=isInteger;exports.isObjectLike=isObjectLike;exports.isProductionEnv=isProductionEnv;exports.isPromise=isPromise;exports.isString=isString;exports.isUndefOrNull=isUndefOrNull;exports.keyBy=keyBy;exports.last=last;exports.len=len;exports.len0=len0;exports.len1=len1;exports.ma=ma;exports.mapToArray=mapToArray;exports.mapToObject=mapToObject;exports.mapToSame=mapToSame;exports.memoize=memoize;exports.mo=mo;exports.mx=mx;exports.none=none;exports.noop=noop;exports.not=not;exports.oa=oa;exports.objStringifierFactory=objStringifierFactory;exports.objToUrlParams=objToUrlParams;exports.omitToArray=omitToArray;exports.omitToObject=omitToObject;exports.omitToSame=omitToSame;exports.oo=oo;exports.or=or;exports.over=over;exports.overArray=overArray;exports.overObj=overObj;exports.ox=ox;exports.partition=partition;exports.pget=pget;exports.pick=pick;exports.plog=plog;exports.ra=ra;exports.range=range;exports.reduce=reduce;exports.ro=ro;exports.rx=rx;exports.stubArray=stubArray;exports.stubFalse=stubFalse;exports.stubNull=stubNull;exports.stubObject=stubObject;exports.stubString=stubString;exports.stubTrue=stubTrue;exports.tdAssign=tdAssign;exports.tdDPipeToArray=tdDPipeToArray;exports.tdDPipeToObject=tdDPipeToObject;exports.tdDfObjectLikeValuesWith=tdDfObjectLikeValuesWith;exports.tdFilter=tdFilter;exports.tdFilterWithAcc=tdFilterWithAcc;exports.tdIdentity=tdIdentity;exports.tdIfElse=tdIfElse;exports.tdIfValueObjectLike=tdIfValueObjectLike;exports.tdKeyBy=tdKeyBy;exports.tdLog=tdLog;exports.tdMap=tdMap;exports.tdMapWithAcc=tdMapWithAcc;exports.tdOmit=tdOmit;exports.tdOmitWithAcc=tdOmitWithAcc;exports.tdPipeToArray=tdPipeToArray;exports.tdPipeToObject=tdPipeToObject;exports.tdReduce=tdReduce;exports.tdReduceListValue=tdReduceListValue;exports.tdSet=tdSet;exports.tdTap=tdTap;exports.tdToArray=tdToArray;exports.tdToObject=tdToObject;exports.tdToSame=tdToSame;exports.tdValue=tdValue;exports.transToArray=transToArray;exports.transToObject=transToObject;exports.transToSame=transToSame;exports.transduce=transduce;exports.transduceBF=transduceBF;exports.transduceDF=transduceDF;exports.uniqueId=uniqueId;exports.xor=xor;Object.defineProperty(exports,'__esModule',{value:true});})));
+const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);exports._is=_is;exports.acceptArrayOrArgs=acceptArrayOrArgs;exports.and=and;exports.appendArrayReducer=appendArrayReducer;exports.appendObjectReducer=appendObjectReducer;exports.cond=cond;exports.condNoExec=condNoExec;exports.constant=constant;exports.converge=converge;exports.diffBy=diffBy;exports.diffObjs=diffObjs;exports.dpipe=dpipe;exports.ensureArray=ensureArray;exports.ensureFunction=ensureFunction;exports.ensureProp=ensureProp;exports.ensurePropIsArray=ensurePropIsArray;exports.ensurePropIsObject=ensurePropIsObject;exports.ensurePropWith=ensurePropWith;exports.ensureString=ensureString;exports.fa=fa;exports.filterMapToArray=filterMapToArray;exports.filterMapToObject=filterMapToObject;exports.filterMapToSame=filterMapToSame;exports.filterToArray=filterToArray;exports.filterToObject=filterToObject;exports.filterToSame=filterToSame;exports.first=first;exports.fma=fma;exports.fmo=fmo;exports.fmx=fmx;exports.fo=fo;exports.frozenEmptyArray=frozenEmptyArray;exports.frozenEmptyObject=frozenEmptyObject;exports.fx=fx;exports.groupBy=groupBy;exports.groupByKeys=groupByKeys;exports.groupByValues=groupByValues;exports.has=has;exports.hasKey=hasKey;exports.identity=identity;exports.ifElse=ifElse;exports.ifElseUnary=ifElseUnary;exports.immutableFilterObjectToObject=immutableFilterObjectToObject;exports.immutableTransArrayToArray=immutableTransArrayToArray;exports.immutableTransObjectToObject=immutableTransObjectToObject;exports.invokeArgsOnObj=invokeArgsOnObj;exports.invokeObjectWithArgs=invokeObjectWithArgs;exports.is=is;exports.isArray=isArray;exports.isDeepEqual=isDeepEqual;exports.isError=isError;exports.isFinite=isFinite;exports.isFunction=isFunction;exports.isInteger=isInteger;exports.isObjectLike=isObjectLike;exports.isProductionEnv=isProductionEnv;exports.isPromise=isPromise;exports.isString=isString;exports.isUndefOrNull=isUndefOrNull;exports.keyBy=keyBy;exports.last=last;exports.len=len;exports.len0=len0;exports.len1=len1;exports.ma=ma;exports.mapToArray=mapToArray;exports.mapToObject=mapToObject;exports.mapToSame=mapToSame;exports.matches=matches;exports.matchesProperty=matchesProperty;exports.memoize=memoize;exports.mo=mo;exports.mx=mx;exports.none=none;exports.noop=noop;exports.not=not;exports.oa=oa;exports.objStringifierFactory=objStringifierFactory;exports.objToUrlParams=objToUrlParams;exports.omitToArray=omitToArray;exports.omitToObject=omitToObject;exports.omitToSame=omitToSame;exports.oo=oo;exports.or=or;exports.over=over;exports.overArray=overArray;exports.overObj=overObj;exports.ox=ox;exports.partition=partition;exports.pget=pget;exports.pick=pick;exports.plog=plog;exports.ra=ra;exports.range=range;exports.reduce=reduce;exports.ro=ro;exports.rx=rx;exports.scan=scan;exports.stubArray=stubArray;exports.stubFalse=stubFalse;exports.stubNull=stubNull;exports.stubObject=stubObject;exports.stubString=stubString;exports.stubTrue=stubTrue;exports.tdAssign=tdAssign;exports.tdDPipeToArray=tdDPipeToArray;exports.tdDPipeToObject=tdDPipeToObject;exports.tdDfObjectLikeValuesWith=tdDfObjectLikeValuesWith;exports.tdFilter=tdFilter;exports.tdFilterWithAcc=tdFilterWithAcc;exports.tdIdentity=tdIdentity;exports.tdIfElse=tdIfElse;exports.tdIfValueObjectLike=tdIfValueObjectLike;exports.tdKeyBy=tdKeyBy;exports.tdLog=tdLog;exports.tdMap=tdMap;exports.tdMapWithAcc=tdMapWithAcc;exports.tdOmit=tdOmit;exports.tdOmitWithAcc=tdOmitWithAcc;exports.tdPipeToArray=tdPipeToArray;exports.tdPipeToObject=tdPipeToObject;exports.tdReduce=tdReduce;exports.tdReduceListValue=tdReduceListValue;exports.tdSet=tdSet;exports.tdTap=tdTap;exports.tdToArray=tdToArray;exports.tdToObject=tdToObject;exports.tdToSame=tdToSame;exports.tdValue=tdValue;exports.toPredicate=toPredicate;exports.transToArray=transToArray;exports.transToObject=transToObject;exports.transToSame=transToSame;exports.transduce=transduce;exports.transduceBF=transduceBF;exports.transduceDF=transduceDF;exports.uniqueId=uniqueId;exports.xor=xor;Object.defineProperty(exports,'__esModule',{value:true});})));

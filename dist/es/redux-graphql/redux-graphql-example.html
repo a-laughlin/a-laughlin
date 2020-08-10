@@ -14,9 +14,57 @@
   <body>
     <div id="root"></div>
     <script type="text/babel">
-      const App = ()=>
-        <h1>Hello, world!</h1>;
-      console.log(`window.ReduxGraphql`,window.ReduxGraphql)
+      const {gql,getObjectQuerier,getUseQuery,schemaToStateOpsMapper}=ReduxGraphql;
+      const {combineReducers,createStore}=Redux;
+      const {useState,useEffect}=React;
+      const schema=gql(`
+        type Todo{
+          id:ID
+          text:String
+        }
+      `);
+      const todoFactory=(()=>{
+        let uniqueID=2;
+        // has issues with string/number on IDs, so ensure factories use strings
+        // likely to queries' strict id matching
+        return ({id=`${++uniqueID}`,name=`name is ${id}`}={})=>({id,name});
+      })();
+      const rootState={
+        Todo:['1','2'].reduce((o,id)=>({...o,[id]:todoFactory({id,name:id})}),{})
+      };
+
+      // setup
+      const reducerMap = schemaToStateOpsMapper(schema)();
+      const rootReducer = combineReducers(reducerMap);
+      const queryState = getObjectQuerier(schema);
+      const store = createStore(rootReducer,rootState);
+      const useQuery = getUseQuery(store,queryState,schema,useState,useEffect);
+      let lastTodo;
+      const Todos=()=>{
+        const {Todo}=useQuery(gql(`{Todo{id}}`));
+        console.log(`Todo`,store.getState().Todo,Todo);
+        return (<ul>{
+          Object.values(Todo).map(t=><li key={t.id}>{t.id} <RemoveButton data-stateloc={`{Todo(id:"${t.id}" ) {id}}`}/></li>)
+        }</ul>);
+      };
+      const AddButton=()=>{
+        const addTodo=()=>store.dispatch({type:'TODO_ADD',payload:todoFactory()});
+        return <button onClick={addTodo}>Add Todo</button>;
+      }
+      const RemoveButton=({['data-stateloc']:stateLoc})=>{
+        const {Todo} = useQuery(gql(stateLoc));
+        console.log(`RemoveButton Todo`,stateLoc,`Todo`,Todo);
+        const remove=()=>store.dispatch({type:'TODO_SUBTRACT',payload:Todo});
+        return <button onClick={remove}>Remove</button>;
+      }
+
+      const App = ()=>{
+        return <>
+          <h1>Todos Example</h1>
+          <Todos/>
+          <AddButton/>
+        </>;
+      };
       // import {schemaToActionNormalizers} from './redux-graphql.js';
       ReactDOM.render(
         <App/>,

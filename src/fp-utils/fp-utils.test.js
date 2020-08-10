@@ -33,7 +33,10 @@ import {
   tdLog,
   appendArrayReducer,
   tdDfObjectLikeValuesWith,
-  transduceBF
+  transduceBF,
+  matches,
+  matchesProperty,
+  xor
 } from './fp-utils'
 describe("and", () => {
   it('should ensure multiple predicates pass', () =>{
@@ -45,7 +48,7 @@ describe("and", () => {
     expect(and(not5,not5)(5)).toBe(false);
   });
 })
-describe("and", () => {
+describe("or", () => {
   it('should ensure multiple predicates pass', () =>{
     const is5=x=>x===5;
     const not5=x=>x!==5;
@@ -53,6 +56,36 @@ describe("and", () => {
     expect(or(is5,not5)(5)).toBe(true);
     expect(or(not5,is5)(5)).toBe(true);
     expect(or(not5,not5)(5)).toBe(false);
+  });
+})
+describe("xor", () => {
+  it('should ensure exactly 1 predicate passes', () =>{
+    const is5=x=>x===5;
+    const not5=x=>x!==5;
+    expect(xor(is5)(5)).toBe(true);
+    expect(xor([is5])(5)).toBe(true);
+    expect(xor(is5,is5)(5)).toBe(false);
+    expect(xor(is5,not5)(5)).toBe(true);
+    expect(xor(not5,is5)(5)).toBe(true);
+    expect(xor(not5,not5)(5)).toBe(false);
+  });
+})
+describe("matches", () => {
+  it('should match only when multiple properties pass', () =>{
+    expect(matches({a:1,b:2})({a:1,b:2})).toBe(true);
+    expect(matches({a:1,b:2})({a:1,b:3})).toBe(false);
+    expect(matches({a:1,b:2})({a:2,b:3})).toBe(false);
+    expect(matches({a:1,b:2})({a:2,b:2})).toBe(false);
+  });
+})
+describe("matchesProperty", () => {
+  it('should match only key matches', () =>{
+    const is5=x=>x===5;
+    const not5=x=>x!==5;
+    expect(matchesProperty(['a',1])({a:1})).toBe(true);
+    expect(matchesProperty(['a',1])({b:1})).toBe(false);
+    expect(matchesProperty(['a',1])({a:2})).toBe(false);
+    expect(matchesProperty(['a',1])({b:2})).toBe(false);
   });
 })
 describe("pipe", () => {

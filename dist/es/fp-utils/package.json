@@ -1,0 +1,16 @@
+{
+  "name": "@a-laughlin/fp-utils",
+  "version": "0.0.3",
+  "description": "functional programming utils",
+  "author": "Adam Laughlin <adam.laughlin@gmail.com>",
+  "homepage": "",
+  "license": "ISC",
+  "type": "module",
+  "main": "fp-utils.js",
+  "module": "fp-utils.js",
+  "browser": "fp-utils.js",
+  "dependencies": {
+    "lodash-es": "^4"
+  },
+  "gitHead": "512200fcbeeb52c75ade4780c28c7824bacc789b"
+}

@@ -1,5 +1,5 @@
 // curry/compose/pipe, for later fns
-let pipe;
+let compose,pipe;
 const identity=x=>x;
 if(globalThis.process===undefined){
   globalThis.process={env:{NODE_ENV:'production'}};
@@ -7,6 +7,18 @@ if(globalThis.process===undefined){
 if (globalThis.process.env.NODE_ENV !== 'production') {
   // debugging versions
   const fToString = fn => fn.name ? fn.name : fn.toString();
+
+  // based on https://dev.to/ascorbic/creating-a-typed-compose-function-in-typescript-3-351i
+
+  compose = (...fns) => {
+    if (fns.length===0)return identity;
+    if (fns.length===1)return fns[0];
+    const fn=fns[fns.length-1];
+    fns=fns.slice(0,fns.length-1);
+    const composed = (...args) => fns.reduceRight((acc, f) => f(acc), fn(...args));
+    composed.toString = () => `compose(${fns.map(fToString).join(', ')})`;
+    return composed;
+  };
   pipe = (fn=identity,...fns) => {
     if (fns.length===0)return fn;
     const piped = (...args) => fns.reduce((acc, f) => f(acc), fn(...args));
@@ -14,6 +26,12 @@ if (globalThis.process.env.NODE_ENV !== 'production') {
     return piped;
   };
 } else {
+  // eslint-disable-next-line
+  compose = (...fns) => (...args) =>{
+    if (fns.length===0)return identity;
+    if (fns.length===1)return fns[0];
+    return fns.slice(0,fns.length-1).reduceRight((acc, f) => f(acc), fns[fns.length-1](...args));
+  };
   // eslint-disable-next-line
   pipe = (fn=identity,...fns) => (...args) => {
     if (fns.length===0)return fn;
@@ -37,10 +55,21 @@ const isObjectLike = arg=>typeof arg==='object' && arg !== null;
 const isArray = Array.isArray.bind(Array);
 // functions
 const makeCollectionFn=(arrayFn,objFn)=>(...args)=>ifElse(isArray,arrayFn(...args),objFn(...args));
-const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(...args);
+
+const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(ensureArray(args[0]));
 const ensureArray = (val=[])=>isArray(val) ? val : [val];
 const ensureString = (val)=>isString(val) ? val : `${val}`;
+
+// logic
+// export const matches=o=>mo(_is)(o)(v,k)=>ma(v)k=>o=>k in o;
+// const matches=o=>and(ma((v,k)=>is)(o),(o)
+const not = fn=>(...args)=>!fn(...args);
 const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
+const or = acceptArrayOrArgs((preds)=>(...args)=>{
+  for (const p of preds)if(p(...args)===true)return true;
+  return false;
+});
+const none = compose(not,or);
 const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);});
 
 

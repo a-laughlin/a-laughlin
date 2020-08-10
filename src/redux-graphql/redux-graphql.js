@@ -1,36 +1,34 @@
 import indexSchema from './indexSchema'
-import {isFunction,isObjectLike,not,reduce,transToObject,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, tdTap, transduceDF} from '@a-laughlin/fp-utils';
-import _matchesProperty from 'lodash-es/matchesProperty'
-import _matches from 'lodash-es/matches';
-import _property from 'lodash-es/property';
-import { useState,useEffect } from 'react';
+import {not,reduce,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs} from '@a-laughlin/fp-utils';
+export {gql} from './gql';
 
 // normalize collectionTree,ArrayTree,item,value
 // normalize tree,set,value
 // given id,array of ids, single item, collection of items, array of items
+
 const schemaToActionNormalizers=schema=>{
   const {objectFieldMeta,definitionsByName}=indexSchema(schema);
-  const notJSObject = action=>action.payload===null||typeof action.payload!=='object';
   return transToObject((o,_,dName)=>{
-    const notGQLObject = action=>!(dName in objectFieldMeta);
-    
+    const notGQLObject = payload=>!(dName in objectFieldMeta);
     const idKey=(objectFieldMeta[dName]??{}).idKey;
-    o[dName] =  cond(
+    const normalizePayload=cond(
       // leave scalars and other non-object types
       [notGQLObject,identity],
       // convert number/string id to collection
-      [notJSObject,(action)=>({...action,payload:{[action.payload]:{[idKey]:action.payload}}})],
-      // convert single item to collection
-      [action=>idKey in action.payload,
-        action=>({...action,payload:{[action.payload[idKey]]:action.payload}})],
+      [isString,payload=>({[payload]:{[idKey]:payload}})],
+      // convert number/string id to collection
+      [isInteger,payload=>({[payload]:{[idKey]:`${payload}`}})],
       // convert array to collection
       [isArray,transToObject((o,v)=>{
         v=normalizePayload(v);
         o[v[idKey]]=v;
       })],
+      // convert single item to collection
+      [and(isObjectLike,hasKey(idKey)), payload=>({[payload[idKey]]:payload})],
       // collection, leave as is
       [stubTrue,identity]
     );
+    o[dName] = normalizePayload;
   })(definitionsByName);
 }
 
@@ -80,10 +78,10 @@ export const schemaToStateOpsMapper=(
 )=>{
   // const transduce = (initial,finalReducer,transducer,val)
   return transToObject((acc,actionNormalizer,dName)=>{
-    const opFns=transToObject((o,opFn,OP)=>o[`${OP}_${dName.toUpperCase()}`]=opFn(identity))(ops)
+    const opFns=transToObject((o,opFn,OP)=>o[`${dName.toUpperCase()}_${OP}`]=opFn(identity))(ops)
     acc[dName]=(prevState=null,action={})=>{
       return action.type in opFns
-        ? opFns[action.type](prevState,actionNormalizer(action))
+        ? opFns[action.type](prevState,{...action,payload:actionNormalizer(action.payload)})
         : prevState;
     }
   })(schemaToActionNormalizers(schema));
@@ -98,13 +96,7 @@ export const schemaToStateOpsMapper=(
 // const isStateValue = x=>objectFieldMeta[dName]===undefined;
 // state,collection,item,value need to vary for these, or just assume we'll know the shape and choose the
 // appropriate fn when writing the filter? // let's see how it works
-const filterIteratees = cond(
-  [isFunction,pred=>v=>pred(v)],
-  [isArray,_matchesProperty],
-  [isObjectLike,_matches],
-  [stubTrue,k=>v=>k in v],
-);
-export const getMemoizedObjectQuerier=(
+export const getObjectQuerier=(
   schema,
   queryMatchers={
     // filtering language ... not sure whether to go this far, or use functions...
@@ -113,12 +105,12 @@ export const getMemoizedObjectQuerier=(
     // or mimic lodash iteratee with filter and omit
     // https://lodash.com/docs/4.17.15#filter
     // where Person(id:"a") is equivalent to filter({id:"a"})
-    filter:filterIteratees,
-    omit:predicate=>filterIteratees(not(predicate))
+    filter:toPredicate,
+    omit:x=>not(toPredicate(x))
   }
 )=>{
-  const {objectFieldMeta,definitionsByName}=indexSchema(schema);
-
+  const {objectFieldMeta}=indexSchema(schema);
+  
   const populateArgsFromVars = (args=[],vars={})=>{
     let result={},name,kind,value;
     for ({name:{value:name},value} of args){
@@ -189,10 +181,6 @@ export const getMemoizedObjectQuerier=(
     }
     return newItem;
   });
-  const getVarsKey = vars=>{
-    const keys=Object.keys(vars).sort();
-    return keys.join(',') + keys.map(k=>JSON.stringify(vars[k])).join(',');
-  };
 
   const queryStateWithOperation = (rootState,operation,passedVariables={})=>
     operation.definitions.reduce((result,op)=>{
@@ -202,65 +190,44 @@ export const getMemoizedObjectQuerier=(
       return result;
     },{});
 
-  const getFieldCollectionNames=reduce((acc,{name:{value},selectionSet:{selections=[]}={}},i,c)=>{
-    if (value in definitionsByName) acc.add(value);
-    return getFieldCollectionNames(selections,acc);
-  });
-
-  const getQueryCollectionNames = reduce((acc=new WeakSet(),{selectionSet:{selections=[]}={}})=>getFieldCollectionNames(selections,acc));
-      
-  let prevState={};
-  let operations=new WeakSet();
-  let queryResults=new WeakMap();
-  let collectionKeysByQuery=new WeakMap();
   return (state,operation,vars={})=>{
-    const varsKey=getVarsKey(vars);
-    if (!operations.has(operation)){
-      operations.add(operation);
-      collectionKeysByQuery.set(operation,getQueryCollectionNames(operation.definitions,new Set()));
-      const result = queryStateWithOperation(state,operation,vars);
-      queryResults.set(operation,{[varsKey]:result});
-      prevState=state;
-      return result;
-    }
-
-    if (prevState!==state)
-      for (const k of collectionKeysByQuery.get(operation))
-        if(prevState[k]!==state[k]){
-          prevState=state;
-          return queryResults.get(operation)[varsKey] = queryStateWithOperation(state,operation,vars);
-        }
-    
-    const opResults=queryResults.get(operation);
-    return varsKey in opResults
-      ? opResults[varsKey]
-      : (opResults[varsKey] = querier(state,operation,vars));
+    return queryStateWithOperation(state,operation,vars);
   }
 }
 
 // instead of useMutation, use a built in reducer, or add one
-export const getUseQuery=(store,querier)=>{
+export const getUseQuery=(store,querier,schema,useState,useEffect)=>{
+  const {definitionsByName}=indexSchema(schema);
+  const getFieldCollectionNames=reduce((acc=new Set(),{name:{value},selectionSet:{selections=[]}={}},i,c)=>{
+    if (value in definitionsByName) acc.add(value);
+    for (const s of selections)getFieldCollectionNames(acc,s);
+    return acc;
+  });
+  const getVarsKey = vars=>JSON.stringify(Object.keys(vars).sort().reduce((a,k)=>{a[k]=vars[k];return a;},{}));
+  let queryResults=new WeakMap();
+  const queryChanged=(prevState,state,operation,variables)=>{
+    // if(!queryResults.has(operation))queryResults.set(operation,{});
+    let opKeysChanged=false;
+    const opKeys = getFieldCollectionNames(operation.definitions.flatMap(d=>(d.selectionSet.selections)));
+    for (const k of opKeys){
+      if(state[k]!==prevState[k]){opKeysChanged=true;}
+    }
+    console.log(`opKeys`,opKeys,opKeysChanged);
+    return opKeysChanged;
+  };
+
   return (query,variables)=>{
     const [state,setState] = useState(querier(store.getState(),query,variables));
     useEffect(()=>store.subscribe(()=> { // returns the unsubscribe function
-      const result = querier(store.getState(),query,variables);
-      if (result!==state) setState({...state,...result});
+      setState((prevState)=>{
+        const nextState=querier(store.getState(),query,variables);
+        const diff = diffObjs(nextState,state);
+        return diff.changedc===0 ? prevState : nextState;
+      });
     }),[]);
     return state;
-  }
-}
-export const triggerStorePermutationUpdates = (store,schema,query,act)=>{
-  const idx=indexSchema(schema);
-  // traverse the query, collecting paths and boundary values for each path
-  // transduceDF(
-  //   tdMap()
-  // )(query)
-  // loop over permutations
-  // act(()=>{store.dispatch({type:'SET_STORE',payload:1})});
-  
-  // using actual events related to the query would be better
-  // though how to know what events trigger related property updates in testing?
-}
+  };
+};
 
 
 

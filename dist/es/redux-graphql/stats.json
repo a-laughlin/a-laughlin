@@ -1,0 +1,548 @@
+{
+  "bundleSize": 128664,
+  "bundleOrigSize": 145324,
+  "bundleReduction": 11.46,
+  "modules": [
+    {
+      "id": "/node_modules/graphql/language/parser.mjs",
+      "size": 40601,
+      "origSize": 41054,
+      "renderedExports": [
+        "parse",
+        "parseValue",
+        "parseType"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "\u0000/node_modules/graphql/language/parser.mjs?commonjs-proxy",
+        "/node_modules/graphql-tag/src/index.js"
+      ],
+      "percent": 31.56,
+      "reduction": 1.1
+    },
+    {
+      "id": "/src/redux-graphql/redux-graphql.js",
+      "size": 27665,
+      "origSize": 28794,
+      "renderedExports": [
+        "schemaToStateOpsMapper",
+        "getObjectQuerier",
+        "getUseQuery"
+      ],
+      "removedExports": [],
+      "dependents": [],
+      "percent": 21.5,
+      "reduction": 3.92
+    },
+    {
+      "id": "/node_modules/graphql/language/lexer.mjs",
+      "size": 15615,
+      "origSize": 15826,
+      "renderedExports": [
+        "Lexer",
+        "isPunctuatorTokenKind"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/language/parser.mjs"
+      ],
+      "percent": 12.14,
+      "reduction": 1.33
+    },
+    {
+      "id": "/node_modules/graphql/error/GraphQLError.mjs",
+      "size": 11878,
+      "origSize": 12201,
+      "renderedExports": [
+        "GraphQLError",
+        "printError"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/error/syntaxError.mjs"
+      ],
+      "percent": 9.23,
+      "reduction": 2.65
+    },
+    {
+      "id": "/src/fp-utils/fp-utils.js",
+      "size": 8173,
+      "origSize": 18895,
+      "renderedExports": [
+        "identity",
+        "compose",
+        "stubObject",
+        "stubTrue",
+        "stubFalse",
+        "frozenEmptyArray",
+        "frozenEmptyObject",
+        "isFinite",
+        "isInteger",
+        "isString",
+        "isFunction",
+        "isObjectLike",
+        "isArray",
+        "toPredicate",
+        "acceptArrayOrArgs",
+        "ensureArray",
+        "ensureString",
+        "ensureProp",
+        "ensurePropWith",
+        "ensurePropIsObject",
+        "not",
+        "ifElseUnary",
+        "ifElse",
+        "and",
+        "or",
+        "hasKey",
+        "matchesProperty",
+        "matches",
+        "none",
+        "cond",
+        "transToObject",
+        "transToArray",
+        "transToSame",
+        "filterToArray",
+        "filterToObject",
+        "filterToSame",
+        "mapToArray",
+        "mapToObject",
+        "mo",
+        "len",
+        "len0",
+        "len1",
+        "keyBy",
+        "groupByKeys",
+        "groupByValues",
+        "pget",
+        "pick",
+        "transduce",
+        "appendArrayReducer",
+        "tdToArray",
+        "tdMap",
+        "tdFilter",
+        "tdDPipeToArray",
+        "tdReduceListValue",
+        "memoize",
+        "diffObjs",
+        "diffBy"
+      ],
+      "removedExports": [
+        "curry",
+        "pipe",
+        "stubNull",
+        "stubArray",
+        "stubString",
+        "noop",
+        "range",
+        "isError",
+        "is",
+        "isUndefOrNull",
+        "isProductionEnv",
+        "isPromise",
+        "plog",
+        "dpipe",
+        "invokeArgsOnObj",
+        "invokeObjectWithArgs",
+        "overObj",
+        "overArray",
+        "over",
+        "converge",
+        "constant",
+        "ensureFunction",
+        "ensurePropIsArray",
+        "xor",
+        "_is",
+        "condNoExec",
+        "immutableTransObjectToObject",
+        "immutableTransArrayToArray",
+        "immutableFilterObjectToObject",
+        "ro",
+        "ra",
+        "rx",
+        "fa",
+        "fo",
+        "fx",
+        "omitToArray",
+        "oa",
+        "omitToObject",
+        "oo",
+        "omitToSame",
+        "ox",
+        "ma",
+        "mapToSame",
+        "mx",
+        "filterMapToArray",
+        "fma",
+        "filterMapToObject",
+        "fmo",
+        "filterMapToSame",
+        "fmx",
+        "scan",
+        "first",
+        "last",
+        "partition",
+        "has",
+        "isDeepEqual",
+        "groupBy",
+        "objStringifierFactory",
+        "objToUrlParams",
+        "uniqueId",
+        "appendObjectReducer",
+        "tdToObject",
+        "tdToSame",
+        "tdValue",
+        "tdMapWithAcc",
+        "tdAssign",
+        "tdSet",
+        "tdReduce",
+        "tdIdentity",
+        "tdTap",
+        "tdLog",
+        "tdFilterWithAcc",
+        "tdOmit",
+        "tdOmitWithAcc",
+        "tdPipeToArray",
+        "tdPipeToObject",
+        "tdDPipeToObject",
+        "reduce",
+        "tdIfElse",
+        "tdIfValueObjectLike",
+        "tdDfObjectLikeValuesWith",
+        "transduceDF",
+        "transduceBF",
+        "tdKeyBy"
+      ],
+      "dependents": [
+        "/src/redux-graphql/indexSchema.js",
+        "/src/redux-graphql/redux-graphql.js"
+      ],
+      "percent": 6.35,
+      "reduction": 56.75
+    },
+    {
+      "id": "/node_modules/graphql-tag/src/index.js",
+      "size": 5216,
+      "origSize": 5252,
+      "renderedExports": [
+        "default",
+        "__moduleExports"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/src/redux-graphql/gql.js"
+      ],
+      "percent": 4.05,
+      "reduction": 0.69
+    },
+    {
+      "id": "/node_modules/graphql/jsutils/inspect.mjs",
+      "size": 3190,
+      "origSize": 3280,
+      "renderedExports": [
+        "default"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/language/parser.mjs"
+      ],
+      "percent": 2.48,
+      "reduction": 2.74
+    },
+    {
+      "id": "/node_modules/graphql/language/printLocation.mjs",
+      "size": 2425,
+      "origSize": 2486,
+      "renderedExports": [
+        "printLocation",
+        "printSourceLocation"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/error/GraphQLError.mjs"
+      ],
+      "percent": 1.88,
+      "reduction": 2.45
+    },
+    {
+      "id": "/node_modules/graphql/language/ast.mjs",
+      "size": 2292,
+      "origSize": 2492,
+      "renderedExports": [
+        "Location",
+        "Token"
+      ],
+      "removedExports": [
+        "isNode"
+      ],
+      "dependents": [
+        "/node_modules/graphql/language/lexer.mjs",
+        "/node_modules/graphql/language/parser.mjs"
+      ],
+      "percent": 1.78,
+      "reduction": 8.03
+    },
+    {
+      "id": "/node_modules/graphql/language/kinds.mjs",
+      "size": 1971,
+      "origSize": 1979,
+      "renderedExports": [
+        "Kind"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/language/parser.mjs"
+      ],
+      "percent": 1.53,
+      "reduction": 0.4
+    },
+    {
+      "id": "/node_modules/graphql/language/source.mjs",
+      "size": 1818,
+      "origSize": 1932,
+      "renderedExports": [
+        "Source"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/language/parser.mjs"
+      ],
+      "percent": 1.41,
+      "reduction": 5.9
+    },
+    {
+      "id": "/src/redux-graphql/indexSchema.js",
+      "size": 1800,
+      "origSize": 2141,
+      "renderedExports": [
+        "getDefName",
+        "getFieldTypeName",
+        "isListField",
+        "default"
+      ],
+      "removedExports": [
+        "getDefKind",
+        "getDefFields",
+        "getDefCollectionName"
+      ],
+      "dependents": [
+        "/src/redux-graphql/redux-graphql.js"
+      ],
+      "percent": 1.4,
+      "reduction": 15.93
+    },
+    {
+      "id": "/node_modules/graphql/language/blockString.mjs",
+      "size": 1653,
+      "origSize": 2882,
+      "renderedExports": [
+        "dedentBlockStringValue",
+        "getBlockStringIndentation"
+      ],
+      "removedExports": [
+        "printBlockString"
+      ],
+      "dependents": [
+        "/node_modules/graphql/language/lexer.mjs"
+      ],
+      "percent": 1.28,
+      "reduction": 42.64
+    },
+    {
+      "id": "/node_modules/graphql/language/directiveLocation.mjs",
+      "size": 800,
+      "origSize": 808,
+      "renderedExports": [
+        "DirectiveLocation"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/language/parser.mjs"
+      ],
+      "percent": 0.62,
+      "reduction": 0.99
+    },
+    {
+      "id": "/node_modules/graphql/jsutils/isObjectLike.mjs",
+      "size": 613,
+      "origSize": 617,
+      "renderedExports": [
+        "default"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/error/GraphQLError.mjs"
+      ],
+      "percent": 0.48,
+      "reduction": 0.65
+    },
+    {
+      "id": "/node_modules/graphql/language/tokenKind.mjs",
+      "size": 553,
+      "origSize": 561,
+      "renderedExports": [
+        "TokenKind"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/language/lexer.mjs",
+        "/node_modules/graphql/language/parser.mjs"
+      ],
+      "percent": 0.43,
+      "reduction": 1.43
+    },
+    {
+      "id": "/node_modules/graphql/language/location.mjs",
+      "size": 518,
+      "origSize": 526,
+      "renderedExports": [
+        "getLocation"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/language/printLocation.mjs",
+        "/node_modules/graphql/error/GraphQLError.mjs"
+      ],
+      "percent": 0.4,
+      "reduction": 1.52
+    },
+    {
+      "id": "/node_modules/graphql/jsutils/defineInspect.mjs",
+      "size": 445,
+      "origSize": 575,
+      "renderedExports": [
+        "default"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/language/ast.mjs"
+      ],
+      "percent": 0.35,
+      "reduction": 22.61
+    },
+    {
+      "id": "/node_modules/graphql/error/syntaxError.mjs",
+      "size": 310,
+      "origSize": 369,
+      "renderedExports": [
+        "syntaxError"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/language/lexer.mjs",
+        "/node_modules/graphql/language/parser.mjs"
+      ],
+      "percent": 0.24,
+      "reduction": 15.99
+    },
+    {
+      "id": "/node_modules/graphql/jsutils/invariant.mjs",
+      "size": 289,
+      "origSize": 305,
+      "renderedExports": [
+        "default"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/jsutils/defineInspect.mjs"
+      ],
+      "percent": 0.22,
+      "reduction": 5.25
+    },
+    {
+      "id": "/node_modules/graphql/jsutils/nodejsCustomInspectSymbol.mjs",
+      "size": 235,
+      "origSize": 278,
+      "renderedExports": [
+        "default"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/jsutils/inspect.mjs",
+        "/node_modules/graphql/jsutils/defineInspect.mjs"
+      ],
+      "percent": 0.18,
+      "reduction": 15.47
+    },
+    {
+      "id": "/node_modules/graphql/jsutils/devAssert.mjs",
+      "size": 235,
+      "origSize": 251,
+      "renderedExports": [
+        "default"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql/language/source.mjs",
+        "/node_modules/graphql/language/parser.mjs"
+      ],
+      "percent": 0.18,
+      "reduction": 6.37
+    },
+    {
+      "id": "/node_modules/graphql/polyfills/symbols.mjs",
+      "size": 228,
+      "origSize": 825,
+      "renderedExports": [
+        "SYMBOL_TO_STRING_TAG"
+      ],
+      "removedExports": [
+        "SYMBOL_ITERATOR",
+        "SYMBOL_ASYNC_ITERATOR"
+      ],
+      "dependents": [
+        "/node_modules/graphql/error/GraphQLError.mjs",
+        "/node_modules/graphql/language/source.mjs"
+      ],
+      "percent": 0.18,
+      "reduction": 72.36
+    },
+    {
+      "id": "\u0000commonjsHelpers.js",
+      "size": 74,
+      "origSize": 719,
+      "renderedExports": [
+        "getCjsExportFromNamespace"
+      ],
+      "removedExports": [
+        "commonjsGlobal",
+        "createCommonjsModule",
+        "commonjsRequire"
+      ],
+      "dependents": [
+        "\u0000/node_modules/graphql/language/parser.mjs?commonjs-proxy"
+      ],
+      "percent": 0.06,
+      "reduction": 89.71
+    },
+    {
+      "id": "\u0000/node_modules/graphql/language/parser.mjs?commonjs-proxy",
+      "size": 49,
+      "origSize": 216,
+      "renderedExports": [
+        "default"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/node_modules/graphql-tag/src/index.js"
+      ],
+      "percent": 0.04,
+      "reduction": 77.31
+    },
+    {
+      "id": "/src/redux-graphql/gql.js",
+      "size": 18,
+      "origSize": 60,
+      "renderedExports": [
+        "gql"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/src/redux-graphql/redux-graphql.js"
+      ],
+      "percent": 0.01,
+      "reduction": 70
+    }
+  ],
+  "moduleCount": 26
+}

@@ -86,7 +86,13 @@ export const is = val1=>val2=>val1===val2;
 export const isUndefOrNull = val => val === undefined || val === null;
 export const isProductionEnv = ()=>process.env.NODE_ENV === 'production';
 export const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';
-
+export const toPredicate = x=>{
+  if(isFunction(x)) return x;
+  if(isArray(x)) return matchesProperty(x);
+  if(isObjectLike(x)) return matches(x);
+  if(isString(x)) return hasKey(x)
+  if(stubTrue(x)) return stubFalse;
+};
 
 // debugging
 export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
@@ -95,7 +101,8 @@ export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;
 export const dpipe = (data,...args)=>pipe(...args)(data);
 // functions
 const makeCollectionFn=(arrayFn,objFn)=>(...args)=>ifElse(isArray,arrayFn(...args),objFn(...args));
-export const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(...args);
+
+export const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(ensureArray(args[0]));
 export const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 export const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
 
@@ -115,19 +122,31 @@ export const ensurePropIsArray = ensurePropWith(stubArray);
 export const ensurePropIsObject = ensurePropWith(stubObject);
 
 // logic
+// export const matches=o=>mo(_is)(o)(v,k)=>ma(v)k=>o=>k in o;
+// const matches=o=>and(ma((v,k)=>is)(o),(o)
 export const not = fn=>(...args)=>!fn(...args);
 export const ifElseUnary = (pred,T,F=identity)=>arg=>pred(arg)?T(arg):F(arg);
 export const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
-export const and = (...preds)=>(...args)=>{
+export const and = acceptArrayOrArgs((preds)=>(...args)=>{
+  // console.log(`preds`,preds)
   for (const p of preds)if(p(...args)!==true)return false;
   return true;
-}
-export const or = (...preds)=>(...args)=>{
+});
+export const or = acceptArrayOrArgs((preds)=>(...args)=>{
   for (const p of preds)if(p(...args)===true)return true;
   return false;
-}
-export const none = (...fns)=>not(or(...fns));
-export const xor = fn=>pipe(filter(fn),len1);
+});
+export const xor = acceptArrayOrArgs((preds)=>(...args)=>{
+  let p,trues=0;
+  for (p of preds)
+    (p(...args)===true && (++trues));
+  return trues===1;
+});
+export const _is = (x) => (y) => x===y;
+export const hasKey=(k='')=>(coll={})=>k in coll;
+export const matchesProperty=([k,v]=[])=>(o={})=>o[k]===v;
+export const matches=(coll={})=>and(...mapToArray((v,k)=>matchesProperty([k,v]))(coll));
+export const none = compose(not,or);
 export const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred,val] of arrs) if(pred(...x)) return val;});
 export const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);});
 
@@ -215,8 +234,14 @@ export const fmo = filterMapToObject; // backward compatability
 export const filterMapToSame=makeCollectionFn(filterMapToArray,filterMapToObject);
 export const fmx=filterMapToSame; // backward compatability
 
-
-
+export const scan=fn=>{
+  let lastValue;
+  return (value,...args)=>{
+    const result=fn(lastValue,value,...args);
+    lastValue=value;
+    return result;
+  }
+};
 export const first = c=>{
   if (isArray(c)) return c[0];
   for (const k in c)return c[k];
