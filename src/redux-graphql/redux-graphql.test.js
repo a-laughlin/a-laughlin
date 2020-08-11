@@ -1,16 +1,14 @@
 // /* eslint-disable no-unused-vars */
 // /* globals jest:false,describe:false,it:false,expect:false */
-// import gql from 'graphql-tag';
 import { renderHook, act } from '@testing-library/react-hooks'
 import {createStore,combineReducers} from 'redux';
 import {useState,useEffect}from 'react';
 import {
   schemaToStateOpsMapper,
   getObjectQuerier,
-  getUseQuery
+  getUseQuery,
+  gql
 } from './redux-graphql';
-import {gql} from './gql';
-// import configureStore from 'redux-mock-store';
 
 
 describe("schemaToStateOpsMapper", () => {
