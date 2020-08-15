@@ -1,7 +1,7 @@
 {
-  "bundleSize": 111611,
-  "bundleOrigSize": 127359,
-  "bundleReduction": 12.37,
+  "bundleSize": 112035,
+  "bundleOrigSize": 127783,
+  "bundleReduction": 12.32,
   "modules": [
     {
       "id": "/node_modules/graphql/language/parser.mjs",
@@ -17,7 +17,7 @@
         "\u0000/node_modules/graphql/language/parser.mjs?commonjs-proxy",
         "/node_modules/graphql-tag/src/index.js"
       ],
-      "percent": 36.38,
+      "percent": 36.24,
       "reduction": 1.1
     },
     {
@@ -32,7 +32,7 @@
       "dependents": [
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 13.99,
+      "percent": 13.94,
       "reduction": 1.33
     },
     {
@@ -47,13 +47,13 @@
       "dependents": [
         "/node_modules/graphql/error/syntaxError.mjs"
       ],
-      "percent": 10.64,
+      "percent": 10.6,
       "reduction": 2.65
     },
     {
       "id": "/src/redux-graphql/redux-graphql.js",
-      "size": 10560,
-      "origSize": 10889,
+      "size": 10984,
+      "origSize": 11313,
       "renderedExports": [
         "schemaToStateOpsMapper",
         "getObjectQuerier",
@@ -61,8 +61,8 @@
       ],
       "removedExports": [],
       "dependents": [],
-      "percent": 9.46,
-      "reduction": 3.02
+      "percent": 9.8,
+      "reduction": 2.91
     },
     {
       "id": "/src/fp-utils/fp-utils.js",
@@ -217,7 +217,7 @@
         "/src/redux-graphql/indexSchema.js",
         "/src/redux-graphql/redux-graphql.js"
       ],
-      "percent": 7.39,
+      "percent": 7.36,
       "reduction": 56.37
     },
     {
@@ -232,7 +232,7 @@
       "dependents": [
         "/src/redux-graphql/redux-graphql.js"
       ],
-      "percent": 4.67,
+      "percent": 4.66,
       "reduction": 0.69
     },
     {
@@ -246,7 +246,7 @@
       "dependents": [
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 2.86,
+      "percent": 2.85,
       "reduction": 2.74
     },
     {
@@ -261,7 +261,7 @@
       "dependents": [
         "/node_modules/graphql/error/GraphQLError.mjs"
       ],
-      "percent": 2.17,
+      "percent": 2.16,
       "reduction": 2.45
     },
     {
@@ -293,7 +293,7 @@
       "dependents": [
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 1.77,
+      "percent": 1.76,
       "reduction": 0.4
     },
     {
@@ -307,7 +307,7 @@
       "dependents": [
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 1.63,
+      "percent": 1.62,
       "reduction": 5.9
     },
     {
@@ -359,7 +359,7 @@
       "dependents": [
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 0.72,
+      "percent": 0.71,
       "reduction": 0.99
     },
     {
@@ -388,7 +388,7 @@
         "/node_modules/graphql/language/lexer.mjs",
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 0.5,
+      "percent": 0.49,
       "reduction": 1.43
     },
     {

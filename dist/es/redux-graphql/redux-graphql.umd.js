@@ -3539,7 +3539,7 @@ const getObjectQuerier=(
     return vars;
   };
 
-  const queryCollection = ( (rootState,collName,id,Field,vars)=>{
+  const queryCollection = (rootState,collName,id,Field,vars)=>{
     if (Field.selectionSet===undefined){ // leaf
       if (id===undefined){
         return (Field.name.value in rootState)
@@ -3581,7 +3581,7 @@ const getObjectQuerier=(
         : item[fName];
     }
     return newItem;
-  });
+  };
 
   return (rootState,query,passedVariables={})=>
     transToObject((result,{variableDefinitions=[],selectionSet:{selections=[]}={}})=>{
@@ -3591,7 +3591,7 @@ const getObjectQuerier=(
 };
 
 const getUseQuery=(store,querier,schema,useState,useEffect)=>{
-  const {definitionsByName}=indexSchema(schema);
+  const {definitionsByName,objectFieldMeta}=indexSchema(schema);
   const getFieldCollectionNames=reduce((acc=new Set(),{name:{value},selectionSet:{selections=[]}={}},i,c)=>{
     if (value in definitionsByName) acc.add(value);
     for (const s of selections)getFieldCollectionNames(acc,s);
@@ -3600,19 +3600,30 @@ const getUseQuery=(store,querier,schema,useState,useEffect)=>{
   const opKeyIdx=new WeakMap();
   return (query,variables)=>{
     !opKeyIdx.has(query) && opKeyIdx.set(query,Array.from(getFieldCollectionNames(query.definitions.flatMap(d=>(d.selectionSet.selections)))));
-    const [state,setState] = useState(querier(store.getState(),query,variables));
+    const [state,setState] = useState([store.getState(),querier(store.getState(),query,variables)]);
     useEffect(()=>store.subscribe(()=> { // returns the unsubscribe function
-      setState((prevState)=>{
+      setState(([prevNormed,prevDenormed])=>{
         // TODO different tests for collection/item/value
-        const curState = store.getState();
-        // if no root state props changed
-        if (opKeyIdx.get(query).find(k=>curState[k]!=prevState[k]) === undefined) return prevState;
-        const nextState=querier(store.getState(),query,variables);
-        const diff = diffObjs(nextState,state);
-        return diff.changedc===0 ? prevState : nextState;
+        const normed = store.getState();
+        const changedKeys=opKeyIdx.get(query).filter(k=>prevNormed[k]!==normed[k]);
+        if (changedKeys.length===0) return [prevNormed,prevDenormed];
+        const denormed=querier(normed,query,variables);
+        for (const k of changedKeys){
+          if(objectFieldMeta[k]){
+            for (const kk in denormed){
+              if (normed[kk]!==prevNormed[kk]) return [normed,denormed];
+            }
+            for (const kk in prevDenormed){
+              if (normed[kk]!==prevNormed[kk]) return [normed,denormed];
+            }
+          } else {
+            if(prevNormed[k]!==normed[k])return [normed,denormed];
+          }
+        }
+        return [prevNormed,prevDenormed];
       });
     }),[]);
-    return state;
+    return state[1];
   };
 };
 
