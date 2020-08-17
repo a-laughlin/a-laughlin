@@ -103,86 +103,86 @@ describe("getMemoizedObjectQuerier", () => {
   });
   it("should query collections",()=>{
     const query=gql(`{Person{id}}`);
-    const result1=querier(state,query);
+    const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
   });
   it("should denormalize item subsets with variables",()=>{
     const query = gql(`{Person(id:$id){best{id}}}`);
-    const result1 = querier(state,query,{id:'a'})
+    const result1 = querier(query,{id:'a'})(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
   it("should denormalize item subsets with default variables",()=>{
     const query = gql(`query getPerson($id: ID = "a"){Person(id:$id){best{id}}}`);
-    const result1 = querier(state,query);
+    const result1 = querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
   it("should denormalize item subsets with constants",()=>{
     const query = gql(`{Person(id:"a"){best{id}}}`);
-    const result1=querier(state,query);
+    const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
 
   it("should query multiple scalar props",()=>{
     const query = gql(`{Person(id:$id){id,name}}`);
-    const result1=querier(state,query,{id:'a'});
+    const result1=querier(query,{id:'a'})(state);
     expect(result1).toEqual({Person:{a:{id:'a',name:'A'}}});
   });
   it("should query a scalar and object prop",()=>{
     const query = gql(`{Person(id:$id){id,best{id}}}`);
-    const result1=querier(state,query,{id:'a'});
+    const result1=querier(query,{id:'a'})(state);
     expect(result1).toEqual({Person:{a:{id:'a',best:{id:'b'}}}});
   });
   it("should query multiple object props",()=>{
     const query = gql(`{Person(id:"a"){best{id},otherbest{id}}}`);
-    const result1=querier(state,query);
+    const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
   });
   it("should behave the same with (filter:{...}) and (...)",()=>{
     let query = gql(`{Person(id:"a") {best{id},otherbest{id}}}`);
-    let result1=querier(state,query)
+    let result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
     query = gql(`{Person(filter: {id:"a"} ) {best{id},otherbest{id}}}`);
-    let result2=querier(state,query);
+    let result2=querier(query)(state);
     expect(result2).toEqual(result1);
   });
   it("should accept filter functions as variables",()=>{
     let query = gql(`{Person(filter:$filter) {best{id},otherbest{id}}}`);
-    let result1=querier(state,query,{filter:x=>x.id==="a"});
+    let result1=querier(query,{filter:x=>x.id==="a"})(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
   });
   it("should accept omit functions as variables",()=>{
     let query = gql(`{Person(omit:$fn) {best{id},otherbest{id}}}`);
-    let result1=querier(state,query,{fn:x=>x.id!=="a"});
+    let result1=querier(query,{fn:x=>x.id!=="a"})(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
   });
   it("should accept variables named differently than the key",()=>{
     let query = gql(`{Person(id:$xyz) {best{id},otherbest{id}}}`);
-    let result1=querier(state,query,{xyz:"a"});
+    let result1=querier(query,{xyz:"a"})(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
   });
   it("should query objects deeply",()=>{
     const query = gql(`{Person(id:"a"){best{best{best{best{best{best{best{best{best{best{id}}}}}}}}}}}}`);
-    const result1=querier(state,query)
+    const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{best:{best:{best:{best:{best:{best:{best:{best:{best:{id:'a'}}}}}}}}}}}}});
   });
   it("should query other types",()=>{
     const query = gql(`{Person(id:"a"){pet{id}}}`);
-    const result1=querier(state,query);
+    const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{pet:{id:'x'}}}});
   });
   it("should query scalars",()=>{
     const query = gql(`{SomeScalar}`);
-    const result1=querier(state,query)
+    const result1=querier(query)(state);
     expect(result1).toEqual({SomeScalar:1});
   });
   it("should query scalar lists",()=>{
     const query = gql(`{Person(id:"a"){nicknames}}`);
-    const result1=querier(state,query);
+    const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{nicknames:["AA","AAA"]}}});
   });
   it("should query object lists",()=>{
     const query = gql(`{Person(id:"a"){friends{id}}}`);
-    const result1=querier(state,query);
+    const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{friends:{b:{id:'b'},c:{id:'c'}}}}});
   });
 });
@@ -242,37 +242,37 @@ describe("getMemoizedObjectQuerier", () => {
 //     act(()=>{store.dispatch({type:'PERSON_ADD',payload:{id:'d',name:'D',best:'b',otherbest:'c',nicknames:["DD","DDD"],friends:['b','c'],pet:'x'}})});
 //     expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'},d:{id:'d'} }});
 //   });
-//   test('should update one with another changed', () => {
-//     const { result } = renderHook(() =>({
-//       main:useQuery(gql(`{Person{id}}`)),
-//       a:useQuery(gql(`{Person(id:"a"){id}}`))
-//     }));
-//     expect(result.current.main).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
-//     expect(result.current.a).toEqual({Person:{a:{id:'a'}}});
-//     act(()=>{store.dispatch({type:'PERSON_SUBTRACT',payload:{id:'a'}});})
-//     expect(result.current.main).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
-//     expect(result.current.a).toEqual({Person:{}});
-//     act(()=>{store.dispatch({type:'PERSON_ADD',payload:{id:'a'}})});
-//     expect(result.current.main).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
-//     expect(result.current.a).toEqual({Person:{a:{id:'a'}}});
-//   })
-//   test('should not update unchanged collection items', () => {
-//     const { result } = renderHook(() =>useQuery(gql(`{Person{id}}`)));
-//     const { result:resulta } = renderHook(() =>useQuery(gql(`{Person(id:"a"){id}}`)));
-//     const { result:resultb } = renderHook(() =>useQuery(gql(`{Person(id:"b"){id}}`)));
-//     const b=resultb.current.Person.b;
-//     expect(result.current).toEqual({Person:{a:{id:'a'}, b, c:{id:'c'}}});
-//     expect(resulta.current).toEqual({Person:{a:{id:'a'}}});
-//     expect(resultb.current).toEqual({Person:{b}});
-//     act(()=>{store.dispatch({type:'PERSON_SUBTRACT',payload:{id:'a'}});})
-//     expect(result.current).toEqual({Person:{b, c:{id:'c'}}});
-//     expect(resulta.current).toEqual({Person:{}});
-//     // expect(resultb.current.Person.b).toBe(b);
-//     act(()=>{store.dispatch({type:'PERSON_ADD',payload:{id:'a'}})});
-//     expect(result.current).toEqual({Person:{a:{id:'a'}, b, c:{id:'c'}}});
-//     expect(resulta.current).toEqual({Person:{a:{id:'a'}}});
-//     // expect(resultb.current.Person.b).toBe(b);
-//   })
+//   // test('should update one with another changed', () => {
+//   //   const { result } = renderHook(() =>({
+//   //     main:useQuery(gql(`{Person{id}}`)),
+//   //     a:useQuery(gql(`{Person(id:"a"){id}}`))
+//   //   }));
+//   //   expect(result.current.main).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+//   //   expect(result.current.a).toEqual({Person:{a:{id:'a'}}});
+//   //   act(()=>{store.dispatch({type:'PERSON_SUBTRACT',payload:{id:'a'}});})
+//   //   expect(result.current.main).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
+//   //   expect(result.current.a).toEqual({Person:{}});
+//   //   act(()=>{store.dispatch({type:'PERSON_ADD',payload:{id:'a'}})});
+//   //   expect(result.current.main).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+//   //   expect(result.current.a).toEqual({Person:{a:{id:'a'}}});
+//   // })
+//   // test('should not update unchanged collection items', () => {
+//   //   const { result } = renderHook(() =>useQuery(gql(`{Person{id}}`)));
+//   //   const { result:resulta } = renderHook(() =>useQuery(gql(`{Person(id:"a"){id}}`)));
+//   //   const { result:resultb } = renderHook(() =>useQuery(gql(`{Person(id:"b"){id}}`)));
+//   //   const b=resultb.current.Person.b;
+//   //   expect(result.current).toEqual({Person:{a:{id:'a'}, b, c:{id:'c'}}});
+//   //   expect(resulta.current).toEqual({Person:{a:{id:'a'}}});
+//   //   expect(resultb.current).toEqual({Person:{b}});
+//   //   act(()=>{store.dispatch({type:'PERSON_SUBTRACT',payload:{id:'a'}});})
+//   //   expect(result.current).toEqual({Person:{b, c:{id:'c'}}});
+//   //   expect(resulta.current).toEqual({Person:{}});
+//   //   // expect(resultb.current.Person.b).toBe(b);
+//   //   act(()=>{store.dispatch({type:'PERSON_ADD',payload:{id:'a'}})});
+//   //   expect(result.current).toEqual({Person:{a:{id:'a'}, b, c:{id:'c'}}});
+//   //   expect(resulta.current).toEqual({Person:{a:{id:'a'}}});
+//   //   // expect(resultb.current.Person.b).toBe(b);
+//   // })
 // });
 
 // describe("getUseQuery: integration test react+redux+useQuery+boundary values directive",()=>{

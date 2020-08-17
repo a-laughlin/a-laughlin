@@ -234,13 +234,6 @@ export const fmo = filterMapToObject; // backward compatability
 export const filterMapToSame=makeCollectionFn(filterMapToArray,filterMapToObject);
 export const fmx=filterMapToSame; // backward compatability
 
-export const withLastMeta=fn=>{
-  let meta={};
-  return (...args)=>{
-    meta.lastOutput=fn(...args,meta);
-    return meta.lastOutput;
-  }
-};
 export const first = c=>{
   if (isArray(c)) return c[0];
   for (const k in c)return c[k];
@@ -371,12 +364,11 @@ export const tdToObjectImmutable = transducer=>{
   };
 };
 export const tdToSame = transducer=>collection=>(Array.isArray(collection)?tdToArray:tdToObject)(transducer)(collection);
-export const tdValue = transducer=>value=>transduce(undefined, identity, transducer, [value]);
 
-export const tdMap = mapper => nextReducer => (a,v,...kc) =>
-  nextReducer(a,mapper(v,...kc),...kc);
-export const tdMapWithAcc = mapper => nextReducer => (a,v,...kc) =>
-  nextReducer(a,mapper(a,v,...kc),...kc);
+export const tdMap = mapper => nextReducer => (a,v,...kc) => nextReducer(a,mapper(v,...kc),...kc);
+export const tdMapKey = mapper => nextReducer => (a,v,k,...c) => nextReducer(a,v,mapper(v,k,...c),...c);
+export const tdMapWithAcc = mapper => nextReducer => (a,v,...kc) => nextReducer(a,mapper(a,v,...kc),...kc);
+export const tdMapKeyWithAcc = mapper => nextReducer => (a,v,k,...c) => nextReducer(a,v,mapper(a,v,k,...c),...c);
 export const tdAssign = f=>nextReducer => (a,v,...kc) =>nextReducer({...a,...f(a,v,...kc)},v,...kc);
 export const tdSet = (key,f)=>nextReducer => (a,v,...kc) =>{
   const next = f(a,v,...kc);

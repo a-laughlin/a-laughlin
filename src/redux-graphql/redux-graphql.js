@@ -1,5 +1,6 @@
-import indexSchema from './indexSchema'
-import {not,reduce,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs, tdToObject} from '@a-laughlin/fp-utils';
+import indexSchema,{getFieldTypeName} from './indexSchema'
+import {not,reduce,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs, tdToObject, tdToObjectImmutable, tdReduce, transduceDF, tdMapKey, memoize} from '@a-laughlin/fp-utils';
+import { map } from 'lodash-es';
 export {default as gql} from 'graphql-tag';
 
 const keyDiff=(v,k)=>k;
@@ -94,17 +95,14 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
 };
 // filtering language ... a dsl is complicated https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
 // for mvp mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter
+const tdMapField=mapper=>nextReducer=>(a,field,k,...c)=>nextReducer(a,mapper(field,field.name.value,...c),field.name.value,...c);
+
 export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit:x=>not(toPredicate(x))} )=>{
-  const {objectFieldMeta}=indexSchema(schema);
+  const {objectFieldMeta,definitionsByName,ScalarTypeDefinition}=indexSchema(schema);
   const queryCollection = (rootState,collName,id,Field,populateArgsFromVars)=>{
     if (Field.selectionSet===undefined){ // leaf
-      if (id===undefined){
-        return (Field.name.value in rootState)
-          ? rootState[Field.name.value] // root scalars
-          : new Error('cannot request collection without selecting fields');
-      }
-      if(Field.name.value in objectFieldMeta[collName].collectionNames)
-        return new Error('cannot request object without selecting fields');
+      if (id===undefined) return (collName in rootState) ? rootState[collName] : new Error('cannot request collection without selecting fields');
+      if(Field.name.value in objectFieldMeta[collName].collectionNames) return new Error('cannot request object without selecting fields');
       return rootState[collName][id][Field.name.value]; // prop scalars
     }
     if (id === undefined){
@@ -139,22 +137,42 @@ export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit
     }
     return newItem;
   };
-
-  return (rootState,query,passedVariables={})=>{
-    return transToObject((result,{variableDefinitions=[],selectionSet:{selections=[]}={}})=>{
-      const vars = variableDefinitionsToObject(variableDefinitions,passedVariables);
-      selections.forEach(s=>result[s.name.value]=queryCollection(rootState,s.name.value,undefined,s,getArgsPopulator(vars)));
-    })(query.definitions);
-  }
+  // // parse the query once.  composing different lenses based on types?
+  // const mapScalarField=([field,v,vPrev,root,rootPrev,typeName])=>v;
+  // const mapCollectionField=([field,v,vPrev,root,rootPrev,typeName])=>{};
+  // const isScalarField=([field,v,vPrev,root,rootPrev,typeName,getArgs])=>typeName in ScalarTypeDefinition;
+  // const isCollectionField=([field,v,vPrev,root,rootPrev,typeName,getArgs])=>typeName in ObjectTypeDefinition;
+  // const fieldMapper=cond(
+  //   [isScalarField,mapScalarField]
+  //   [isCollectionField,mapCollectionField]
+  // );
+  // return (query,passedVariables={})=>{
+  //   const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
+  //   // const initialFieldMapper = tdToObjectImmutable(tdMapField(fieldMapper));
+  //   // return (rootState,prevState=rootState)=>initialFieldMapper(
+  //   //   query.definitions[0].selectionSet.selections.map(s=>[s,rootState[s.name.value],prevState[s.name.value],rootState,prevState,getFieldTypeName(s),argsPopulator])
+  //   // )
+  // };
+  return (query,passedVariables={})=>{
+    const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
+    return (rootState,prevState=rootState)=>{
+      return tdToObjectImmutable(
+        tdMapField((v,k)=>queryCollection(rootState,k,undefined,v,argsPopulator))
+        // tdMapField((v,k)=>queryCollection([rootState,prevState,rootState[k],prevState[k]],k,undefined,v,argsPopulator))
+      )(query.definitions[0].selectionSet.selections);
+    }
+  };
 }
-
 export const getUseQuery=(store,querier,schema,useState,useEffect)=>{
+  
   const {definitionsByName,objectFieldMeta}=indexSchema(schema);
   const getFieldCollectionNames=reduce((acc=new Set(),{name:{value},selectionSet:{selections=[]}={}},i,c)=>{
     if (value in definitionsByName) acc.add(value);
     for (const s of selections)getFieldCollectionNames(acc,s);
     return acc;
   });
+  // const getVarsKey = vars=>JSON.stringify(Object.keys(vars).sort().reduce((a,k)=>{a[k]=vars[k];return a;},{}));
+  // const opVarsIdx=new WeakMap();
   const opKeyIdx=new WeakMap();
   return (query,variables)=>{
     !opKeyIdx.has(query) && opKeyIdx.set(query,Array.from(getFieldCollectionNames(query.definitions.flatMap(d=>(d.selectionSet.selections)))));
@@ -162,9 +180,10 @@ export const getUseQuery=(store,querier,schema,useState,useEffect)=>{
     useEffect(()=>store.subscribe(()=> { // returns the unsubscribe function
       setState(([prevNormed,prevDenormed])=>{
         // TODO different tests for collection/item/value
+        // if variables changed, or key changed
         const normed = store.getState();
-        const changedKeys=opKeyIdx.get(query).filter(k=>prevNormed[k]!==normed[k]);
-        if (changedKeys.length===0) return [prevNormed,prevDenormed];
+        // const changedKeys=opKeyIdx.get(query).filter(k=>prevNormed[k]!==normed[k]);
+        // if (changedKeys.length===0) return [prevNormed,prevDenormed];
         const denormed=querier(normed,query,variables);
         for (const k of changedKeys){
           if(objectFieldMeta[k]){
