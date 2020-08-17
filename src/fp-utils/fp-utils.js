@@ -234,12 +234,11 @@ export const fmo = filterMapToObject; // backward compatability
 export const filterMapToSame=makeCollectionFn(filterMapToArray,filterMapToObject);
 export const fmx=filterMapToSame; // backward compatability
 
-export const scan=fn=>{
-  let lastValue;
-  return (value,...args)=>{
-    const result=fn(lastValue,value,...args);
-    lastValue=value;
-    return result;
+export const withLastMeta=fn=>{
+  let meta={};
+  return (...args)=>{
+    meta.lastOutput=fn(...args,meta);
+    return meta.lastOutput;
   }
 };
 export const first = c=>{
@@ -355,6 +354,22 @@ export const appendArrayReducer = (acc=[],v)=>{acc[acc.length]=v;return acc;}
 export const appendObjectReducer = (acc={},v,k)=>{acc[k]=v;return acc;}
 export const tdToArray = transducer=>collection=>transduce([], appendArrayReducer, transducer, collection);
 export const tdToObject = transducer=>collection=>transduce(({}), appendObjectReducer, transducer, collection);
+export const tdToObjectImmutable = transducer=>{
+  let lastOutput={};
+  let lastCount;
+  return collection=>{
+    let count=0,changed=false;
+    const output=tdToObject(compose(
+      transducer,
+      tdTap((a,v,k,c)=>{++count;if(v!==lastOutput[k]){changed=true};})
+    ))(collection);
+    if(changed===true||lastCount!==count){
+      lastCount=count;
+      lastOutput=output;
+    }
+    return lastOutput;
+  };
+};
 export const tdToSame = transducer=>collection=>(Array.isArray(collection)?tdToArray:tdToObject)(transducer)(collection);
 export const tdValue = transducer=>value=>transduce(undefined, identity, transducer, [value]);
 
