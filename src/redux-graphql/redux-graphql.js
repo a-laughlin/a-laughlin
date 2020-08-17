@@ -137,21 +137,26 @@ export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit
     }
     return newItem;
   };
-  // // parse the query once.  composing different lenses based on types?
-  // const mapScalarField=([field,v,vPrev,root,rootPrev,typeName])=>v;
-  // const mapCollectionField=([field,v,vPrev,root,rootPrev,typeName])=>{};
-  // const isScalarField=([field,v,vPrev,root,rootPrev,typeName,getArgs])=>typeName in ScalarTypeDefinition;
-  // const isCollectionField=([field,v,vPrev,root,rootPrev,typeName,getArgs])=>typeName in ObjectTypeDefinition;
-  // const fieldMapper=cond(
-  //   [isScalarField,mapScalarField]
-  //   [isCollectionField,mapCollectionField]
+
+  // TODO parse the query once.  composing different lenses based on types
+  // const getFieldLens=cond(
+  //   [isScalar,([f,getArgs])=>([v,vPrev,rootState,prevState])=>v],
+  //   [isCollectionField,([f,getArgs])=>{
+  //      const itemMapper=over(tdToObject(tdMap(getFieldLens))(f.selectionSet.selections.map(s=>[s,getArgs])));
+  //      const typeName=getFieldTypeName(f);
+  //      const args=getArgs(field.arguments);
+  //      const matchesFn=([v,vPrev,root,rootPrev])=>true;
+  //      return tdToObjectImmutable(compose(
+  //         tdFilter(matchesFn),
+  //         tdMap(itemMapper)
+  //      ));
+  //    }]
   // );
-  // return (query,passedVariables={})=>{
-  //   const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
-  //   // const initialFieldMapper = tdToObjectImmutable(tdMapField(fieldMapper));
-  //   // return (rootState,prevState=rootState)=>initialFieldMapper(
-  //   //   query.definitions[0].selectionSet.selections.map(s=>[s,rootState[s.name.value],prevState[s.name.value],rootState,prevState,getFieldTypeName(s),argsPopulator])
-  //   // )
+  // const getFieldLensInitial=(query,passedVariables={})=>{
+  //   const selections=query.definitions[0].selectionSet.selections;
+  //   const getArgs=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
+  //   const initialFieldMapper = tdToObjectImmutable(tdMap(over(tdToObject(tdMapField(getFieldLens))(selections.map(s=>[s,getArgs])))));
+  //   return (rootState,prevState=rootState)=>initialFieldMapper(selections.map(s=>[rootState[s.name.value],prevState[s.name.value],rootState,prevState]);
   // };
   return (query,passedVariables={})=>{
     const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
