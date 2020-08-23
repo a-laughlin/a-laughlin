@@ -1,5 +1,5 @@
 import indexSchema,{getFieldTypeName} from './indexSchema'
-import {not,reduce,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs, tdToObject, tdToObjectImmutable, tdReduce, transduceDF, tdMapKey, memoize, over, pick,ensureArray, tdLog,compose, mapToObject, pipe, tdTap, overObj} from '@a-laughlin/fp-utils';
+import {not,reduce,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs, tdToObject, tdToObjectImmutable, tdReduce, transduceDF, tdMapKey, memoize, over, pick,ensureArray, tdLog,compose, mapToObject, pipe, tdTap, overObj,transArrayToObject,transObjectToObject} from '@a-laughlin/fp-utils';
 import { mapKeys } from 'lodash-es';
 export {default as gql} from 'graphql-tag';
 
@@ -97,46 +97,50 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
   // const mapImmutable=(srcColl,destColl,v,k)=>{}
 export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit:x=>not(toPredicate(x))} )=>{
   const {objectFieldMeta,definitionsByName,ScalarTypeDefinition,ObjectTypeDefinition}=indexSchema(schema);
-  // item->scalar (e.g., query->scalar)
-    // collName
-    // collName id k
-  // item->item
-    // collName id k in collNames
-  // item->coll (e.g., query->coll)
-    // collName id k
-    // rootState scalarName
-  // coll->item
-    // collName id
+  const QueryObject=Symbol('QueryObject');
+  const QueryScalar=Symbol('QueryScalar');
+  const StateItem=Symbol('StateItem');
+  const StateCollection=Symbol('StateCollection');
+  const StatePrimitive=Symbol('StateItem');
+  // scalar // Field.selectionSet===undefined
+  //   coll // error
+  //   item // error
+  //   scalar // Field.selectionSet===undefined
+  // obj
+  //   coll // !id || !FieldName!==CollName
+  //   item // !FieldName!==CollName
+  //   scalar // error
 // tdMapQuery could accept a transducer to map state values(queryTransducer,stateTransducer);
-  const queryCollection = (rootState,collName,id,Field,populateArgsFromVars)=>{
+  const queryCollection = (rootState,collName,id,Field,getArgs)=>{
     if (Field.selectionSet===undefined){ // leaf
       // pretty sure this line is only necessary since the coll/subset section doesn't check for collectionNames vs scalar names
       if (id===undefined) return (collName in rootState) ? rootState[collName] : new Error('cannot request collection without selecting fields');
       if(Field.name.value in objectFieldMeta[collName].collectionNames) return new Error('cannot request object without selecting fields');
       return rootState[collName][id][Field.name.value]; // prop scalars
     }
-    if (id !== undefined){ // item (worth noting that root state is also an item, given its heterogenous values)
+    if (id!==undefined){ // item (worth noting that root state is also an item, given its heterogenous values)
       const {collectionNames}=objectFieldMeta[collName];
       const itemArray=Array.isArray(id)?id:[id];
-      const next=transToObject((next,id)=>{
+      const next=transArrayToObject((next,id)=>{
         if(rootState[collName][id]===undefined)return;
-        next[id] = transToObject((o,f)=>{
+        next[id] = transObjectToObject((o,f)=>{
           o[f.name.value]=(f.name.value in collectionNames) //
-            ? queryCollection(rootState, collectionNames[f.name.value], rootState[collName][id][f.name.value],f, populateArgsFromVars)
-            : queryCollection(rootState, collName, id, f, populateArgsFromVars)
+            ? queryCollection(rootState, collectionNames[f.name.value], rootState[collName][id][f.name.value],f, getArgs)
+            : queryCollection(rootState, collName, id, f, getArgs)
         })(Field.selectionSet.selections);
       })(itemArray);
       return (itemArray.length>1/* or isListField*/) ? next : next[itemArray[0]];
     }
     // collection/subset
-    const args = populateArgsFromVars(Field.arguments);
+    if(Field.arguments.length===0) return transObjectToObject((o,item,k)=>o[k]=queryCollection(rootState,collName,k,Field,getArgs))(rootState[collName]);
+    const args = getArgs(Field.arguments);
+    const idsArray=ensureArray(args[objectFieldMeta[collName].idKey]);
+    if(Field.arguments.length===1 && idsArray.length) return transArrayToObject((o,k)=>o[k]=queryCollection(rootState,collName,k,Field,getArgs))(idsArray);
     const queryMatcherFns=tdDPipeToArray( args, tdFilter((v,k)=>k in queryMatchers), tdMap((v,k)=>queryMatchers[k](args[k])) );
     const matchesFn = queryMatcherFns.length===0 ? queryMatchers.filter(args) : and(...queryMatcherFns);
-    const iterator=(o,item,k)=>matchesFn(item)&&(o[k]=queryCollection(rootState,collName,k,Field,populateArgsFromVars));
     // can split this section further based on number and type of args for performance if necessary.
-    return args[objectFieldMeta[collName].idKey]
-      ? transToObject((o,k)=>iterator(o,rootState[collName][k],k))(ensureArray(args[objectFieldMeta[collName].idKey]))
-      : transToObject( iterator )(rootState[collName]);
+    const coll=idsArray.length?pick(idsArray)(rootState[collName]):rootState[collName];
+    return transObjectToObject((o,item,k)=>matchesFn(item)&&(o[k]=queryCollection(rootState,collName,k,Field,getArgs)))(coll);
   };
   const initialQuery= (query,passedVariables={})=>{
     const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));

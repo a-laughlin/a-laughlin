@@ -162,24 +162,24 @@ export const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of ar
 
 // collections
 
-const transArrayToObject = fn => (coll=[]) => {
+export const transArrayToObject = fn => (coll=[]) => {
   const l = coll.length, acc = Object.create(null);
   let k = -1;
   while (++k < l) fn(acc, coll[k], k, coll);
   return acc;
 }
-const transArrayToArray = fn => (coll=[]) => {
+export const transArrayToArray = fn => (coll=[]) => {
   const l = coll.length, acc = [];
   let k = -1;
   while (++k < l) fn(acc, coll[k], k, coll);
   return acc;
 }
-const transObjectToObject = fn => (coll={}) => {
+export const transObjectToObject = fn => (coll={}) => {
   let k, acc = Object.create(null);
   for (k in coll) fn(acc, coll[k], k, coll);
   return acc;
 }
-const transObjectToArray = fn => (coll={}) => {
+export const transObjectToArray = fn => (coll={}) => {
   let k, acc = [];
   for (k in coll) fn(acc, coll[k], k, coll);
   return acc;
@@ -307,7 +307,7 @@ export const pget = cond( // polymorphic get
   [stubTrue,identity], // handles the function case
 );
 export const pick=cond(
-  [isArray,keys=>obj=>transToSame((o,k)=>o[k]=obj[k])(keys)],
+  [isArray,keys=>obj=>transArrayToObject((o,k)=>o[k]=obj[k])(keys)],
   [isString,key=>obj=>obj[key]],
   [isFunction,filterToSame],
 );
