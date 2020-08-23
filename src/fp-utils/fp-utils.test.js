@@ -346,6 +346,10 @@ describe("over", () => {
   it("should produce expected results",()=>{
     const isEven = x=>x%2===0;
     const isOdd = x=>x%2===1;
+    expect(over({})(1)).toEqual({});
+    expect(over({})({})).toEqual({});
+    expect(over([])(1)).toEqual([]);
+    expect(over([])({})).toEqual([]);
     expect(over({x:isEven,y:isOdd})(1)).toEqual({x:false,y:true});
     expect(over([isEven,isOdd])(1)).toEqual([false,true]);
     expect(over([isEven,isOdd])({a:0,b:1})).toEqual([false,false]);

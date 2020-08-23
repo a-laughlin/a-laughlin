@@ -27,7 +27,7 @@ export default memoize(schema=>{
     definitionsByName:keyBy(getDefName)(allDefs),
     objectFieldMeta:Object.values(definitionsByKind.ObjectTypeDefinition).reduce((acc,d)=>{
       const dName=getDefName(d);
-      const m=acc[dName]={scalarNames:{},collectionNames:{},collectionKeysCount:0,scalarKeysCount:0,isListType:{},idKey:undefined};
+      const m=acc[dName]={collName:dName,scalarNames:{},collectionNames:{},collectionKeysCount:0,scalarKeysCount:0,isListType:{},idKey:undefined};
       for (const f of d.fields){
         const [fName,fTypeName]=[getDefName(f),getFieldTypeName(f)];
         if (fTypeName==='ID') m.idKey=fName;

@@ -103,7 +103,8 @@ describe("getMemoizedObjectQuerier", () => {
   });
   it("should query collections",()=>{
     const query=gql(`{Person{id}}`);
-    const result1=querier(query)(state);
+    const queryFn = querier(query);
+    const result1=queryFn(state);
     expect(result1).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
   });
   it("should denormalize item subsets with variables",()=>{

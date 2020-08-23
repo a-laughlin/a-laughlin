@@ -106,8 +106,14 @@ export const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(en
 export const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 export const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
 
-export const overObj = fnsObj=>(...args)=>mo(f=>f(...args))(fnsObj);
-export const overArray = fnsArray=>(...args)=>ma(f=>f(...args))(fnsArray);
+export const overObj = (fnsObj={})=>(...args)=>{
+  // console.log(`fnsObj`,fnsObj)
+  return mo(f=>{
+    if(typeof f!=='function')console.log('typeof f',f);
+    return f(...args);
+  })(fnsObj);
+}
+export const overArray = (fnsArray=[])=>(...args)=>ma(f=>f(...args))(fnsArray);
 export const over = x=>isArray(x)?overArray(x):overObj(x);
 export const converge = over;//backwards compat;
 
@@ -351,6 +357,7 @@ export const tdToObjectImmutable = transducer=>{
   let lastOutput={};
   let lastCount;
   return collection=>{
+    // console.log(`transducer`,transducer)
     let count=0,changed=false;
     const output=tdToObject(compose(
       transducer,

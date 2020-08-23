@@ -25,7 +25,8 @@
       "rules": {
         "react/jsx-max-depth": ["error", {"max": 1}],
         "react/prop-types": ["off"],
-        "eqeqeq": ["error"]
+        "eqeqeq": ["error"],
+        "no-unreachable":"off"
       },
       "settings": {
         "react": {"version": "detect"}

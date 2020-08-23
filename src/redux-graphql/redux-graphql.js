@@ -1,6 +1,6 @@
 import indexSchema,{getFieldTypeName} from './indexSchema'
-import {not,reduce,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs, tdToObject, tdToObjectImmutable, tdReduce, transduceDF, tdMapKey, memoize} from '@a-laughlin/fp-utils';
-import { map } from 'lodash-es';
+import {not,reduce,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs, tdToObject, tdToObjectImmutable, tdReduce, transduceDF, tdMapKey, memoize, over, pick,ensureArray, tdLog,compose, mapToObject, pipe, tdTap, overObj} from '@a-laughlin/fp-utils';
+import { mapKeys } from 'lodash-es';
 export {default as gql} from 'graphql-tag';
 
 const keyDiff=(v,k)=>k;
@@ -90,84 +90,162 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
   if (variableDefinitions.length===0) return passedVariables;
   for ({variable:{name:{value:name}},defaultValue} of variableDefinitions)
   vars[name]=passedVariables[name]??((defaultValue??{}).value);
-  // may need to de-null and de-list here.f
   return vars;
 };
 // filtering language ... a dsl is complicated https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
 // for mvp mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter
-const tdMapField=mapper=>nextReducer=>(a,field,k,...c)=>nextReducer(a,mapper(field,field.name.value,...c),field.name.value,...c);
-
+  // const mapImmutable=(srcColl,destColl,v,k)=>{}
 export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit:x=>not(toPredicate(x))} )=>{
-  const {objectFieldMeta,definitionsByName,ScalarTypeDefinition}=indexSchema(schema);
+  const {objectFieldMeta,definitionsByName,ScalarTypeDefinition,ObjectTypeDefinition}=indexSchema(schema);
+  // item->scalar (e.g., query->scalar)
+    // collName
+    // collName id k
+  // item->item
+    // collName id k in collNames
+  // item->coll (e.g., query->coll)
+    // collName id k
+    // rootState scalarName
+  // coll->item
+    // collName id
+// tdMapQuery could accept a transducer to map state values(queryTransducer,stateTransducer);
   const queryCollection = (rootState,collName,id,Field,populateArgsFromVars)=>{
     if (Field.selectionSet===undefined){ // leaf
+      // pretty sure this line is only necessary since the coll/subset section doesn't check for collectionNames vs scalar names
       if (id===undefined) return (collName in rootState) ? rootState[collName] : new Error('cannot request collection without selecting fields');
       if(Field.name.value in objectFieldMeta[collName].collectionNames) return new Error('cannot request object without selecting fields');
       return rootState[collName][id][Field.name.value]; // prop scalars
     }
-    if (id === undefined){
-      // what if we're filtering the collection
-      if (Field.arguments.length===0)
-        return transToObject((o,_,k)=>o[k]=queryCollection(rootState,collName,k,Field,populateArgsFromVars))(rootState[collName]);
-
-      const args = populateArgsFromVars(Field.arguments);
-
-      const queryMatcherFns=tdDPipeToArray(
-        args,
-        tdFilter((v,k)=>k in queryMatchers),
-        tdMap((v,k)=>queryMatchers[k](args[k])),
-      );
-      queryMatcherFns[0]||(queryMatcherFns[0]=queryMatchers.filter(args));
-      const matchesFn = and(...queryMatcherFns);
-
-      return transToObject(
-        (o,item,k)=>matchesFn(item)&&(o[k]=queryCollection(rootState,collName,k,Field,populateArgsFromVars))
-      )(rootState[collName]);
+    if (id !== undefined){ // item (worth noting that root state is also an item, given its heterogenous values)
+      const {collectionNames}=objectFieldMeta[collName];
+      const itemArray=Array.isArray(id)?id:[id];
+      const next=transToObject((next,id)=>{
+        if(rootState[collName][id]===undefined)return;
+        next[id] = transToObject((o,f)=>{
+          o[f.name.value]=(f.name.value in collectionNames) //
+            ? queryCollection(rootState, collectionNames[f.name.value], rootState[collName][id][f.name.value],f, populateArgsFromVars)
+            : queryCollection(rootState, collName, id, f, populateArgsFromVars)
+        })(Field.selectionSet.selections);
+      })(itemArray);
+      return (itemArray.length>1/* or isListField*/) ? next : next[itemArray[0]];
     }
-    const {collectionNames}=objectFieldMeta[collName];
-    if (Array.isArray(id))
-      return transToObject((o,k)=>o[k]=queryCollection(rootState,collName,k,Field,populateArgsFromVars))(id);
-
-    let f,fName,newItem={},item=rootState[collName][id];
-    for (f of Field.selectionSet.selections){
-      fName=f.name.value;
-      newItem[fName]=(fName in collectionNames)
-        ? queryCollection( rootState, collectionNames[fName], item[fName],f, populateArgsFromVars)
-        : item[fName];
-    }
-    return newItem;
+    // collection/subset
+    const args = populateArgsFromVars(Field.arguments);
+    const queryMatcherFns=tdDPipeToArray( args, tdFilter((v,k)=>k in queryMatchers), tdMap((v,k)=>queryMatchers[k](args[k])) );
+    const matchesFn = queryMatcherFns.length===0 ? queryMatchers.filter(args) : and(...queryMatcherFns);
+    const iterator=(o,item,k)=>matchesFn(item)&&(o[k]=queryCollection(rootState,collName,k,Field,populateArgsFromVars));
+    // can split this section further based on number and type of args for performance if necessary.
+    return args[objectFieldMeta[collName].idKey]
+      ? transToObject((o,k)=>iterator(o,rootState[collName][k],k))(ensureArray(args[objectFieldMeta[collName].idKey]))
+      : transToObject( iterator )(rootState[collName]);
   };
-
+  const initialQuery= (query,passedVariables={})=>{
+    const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
+    const selections=query.definitions[0].selectionSet.selections;
+    return rootState=>transToObject((o,s)=>o[s.name.value]=queryCollection(rootState,s.name.value,undefined,s,argsPopulator))(selections);
+  };
+  return initialQuery;
+};
+  // return getObjectQuerier;
   // TODO parse the query once.  composing different lenses based on types
-  // const getFieldLens=cond(
-  //   [isScalar,([f,getArgs])=>([v,vPrev,rootState,prevState])=>v],
-  //   [isCollectionField,([f,getArgs])=>{
-  //      const itemMapper=over(tdToObject(tdMap(getFieldLens))(f.selectionSet.selections.map(s=>[s,getArgs])));
-  //      const typeName=getFieldTypeName(f);
-  //      const args=getArgs(field.arguments);
-  //      const matchesFn=([v,vPrev,root,rootPrev])=>true;
-  //      return tdToObjectImmutable(compose(
-  //         tdFilter(matchesFn),
-  //         tdMap(itemMapper)
-  //      ));
-  //    }]
-  // );
+  // const isScalarField = ([f,collName]=[])=>collName in ScalarTypeDefinition;
+  // const isCollectionField = ([f,collName]=[])=>collName in ObjectTypeDefinition;
+  // const getFieldLensDF=transduceDF({
+  //   edgeCombiner:(a={},v)=>
+  // });
+
+ 
+
+  // const getCollectionLens=([selection={},collName,getArgs])=>{
+  //   const {arguments:a=[],name:{value:selectionName},selectionSet:{selections:itemFields=[]}={}} = selection;
+  //   const {scalarNames,collectionNames,idKey}=objectFieldMeta[collName];
+  //   console.log(`collName,selectionName`,collName,selectionName);
+  //   const mapItemField = ([parent={},prevParent,root,rootPrev],k)=>{
+  //     let nextParent={},itemChanged,changed;
+  //     let set=new Set();
+  //     let parentChanged=false,itemChanged=false;
+  //     for (const kk of parent){
+  //       itemChanged=false;
+  //       const v=parent[kk]||{};
+  //       const vPrev=prevParent[kk];
+  //       for (const s of itemFields){
+
+  //       }
+  //       if(v!==vPrev)parentChanged=true;
+  //     }
+  //     for (const s of itemFields){
+  //       if(s.name.value in scalarNames) v;
+  //       else if 
+  //     }
+  //     tdMapKey(s=>s.name.value),
+  //     tdMap((s,k)=>{
+  //       if(k in scalarNames) return ([v,vPrev,root,rootPrev])=>v;
+  //       if(k in collectionNames) return getCollectionLens([s,collectionNames[k]||scalarNames[k]||console.log('k missing in objectMeta'),getArgs]);
+  //     })
+  //   ))(itemFields));
+  //   if(collName==='query'){
+  //     return over(mapItem);
+  //   }
+  //   const mapCollection = tdToObject(compose(
+  //     tdMap((acc,[v,vPrev,root,rootPrev],id)=>{
+
+  //     })
+  //   ));
+  //   return mapCollection;
+
+    // root{Person{id,best}}
+    // return tdToObjectImmutable()
+    // const mapItemField = (acc,[coll,collPrev],k,c)=>{
+    //   if(collPrev[k]!==)
+    // }over(mapToObject((o,s)=>{
+    //   const n=s.name.value;
+    //   if(n in scalarNames)o[n]=getFieldLens([ s,objectFieldMeta[scalarNames[n]],getArgs ]);
+    //   else if(n in collectionNames)o[n]=getFieldLens([ s,objectFieldMeta[collectionNames[n]],getArgs ]);
+    //   else {console.log(`itemFieldMapper,shouldn't happen`,parentFieldName,collName,fieldName);}
+    // })(itemFields));
+  //   let lastOutput={},lastCount=0;
+  //   const matchesFn=getMatchesFn(a);
+  //   const colMapper =(rootState,collname,v,k)=>{
+  //     let changed=false,count=0;
+  //     let output={};
+  //     for (const id in rootState[collName]){
+  //       output[id]??(output[id]={});
+  //       if(!matchesFn(output[id]))continue;
+  //       for (const n in scalarNames){
+  //         output[id][n]=rootState[collName][id][n];
+  //         if(output[id][n]!==lastOutput[id][n])itemChanged=true;
+  //       }
+  //       for (const n in collectionNames){
+  //         const otherCollectionName=collectionNames[n];
+  //         const otherCollectionID=rootState[collName][id][n];
+  //         output[id][n]=rootState[otherCollectionName][otherCollectionID];
+  //         if(output[id][n]!==lastOutput[id][n])itemChanged=true;
+  //       }
+  //       if(n in scalarNames)output[id][n]=rootState[collName][id][n];
+  //       output[id]=itemFieldMapper(rootState);
+  //     }
+  //     if(changed===true||lastCount!==count){
+  //       lastCount=count;
+  //       lastOutput=output;
+  //     }
+  //     return lastOutput;
+  //   }
+  //   return collMapper;
+  // };
   // const getFieldLensInitial=(query,passedVariables={})=>{
   //   const selections=query.definitions[0].selectionSet.selections;
   //   const getArgs=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
-  //   const initialFieldMapper = tdToObjectImmutable(tdMap(over(tdToObject(tdMapField(getFieldLens))(selections.map(s=>[s,getArgs])))));
-  //   return (rootState,prevState=rootState)=>initialFieldMapper(selections.map(s=>[rootState[s.name.value],prevState[s.name.value],rootState,prevState]);
+  //   const selectionLenses=transToObject((o,s)=>o[s.name.value]=getCollectionLens([s,objectFieldMeta[s.name.value],getArgs]))(selections);
+  //   return overObjImmutable(selectionLenses);
   // };
-  return (query,passedVariables={})=>{
-    const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
-    return (rootState,prevState=rootState)=>{
-      return tdToObjectImmutable(
-        tdMapField((v,k)=>queryCollection(rootState,k,undefined,v,argsPopulator))
-        // tdMapField((v,k)=>queryCollection([rootState,prevState,rootState[k],prevState[k]],k,undefined,v,argsPopulator))
-      )(query.definitions[0].selectionSet.selections);
-    }
-  };
-}
+  // return getFieldLensInitial;
+  // return (query,passedVariables={})=>{
+  //   const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
+  //   return (rootState,prevState=rootState)=>{
+  //     return tdToObjectImmutable(
+  //     )(query.definitions[0].selectionSet.selections);
+  //   }
+  // };
+
 export const getUseQuery=(store,querier,schema,useState,useEffect)=>{
   
   const {definitionsByName,objectFieldMeta}=indexSchema(schema);
@@ -176,6 +254,7 @@ export const getUseQuery=(store,querier,schema,useState,useEffect)=>{
     for (const s of selections)getFieldCollectionNames(acc,s);
     return acc;
   });
+
   // const getVarsKey = vars=>JSON.stringify(Object.keys(vars).sort().reduce((a,k)=>{a[k]=vars[k];return a;},{}));
   // const opVarsIdx=new WeakMap();
   const opKeyIdx=new WeakMap();
