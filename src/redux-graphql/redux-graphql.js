@@ -1,6 +1,5 @@
 import indexSchema,{getFieldTypeName} from './indexSchema'
 import {not,reduce,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs, tdToObject, tdToObjectImmutable, tdReduce, transduceDF, tdMapKey, memoize, over, pick,ensureArray, tdLog,compose, mapToObject, pipe, tdTap, overObj,transArrayToObject,transObjectToObject} from '@a-laughlin/fp-utils';
-import { mapKeys } from 'lodash-es';
 export {default as gql} from 'graphql-tag';
 
 const keyDiff=(v,k)=>k;
@@ -39,29 +38,24 @@ export const schemaToStateOpsMapper=(
   schema=gql('type DefaultType {id:ID!}')
 )=>( ops=defaultActions )=>{
   // const transduce = (initial,finalReducer,transducer,val)
-  const {objectFieldMeta,definitionsByName}=indexSchema(schema);
-  const actionNormalizers = transToObject((o,_,dName)=>{
-    const notGQLObject = payload=>!(dName in objectFieldMeta);
-    const idKey=(objectFieldMeta[dName]??{})._idKey;
-    const normalizePayload=cond(
-      // leave scalars and other non-object types
-      [notGQLObject,identity],
-      // convert number/string id to collection
-      [isString,payload=>({[payload]:{[idKey]:payload}})],
-      // convert number/string id to collection
-      [isInteger,payload=>({[payload]:{[idKey]:`${payload}`}})],
-      // convert array to collection
-      [isArray,transToObject((o,v)=>{
-        v=normalizePayload(v);
-        o[v[idKey]]=v;
-      })],
-      // convert single item to collection
-      [and(isObjectLike,hasKey(idKey)), payload=>({[payload[idKey]]:payload})],
-      // collection, leave as is
-      [stubTrue,identity]
-    );
-    o[dName] = normalizePayload;
-  })(definitionsByName);
+  const {selectionMeta}=indexSchema(schema);
+  const actionNormalizers = mapToObject(({defKind,_idKey})=>cond(
+    // leave scalars and other non-object types
+    [_=>defKind!=='object',identity],
+    // convert number/string id to collection
+    [isString,payload=>({[payload]:{[_idKey]:payload}})],
+    // convert number/string id to collection
+    [isInteger,payload=>({[payload]:{[_idKey]:`${payload}`}})],
+    // convert array to collection
+    [isArray,transToObject((o,v)=>{
+      v=normalizePayload(v);
+      o[v[_idKey]]=v;
+    })],
+    // convert single item to collection
+    [and(isObjectLike,hasKey(_idKey)), payload=>({[payload[_idKey]]:payload})],
+    // collection, leave as is
+    [stubTrue,identity]
+  ))(selectionMeta);
   
   return transToObject((acc,actionNormalizer,dName)=>{
     const opFns=transToObject((o,opFn,OP)=>o[`${dName.toUpperCase()}_${OP}`]=opFn(identity))(ops)
@@ -95,48 +89,49 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
 // filtering language ... a dsl is complicated https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
 // for mvp mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter
 export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit:x=>not(toPredicate(x))} )=>{
-  const {objectFieldMeta,ScalarTypeDefinition,ObjectTypeDefinition}=indexSchema(schema);
-  const mapItem=([v,rootState,collName,Field,getArgs],id)=>transObjectToObject((o,f)=>{
+  const mapItem=([v,rootState,collMeta,Field,getArgs],id)=>transObjectToObject((o,f)=>{
     const k=f.name.value;
-    const fieldMeta=objectFieldMeta[collName][k];
-    o[k]=fieldMeta.isScalarType
-      ? rootState[collName][id][k]
+    const fieldMeta=collMeta[k];
+    o[k]=fieldMeta.defKind==='scalar'
+      ? rootState[collMeta.defName][id][k]
       : fieldMeta.isList
-        ? mapCollection([transArrayToObject((o,i)=>o[i]=rootState[fieldMeta.rel._collName][i])(v[k]),rootState, fieldMeta.rel._collName, f, getArgs],v[k])
-        : mapItem([rootState[fieldMeta.rel._collName][v[k]],rootState, fieldMeta.rel._collName, f, getArgs],v[k]);
+        ? mapCollection([transArrayToObject((o,i)=>o[i]=rootState[fieldMeta.rel.defName][i])(v[k]),rootState, fieldMeta.rel, f, getArgs],v[k])
+        : mapItem([rootState[fieldMeta.rel.defName][v[k]],rootState, fieldMeta.rel, f, getArgs],v[k]);
   })(Field.selectionSet.selections);
   
-  const mapCollection=([v,rootState,collName,Field,getArgs],id)=>{
+  const mapCollection=([v,rootState,cMeta,Field,getArgs],id)=>{
     const args = getArgs(Field.arguments);
-    const argIds = ensureArray(args[objectFieldMeta[collName]._idKey]);
-    if(argIds.length)v=transArrayToObject((o,i)=>o[i]=v[i])(argIds);
-    if(Field.arguments.length===0&&argIds.length)return v;
+    const argIds = ensureArray(args[cMeta._idKey]);
+    if(argIds.length) v=transArrayToObject((o,i)=>o[i]=v[i])(argIds);
     const queryMatcherFns=tdDPipeToArray( args, tdFilter((_,k)=>k in queryMatchers), tdMap((_,k)=>queryMatchers[k](args[k])) );
     const matchesFn = queryMatcherFns.length===0 ? queryMatchers.filter(args) : and(...queryMatcherFns);
-    return transObjectToObject((o,item,k)=>matchesFn(item)&&(o[k]=mapItem([item,rootState,collName,Field,getArgs],k)))(v);
+    return transObjectToObject((o,item,k)=>matchesFn(item)&&(o[k]=mapItem([item,rootState,cMeta,Field,getArgs],k)))(v);
   }
-  const isScalarField=([v,rootState,collName,Field,getArgs],id)=>objectFieldMeta[collName] && objectFieldMeta[collName][Field.name.value]? objectFieldMeta[collName][Field.name.value].isScalarType : collName in ScalarTypeDefinition;
-  const isObjectField=([v,rootState,collName,Field,getArgs],id)=>objectFieldMeta[collName] && objectFieldMeta[collName][Field.name.value]? objectFieldMeta[collName][Field.name.value].isObjectType : collName in ObjectTypeDefinition;
+  
+  const isScalarField=([v,rootState,meta,Field,getArgs],id)=>(meta[Field.name.value]??meta).defKind==='scalar';
+  const isObjectField=([v,rootState,meta,Field,getArgs],id)=>(meta[Field.name.value]??meta).defKind==='object';
+  const isListField=([v,rootState,meta,Field,getArgs],id)=>meta.isList;
   const isPrimitiveValue=([v,rootState,collName,Field,getArgs],id)=>!isObjectLike(v);
   const isObjectValue=([v,rootState,collName,Field,getArgs],id)=>isObjectLike(v);
-  const isItemValue=([v,rootState,collName,Field,getArgs],id)=>objectFieldMeta[collName]._idKey in v;
-  const isCollectionValue=([v,rootState,collName,Field,getArgs],id)=>!(objectFieldMeta[collName]._idKey in v);
+  const isItemValue=([v,rootState,meta,Field,getArgs],id)=>isObjectLike(v)&&meta._idKey in v;
+  const isCollectionValue=([v,rootState,meta,Field,getArgs],id)=>isObjectLike(v) && !(meta._idKey in v);
   const mapSelection=cond([
     [isScalarField,cond([
       [isObjectValue,()=>new Error('cannot request object without selecting fields')],
       [isPrimitiveValue,([v])=>v]
     ])],
     [isObjectField,cond([
-      [isPrimitiveValue,([v,_,collName],id)=>new Error(`cannot request fields of a primitive ${JSON.stringify({v,id,collName},null,2)}`)],
+      [isPrimitiveValue,([v,_,{defName}],id)=>new Error(`cannot request fields of a primitive ${JSON.stringify({v,id,defName},null,2)}`)],
       [isItemValue,mapItem],// item (worth noting that root state is also an item with no key, given its heterogenous values);
       [isCollectionValue,mapCollection],
     ])],
   ]);
-  // tdToObject(tdMap())
+  
+  const {selectionMeta}=indexSchema(schema);
   const mapQuery= (query,passedVariables={})=>{
     const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
     const selections=query.definitions[0].selectionSet.selections;
-    return rootState=>transToObject((o,s)=>o[s.name.value]=mapSelection([rootState[s.name.value],rootState,s.name.value,s,argsPopulator],undefined))(selections);
+    return rootState=>transToObject((o,s)=>o[s.name.value]=mapSelection([rootState[s.name.value],rootState,selectionMeta[s.name.value],s,argsPopulator],undefined))(selections);
   };
   return mapQuery;
 };
@@ -144,7 +139,7 @@ export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit
 
 export const getUseQuery=(store,querier,schema,useState,useEffect)=>{
   
-  const {definitionsByName,objectFieldMeta}=indexSchema(schema);
+  const {definitionsByName,selectionMeta}=indexSchema(schema);
   const getFieldCollectionNames=reduce((acc=new Set(),{name:{value},selectionSet:{selections=[]}={}},i,c)=>{
     if (value in definitionsByName) acc.add(value);
     for (const s of selections)getFieldCollectionNames(acc,s);
@@ -166,7 +161,7 @@ export const getUseQuery=(store,querier,schema,useState,useEffect)=>{
         // if (changedKeys.length===0) return [prevNormed,prevDenormed];
         const denormed=querier(normed,query,variables);
         for (const k of changedKeys){
-          if(objectFieldMeta[k]){
+          if(selectionMeta[k]){
             for (const kk in denormed){
               if (typeof normed[kk]!==typeof prevNormed[kk]) return [normed,denormed];
             }
