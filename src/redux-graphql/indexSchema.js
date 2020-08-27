@@ -40,6 +40,12 @@ export default memoize(schema=>{
         configurable:false
       });
       if (dName in definitionsByKind.ObjectTypeDefinition){
+        Object.defineProperty(meta,'objectFields',{
+          value:[],
+          enumerable:false,
+          writable:false,
+          configurable:false
+        });
         // Object.defineProperty(m,'_scalarTypes',{enumerable:false,writable:false,configurable:false});
         // Object.defineProperty(m,'_objectTypes',{enumerable:false,writable:false,configurable:false});
         for (const f of d.fields){
@@ -53,6 +59,9 @@ export default memoize(schema=>{
             defKind:typeName in definitionsByKind.ObjectTypeDefinition?'object':'scalar',
             rel:typeName,
           };
+          if(typeName in definitionsByKind.ObjectTypeDefinition){
+            meta.objectFields.push(meta[fName]);
+          }
         }
       }
     })(definitionsByName)

@@ -1,5 +1,6 @@
 import indexSchema,{getFieldTypeName} from './indexSchema'
-import {not,reduce,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs, tdToObject, tdToObjectImmutable, tdReduce, transduceDF, tdMapKey, memoize, over, pick,ensureArray, tdLog,compose, mapToObject, pipe, tdTap, overObj,transArrayToObject,transObjectToObject} from '@a-laughlin/fp-utils';
+import {not,reduce,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs, tdToObject, tdToObjectImmutable, tdReduce, transduceDF, tdMapKey, memoize, over, pick,ensureArray, tdLog,compose, mapToObject, pipe, tdTap, overObj,transArrayToObject,transObjectToObject, ifElse, transObjectToArray} from '@a-laughlin/fp-utils';
+import { isPrimitive } from 'util';
 export {default as gql} from 'graphql-tag';
 
 const keyDiff=(v,k)=>k;
@@ -86,52 +87,77 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
   vars[name]=passedVariables[name]??((defaultValue??{}).value);
   return vars;
 };
+
 // filtering language ... a dsl is complicated https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
 // for mvp mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter
 export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit:x=>not(toPredicate(x))} )=>{
-  const mapItem=([v,rootState,collMeta,Field,getArgs],id)=>transObjectToObject((o,f)=>{
-    const k=f.name.value;
-    const fieldMeta=collMeta[k];
-    o[k]=fieldMeta.defKind==='scalar'
-      ? rootState[collMeta.defName][id][k]
-      : fieldMeta.isList
-        ? mapCollection([transArrayToObject((o,i)=>o[i]=rootState[fieldMeta.rel.defName][i])(v[k]),rootState, fieldMeta.rel, f, getArgs],v[k])
-        : mapItem([rootState[fieldMeta.rel.defName][v[k]],rootState, fieldMeta.rel, f, getArgs],v[k]);
-  })(Field.selectionSet.selections);
+  const mapItem=([meta,Field,vDenormPrev={},vNorm,vNormPrev={},prevDenormRoot,rootState,prevRoot,getArgs])=>{
+    let vDenorm={},changed;
+    for (const f of Field.selectionSet.selections||[]){
+      const k=f.name.value;
+      const fieldMeta=meta[k];
+      vDenorm[k]=fieldMeta.defKind==='scalar'
+        ? rootState[meta.defName][vNorm[meta._idKey]][k]
+        : fieldMeta.isList
+          ? mapCollection([ fieldMeta.rel, f, vDenormPrev[k], pick(vNorm[k])(rootState[fieldMeta.rel.defName]), pick(vNormPrev[k])(prevRoot[fieldMeta.rel.defName]), prevDenormRoot,rootState,prevRoot, getArgs])
+          : mapItem([ fieldMeta.rel, f, vDenormPrev[k]||{}, rootState[fieldMeta.rel.defName][vNorm[k]]||{}, prevRoot[fieldMeta.rel.defName][vNorm[k]]||{}, prevDenormRoot,rootState,prevRoot,getArgs ]);
+      if(vDenorm[k]!==vDenormPrev[k]) changed = true;
+    }
+    return changed ? vDenorm : vDenormPrev;
+  };
   
-  const mapCollection=([v,rootState,cMeta,Field,getArgs],id)=>{
+  const mapCollection=([meta,Field,vDenormPrev={},vNorm,vNormPrev,prevDenormRoot,rootState,prevRoot,getArgs])=>{
+    if (vNorm===vNormPrev && meta.objectFields.length===0) return vDenormPrev;
+    // on the first traverse up, we can break if the final collection is unchanged without having to check its properties.  Oooh.  That's fast.
     const args = getArgs(Field.arguments);
-    const argIds = ensureArray(args[cMeta._idKey]);
-    if(argIds.length) v=transArrayToObject((o,i)=>o[i]=v[i])(argIds);
-    const queryMatcherFns=tdDPipeToArray( args, tdFilter((_,k)=>k in queryMatchers), tdMap((_,k)=>queryMatchers[k](args[k])) );
+    const argIds = ensureArray(args[meta._idKey]);
+    if(argIds.length) vNorm=transArrayToObject((o,i)=>o[i]=vNorm[i])(argIds);
+    const queryMatcherFns=transObjectToArray((a,arg,k)=>k in queryMatchers && (a[a.length]=queryMatchers[k](arg)))(args);
     const matchesFn = queryMatcherFns.length===0 ? queryMatchers.filter(args) : and(...queryMatcherFns);
-    return transObjectToObject((o,item,k)=>matchesFn(item)&&(o[k]=mapItem([item,rootState,cMeta,Field,getArgs],k)))(v);
+    const vDenorm={};
+    for(const id in vNorm){
+      matchesFn(vNorm[id])&&(vDenorm[id]=mapItem([meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],prevDenormRoot,rootState,prevRoot,getArgs]));
+    }
+    return vDenorm;
+    // return transObjectToObject((o,item,id)=> matchesFn(item)&&(o[id]=mapItem([meta,Field,vDenorm[id],vDenormPrev[id],vNorm[id],vNormPrev[id],prevDenormRoot,rootState,prevRoot,getArgs])))(vNorm);
+    // if (vNormCur===vNormPrev && meta.objectFields.length===0 && vDenormPrev!==undefined) return vDenormPrev;
   }
-  
-  const isScalarField=([v,rootState,meta,Field,getArgs],id)=>(meta[Field.name.value]??meta).defKind==='scalar';
-  const isObjectField=([v,rootState,meta,Field,getArgs],id)=>(meta[Field.name.value]??meta).defKind==='object';
-  const isListField=([v,rootState,meta,Field,getArgs],id)=>meta.isList;
-  const isPrimitiveValue=([v,rootState,collName,Field,getArgs],id)=>!isObjectLike(v);
-  const isObjectValue=([v,rootState,collName,Field,getArgs],id)=>isObjectLike(v);
-  const isItemValue=([v,rootState,meta,Field,getArgs],id)=>isObjectLike(v)&&meta._idKey in v;
-  const isCollectionValue=([v,rootState,meta,Field,getArgs],id)=>isObjectLike(v) && !(meta._idKey in v);
+
+  const isScalarField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='scalar';
+  const isObjectField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='object';
+  const isListField=([meta,Field])=>meta.isList;
+  const isPrimitiveValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>!isObjectLike(vNorm);
+  const isObjectValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm);
+  const isItemValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm)&&meta._idKey in vNorm;
+  const isCollectionValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm) && !(meta._idKey in vNorm);
   const mapSelection=cond([
     [isScalarField,cond([
       [isObjectValue,()=>new Error('cannot request object without selecting fields')],
-      [isPrimitiveValue,([v])=>v]
+      [isPrimitiveValue,([meta,Field,vDenormPrev,vNorm])=>vNorm]
     ])],
     [isObjectField,cond([
-      [isPrimitiveValue,([v,_,{defName}],id)=>new Error(`cannot request fields of a primitive ${JSON.stringify({v,id,defName},null,2)}`)],
-      [isItemValue,mapItem],// item (worth noting that root state is also an item with no key, given its heterogenous values);
+      [isPrimitiveValue,([{defName},Field,vDenormPrev,vNorm])=>new Error(`cannot request fields of a primitive ${JSON.stringify({value:vNorm,defName},null,2)}`)],
       [isCollectionValue,mapCollection],
+      [isItemValue,mapItem],// item (worth noting that root state is also an item with no key, given its heterogenous values);
     ])],
   ]);
-  
   const {selectionMeta}=indexSchema(schema);
   const mapQuery= (query,passedVariables={})=>{
     const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
     const selections=query.definitions[0].selectionSet.selections;
-    return rootState=>transToObject((o,s)=>o[s.name.value]=mapSelection([rootState[s.name.value],rootState,selectionMeta[s.name.value],s,argsPopulator],undefined))(selections);
+    return (rootState={},prevRoot=rootState,prevDenormRoot)=>{
+      let changed,denormRoot={};
+      prevDenormRoot||(prevDenormRoot=denormRoot);
+      for (const s of selections){
+        const meta=selectionMeta[s.name.value];
+        const vDenormPrev=prevDenormRoot[meta.defName];
+        const vNorm=rootState[meta.defName];
+        const vNormPrev=prevRoot[meta.defName];
+        const vDenorm=denormRoot[meta.defName]=mapSelection([meta,s,vDenormPrev,vNorm,vNormPrev,prevDenormRoot,rootState,prevRoot,argsPopulator])
+        if(vDenorm!==vDenormPrev)changed=true;
+      }
+      return changed?denormRoot:prevDenormRoot;
+    };
   };
   return mapQuery;
 };
