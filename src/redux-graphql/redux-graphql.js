@@ -1,6 +1,5 @@
-import indexSchema,{getFieldTypeName} from './indexSchema'
-import {not,reduce,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs, tdToObject, tdToObjectImmutable, tdReduce, transduceDF, tdMapKey, memoize, over, pick,ensureArray, tdLog,compose, mapToObject, pipe, tdTap, overObj,transArrayToObject,transObjectToObject, ifElse, transObjectToArray} from '@a-laughlin/fp-utils';
-import { isPrimitive } from 'util';
+import indexSchema from './indexSchema'
+import {not,transToObject,isString,hasKey,isObjectLike,isInteger,or,cond,identity,isArray,and,stubTrue,diffBy, tdMap, tdFilter, tdDPipeToArray, toPredicate,scan, diffObjs, tdToObject, tdToObjectImmutable, tdReduce, transduceDF, tdMapKey, memoize, over, pick,ensureArray, tdLog,compose, mapToObject, pipe, tdTap, overObj,transArrayToObject,transObjectToObject, ifElse, transObjectToArray} from '@a-laughlin/fp-utils';
 export {default as gql} from 'graphql-tag';
 
 const keyDiff=(v,k)=>k;
@@ -35,9 +34,7 @@ const defaultActions = {
   GET:nextReducer=>(prevState,action)=>nextReducer(prevState,action)
 };
 
-export const schemaToStateOpsMapper=(
-  schema=gql('type DefaultType {id:ID!}')
-)=>( ops=defaultActions )=>{
+export const schemaToActionCreators=(schema=gql('type Example {id:ID}'))=>(ops=defaultActions)=>{
   // const transduce = (initial,finalReducer,transducer,val)
   const {selectionMeta}=indexSchema(schema);
   const actionNormalizers = mapToObject(({defKind,_idKey})=>cond(
@@ -68,17 +65,14 @@ export const schemaToStateOpsMapper=(
   })(actionNormalizers);
 };
 
-const getArgsPopulator = vars=>transToObject((result,{name:{value:name},value})=>{
-  if(value.kind==='Variable'){ result[name]= vars[value.name.value]; }
-  else if (value.kind==='ObjectValue') {
-    // todo, figure out what about the structure made the recursive call not work
-    // else if (value.kind==='ObjectValue') result[name]=populateArgsFromVars(value.fields,vars)
-    result[name]=transToObject((o,f)=>{
-      o[f.name.value]=f.value.value;
-    })(value.fields);
-  }
-  else result[name] = value.value;
-});
+const getArgsPopulator = vars=>{
+  const inner = transArrayToObject((result,{name:{value:name},value})=>{
+    if(value.kind==='Variable') result[name] = vars[value.name.value];
+    else if (value.kind==='ObjectValue') result[name] = inner(value.fields);
+    else result[name] = value.value;
+  });
+  return inner;
+};
 const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=>{
   let vars = {},name,defaultValue;
   // default per spec is returning only what's in variableDefinitions, but this eliminates the duplicate definitions in each query to pass a variable, given it's usually specified in the schema already.  Can always change it to the more verbose version and add validation if necessary.
@@ -88,9 +82,20 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
   return vars;
 };
 
-// filtering language ... a dsl is complicated https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
+// filtering language ...
+// a dsl is complicated https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
 // for mvp mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter
 export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit:x=>not(toPredicate(x))} )=>{
+  
+  const isScalarField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='scalar';
+  const isObjectField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='object';
+  const isListField=([meta,Field])=>meta.isList;
+  const isPrimitiveValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>!isObjectLike(vNorm);
+  const isObjectValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm);
+  const isItemValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm)&&meta._idKey in vNorm;
+  const isCollectionValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm) && !(meta._idKey in vNorm);
+  
+  
   const mapItem=([meta,Field,vDenormPrev={},vNorm,vNormPrev={},prevDenormRoot,rootState,prevRoot,getArgs])=>{
     let vDenorm={},changed=vNorm!==vNormPrev;
     for (const f of Field.selectionSet.selections||[]){
@@ -105,10 +110,10 @@ export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit
     }
     return changed ? vDenorm : vDenormPrev;
   };
-  
+
   const mapCollection=([meta,Field,vDenormPrev={},vNorm,vNormPrev={},prevDenormRoot,rootState,prevRoot,getArgs])=>{
+    // on the first traverse up, break if the final collection is unchanged since its items will be too.
     if(meta.objectFields.length===0&&vNorm===vNormPrev) return vDenormPrev;
-    // on the first traverse up, we can break if the final collection is unchanged without having to check its properties.  Oooh.  That's fast.
     const args = getArgs(Field.arguments);
     const argIds = ensureArray(args[meta._idKey]);
     if(argIds.length) vNorm=transArrayToObject((o,i)=>o[i]=vNorm[i])(argIds);
@@ -122,13 +127,6 @@ export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit
     return changed?vDenorm:vDenormPrev;
   }
 
-  const isScalarField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='scalar';
-  const isObjectField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='object';
-  const isListField=([meta,Field])=>meta.isList;
-  const isPrimitiveValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>!isObjectLike(vNorm);
-  const isObjectValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm);
-  const isItemValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm)&&meta._idKey in vNorm;
-  const isCollectionValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm) && !(meta._idKey in vNorm);
   const mapSelection=cond([
     [isScalarField,cond([
       [isObjectValue,()=>new Error('cannot request object without selecting fields')],
@@ -158,42 +156,14 @@ export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit
 };
 
 
-export const getUseQuery=(store,querier,schema,useState,useEffect)=>{
-  
-  const {definitionsByName,selectionMeta}=indexSchema(schema);
-  const getFieldCollectionNames=reduce((acc=new Set(),{name:{value},selectionSet:{selections=[]}={}},i,c)=>{
-    if (value in definitionsByName) acc.add(value);
-    for (const s of selections)getFieldCollectionNames(acc,s);
-    return acc;
-  });
-
-  // const getVarsKey = vars=>JSON.stringify(Object.keys(vars).sort().reduce((a,k)=>{a[k]=vars[k];return a;},{}));
-  // const opVarsIdx=new WeakMap();
-  const opKeyIdx=new WeakMap();
+export const getUseQuery=(querier,store,useState,useEffect,useMemo)=>{
   return (query,variables)=>{
-    !opKeyIdx.has(query) && opKeyIdx.set(query,Array.from(getFieldCollectionNames(query.definitions.flatMap(d=>(d.selectionSet.selections)))));
-    const [state,setState] = useState([store.getState(),querier(store.getState(),query,variables)]);
+    const queryFn=useMemo(()=>querier(query,variables),[variables]);
+    const [state,setState] = useState([store.getState(),queryFn(store.getState())]);
     useEffect(()=>store.subscribe(()=> { // returns the unsubscribe function
       setState(([prevNormed,prevDenormed])=>{
-        // TODO different tests for collection/item/value
-        // if variables changed, or key changed
         const normed = store.getState();
-        // const changedKeys=opKeyIdx.get(query).filter(k=>prevNormed[k]!==normed[k]);
-        // if (changedKeys.length===0) return [prevNormed,prevDenormed];
-        const denormed=querier(normed,query,variables);
-        for (const k of changedKeys){
-          if(selectionMeta[k]){
-            for (const kk in denormed){
-              if (typeof normed[kk]!==typeof prevNormed[kk]) return [normed,denormed];
-            }
-            for (const kk in prevDenormed){
-              if (typeof normed[kk]!==typeof prevNormed[kk]) return [normed,denormed];
-            }
-          } else {
-            if(prevNormed[k]!==normed[k])return [normed,denormed];
-          }
-        }
-        return [prevNormed,prevDenormed];
+        return [normed,queryFn(normed,prevNormed,prevDenormed)];
       });
     }),[]);
     return state[1];
