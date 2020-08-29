@@ -92,7 +92,7 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
 // for mvp mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter
 export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit:x=>not(toPredicate(x))} )=>{
   const mapItem=([meta,Field,vDenormPrev={},vNorm,vNormPrev={},prevDenormRoot,rootState,prevRoot,getArgs])=>{
-    let vDenorm={},changed;
+    let vDenorm={},changed=vNorm!==vNormPrev;
     for (const f of Field.selectionSet.selections||[]){
       const k=f.name.value;
       const fieldMeta=meta[k];
@@ -106,21 +106,20 @@ export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit
     return changed ? vDenorm : vDenormPrev;
   };
   
-  const mapCollection=([meta,Field,vDenormPrev={},vNorm,vNormPrev,prevDenormRoot,rootState,prevRoot,getArgs])=>{
-    if (vNorm===vNormPrev && meta.objectFields.length===0) return vDenormPrev;
+  const mapCollection=([meta,Field,vDenormPrev={},vNorm,vNormPrev={},prevDenormRoot,rootState,prevRoot,getArgs])=>{
+    if(meta.objectFields.length===0&&vNorm===vNormPrev) return vDenormPrev;
     // on the first traverse up, we can break if the final collection is unchanged without having to check its properties.  Oooh.  That's fast.
     const args = getArgs(Field.arguments);
     const argIds = ensureArray(args[meta._idKey]);
     if(argIds.length) vNorm=transArrayToObject((o,i)=>o[i]=vNorm[i])(argIds);
     const queryMatcherFns=transObjectToArray((a,arg,k)=>k in queryMatchers && (a[a.length]=queryMatchers[k](arg)))(args);
     const matchesFn = queryMatcherFns.length===0 ? queryMatchers.filter(args) : and(...queryMatcherFns);
-    const vDenorm={};
+    let vDenorm={},changed=vNorm!==vNormPrev;
     for(const id in vNorm){
       matchesFn(vNorm[id])&&(vDenorm[id]=mapItem([meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],prevDenormRoot,rootState,prevRoot,getArgs]));
+      if(vDenorm[id]!==vDenormPrev[id])changed=true;
     }
-    return vDenorm;
-    // return transObjectToObject((o,item,id)=> matchesFn(item)&&(o[id]=mapItem([meta,Field,vDenorm[id],vDenormPrev[id],vNorm[id],vNormPrev[id],prevDenormRoot,rootState,prevRoot,getArgs])))(vNorm);
-    // if (vNormCur===vNormPrev && meta.objectFields.length===0 && vDenormPrev!==undefined) return vDenormPrev;
+    return changed?vDenorm:vDenormPrev;
   }
 
   const isScalarField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='scalar';
@@ -145,16 +144,12 @@ export const getObjectQuerier=( schema, queryMatchers={ filter:toPredicate, omit
   const mapQuery= (query,passedVariables={})=>{
     const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
     const selections=query.definitions[0].selectionSet.selections;
-    return (rootState={},prevRoot=rootState,prevDenormRoot)=>{
-      let changed,denormRoot={};
-      prevDenormRoot||(prevDenormRoot=denormRoot);
+    return (rootState={},prevRoot=rootState,prevDenormRoot={})=>{
+      let denormRoot={},changed=rootState!==prevRoot;
       for (const s of selections){
-        const meta=selectionMeta[s.name.value];
-        const vDenormPrev=prevDenormRoot[meta.defName];
-        const vNorm=rootState[meta.defName];
-        const vNormPrev=prevRoot[meta.defName];
-        const vDenorm=denormRoot[meta.defName]=mapSelection([meta,s,vDenormPrev,vNorm,vNormPrev,prevDenormRoot,rootState,prevRoot,argsPopulator])
-        if(vDenorm!==vDenormPrev)changed=true;
+        const k=s.name.value;
+        denormRoot[k]=mapSelection([selectionMeta[k],s,prevDenormRoot[k],rootState[k],prevRoot[k],prevDenormRoot,rootState,prevRoot,argsPopulator])
+        if(denormRoot[k]!==prevDenormRoot[k])changed=true;
       }
       return changed?denormRoot:prevDenormRoot;
     };

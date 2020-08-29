@@ -186,6 +186,21 @@ describe("getMemoizedObjectQuerier", () => {
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{friends:{b:{id:'b'},c:{id:'c'}}}}});
   });
+  it("should return unchanged values",()=>{
+    const query=gql(`{Person{id}}`);
+    const queryFn = querier(query);
+    const prevRootStates=[state,{...state},{...state,Person:{...state.Person,c:{...state.Person.c}}}];
+    const prevDenormRoots=prevRootStates.map(s=>queryFn(state,s));
+    prevRootStates.forEach((prevRoot)=>{
+      prevDenormRoots.forEach((prevDenormRoot)=>{
+        const denormRoot=queryFn(state,prevRoot,prevDenormRoot);
+        expect(state===prevRoot).toBe(denormRoot===prevDenormRoot);
+        expect(state.Person===prevRoot.Person).toBe(denormRoot.Person===prevDenormRoot.Person)
+        expect(denormRoot.Person.a).toBe(prevDenormRoot.Person.a);
+        expect(denormRoot.Person.c===prevDenormRoot.Person.c).toBe(state.Person.c===prevRoot.Person.c);
+      });
+    });
+  });
 });
 
 
