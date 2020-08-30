@@ -4,21 +4,22 @@ import { renderHook, act } from '@testing-library/react-hooks'
 import {createStore,combineReducers} from 'redux';
 import {useState,useEffect,useMemo}from 'react';
 import {
-  schemaToActionCreators,
-  getObjectQuerier,
+  schemaToReducerMap,
+  schemaToQuerySelector,
   getUseQuery,
-  gql
+  gql,
+  getUseLeafQuery
 } from './redux-graphql';
 
 
-describe("schemaToActionCreators", () => {
+describe("schemaToReducerMap", () => {
   let state;
   let schema=gql(`
     type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
     type Pet{id:ID,name:String}
     scalar SomeScalar
   `);
-  let reducerMap = schemaToActionCreators(schema)();
+  let reducerMap = schemaToReducerMap(schema)();
   
   beforeEach(()=>{
     state={
@@ -82,7 +83,7 @@ describe("getMemoizedObjectQuerier", () => {
       type Pet{id:ID,name:String}
       scalar SomeScalar
     `;
-    querier = getObjectQuerier(schema);
+    querier = schemaToQuerySelector(schema);
   });
   beforeEach(()=>{
     state={
@@ -205,7 +206,7 @@ describe("getMemoizedObjectQuerier", () => {
 
 
 
-describe("getUseQuery: integration test React.useState,redux.combineReducers(schemaReducerMap),getMemoizedObjectQuerier(schema)",()=>{
+describe("getUseQuery: integration test React.useState,redux.combineReducers(schemaReducerMap),getQuerySelector(schema)",()=>{
   let store,useQuery,schema,querier,reducerMap;
 
   beforeEach(()=>{
@@ -214,8 +215,8 @@ describe("getUseQuery: integration test React.useState,redux.combineReducers(sch
       type Pet{id:ID,name:String}
       scalar SomeScalar
     `;
-    querier = getObjectQuerier(schema);
-    reducerMap = schemaToActionCreators(schema)();
+    querier = schemaToQuerySelector(schema);
+    reducerMap = schemaToReducerMap(schema)();
     const rootReducer = combineReducers(reducerMap);
     store = createStore(rootReducer,{
       SomeScalar:1,
@@ -289,6 +290,53 @@ describe("getUseQuery: integration test React.useState,redux.combineReducers(sch
     expect(resulta.current).toEqual({Person:{a:{id:'a'}}});
     expect(resultb.current.Person.b).toBe(b);
   })
+});
+
+
+describe("getUseLeafQuery: integration test React,redux.combineReducers(schemaReducerMap),getQuerySelector(schema)",()=>{
+  let store,useLeafQuery,schema,querier,reducerMap;
+
+  beforeEach(()=>{
+    schema = gql`
+      type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
+      type Pet{id:ID,name:String}
+      scalar SomeScalar
+    `;
+    querier = schemaToQuerySelector(schema);
+    reducerMap = schemaToReducerMap(schema)();
+    const rootReducer = combineReducers(reducerMap);
+    store = createStore(rootReducer,{
+      SomeScalar:1,
+      Person:{
+        a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
+        b:{id:'b',name:'B',best:'a',friends:['a']},
+        c:{id:'c',name:'C',best:'a',friends:['a']},
+      },
+      Pet:{
+        x:{id:'x',name:'X'},
+        y:{id:'y',name:'Y'},
+      },
+    });
+    useLeafQuery = getUseLeafQuery(querier,store,useState,useEffect,useMemo);
+  });
+  afterAll(()=>{
+    reducerMap=querier=schema=store=useLeafQuery=null;
+  });
+  
+  test('should work on scalars', () => {
+    const query=gql(`{SomeScalar}`)
+    const { result } = renderHook(() =>useLeafQuery(query));
+    expect(result.current).toEqual(1);
+  });
+  test('should work on objects', () => {
+    const query=gql(`{Person{id}}`);
+    const { result } = renderHook(() =>useLeafQuery(query));
+    const { result:oneResult } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id}}`)));
+    const { result:twoResults } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id,name}}`)));
+    expect(result.current).toEqual({a:'a',b:'b',c:'c'});
+    expect(oneResult.current).toEqual('a');
+    expect(twoResults.current).toEqual({a:{id:'a',name:'A'}});
+  });
 });
 
 // describe("getUseQuery: integration test react+redux+useQuery+boundary values directive",()=>{

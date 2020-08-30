@@ -496,3 +496,47 @@ export const diffObjs = (a={},b={}) => {
 // TODO decide behavior when collections are arrays and no "by" key to diff them by
 export const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);
 
+
+// export const diffBy = (by, reducer) => (args = []) => {
+//   const diff = by ? diffObjs(args.map(keyBy(by))) : diffObjs(args);
+//   const { anb, anbc, bna, bnac, aib, aibc, aub, aubc, changed, changedc, a, b } = diff;
+//   const reused = { anb, anbc, bna, bnac, aib, aibc, aub, aubc, changed, changedc, a, b };
+//   // eliminate one of the three loops by combining this directly with diffObjs
+//   // put the first loop before the iterator, and the second in iterator, yielding while it goes
+//   // cons:
+//   // unsure how much of a performance hit iterable protocol is. Would need to test that.
+//   // counts inaccurate until after.  Keeping separate for now.
+//   // reused.diff = diff;
+//   if (reducer) {
+//     let k, acc;
+//     for (k in aub) {
+//       reused.anb = anb[k];
+//       reused.bna = bna[k];
+//       reused.aib = aib[k];
+//       reused.aub = aub[k];
+//       reused.changed = changed[k];
+//       reused.a = a[k];
+//       reused.b = b[k];
+//       reused.k = k;
+//       acc = reducer(acc, reused, k);
+//     }
+//     return acc;
+//   } else {
+//     // uncertain if this has performance benefits.  Need to test.
+//     reused[Symbol.iterator] = reused.next = function* () {
+//       let k;
+//       for (k in aub) {
+//         reused.anb = anb[k];
+//         reused.bna = bna[k];
+//         reused.aib = aib[k];
+//         reused.aub = aub[k];
+//         reused.changed = changed[k];
+//         reused.a = a[k];
+//         reused.b = b[k];
+//         reused.k = k;
+//         yield reused;
+//       }
+//     };
+//     return reused;
+//   }
+// };
