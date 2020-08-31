@@ -6,9 +6,9 @@ import {useState,useEffect,useMemo}from 'react';
 import {
   schemaToReducerMap,
   schemaToQuerySelector,
-  getUseQuery,
+  querySelectorToUseQuery,
   gql,
-  getUseLeafQuery
+  querySelectorToUseLeafQuery
 } from './redux-graphql';
 
 
@@ -75,7 +75,7 @@ describe("schemaToReducerMap", () => {
   });
 });
 
-describe("getMemoizedObjectQuerier", () => {
+describe("schemaToQuerySelector", () => {
   let schema,state,querier;
   beforeAll(()=>{
     schema=gql`
@@ -206,7 +206,7 @@ describe("getMemoizedObjectQuerier", () => {
 
 
 
-describe("getUseQuery: integration test React.useState,redux.combineReducers(schemaReducerMap),getQuerySelector(schema)",()=>{
+describe("querySelectorToUseQuery: integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)",()=>{
   let store,useQuery,schema,querier,reducerMap;
 
   beforeEach(()=>{
@@ -230,7 +230,7 @@ describe("getUseQuery: integration test React.useState,redux.combineReducers(sch
         y:{id:'y',name:'Y'},
       },
     });
-    useQuery = getUseQuery(querier,store,useState,useEffect,useMemo);
+    useQuery = querySelectorToUseQuery(querier,store,useState,useEffect,useMemo);
   });
   afterAll(()=>{
     reducerMap=querier=schema=store=useQuery=null;
@@ -293,7 +293,7 @@ describe("getUseQuery: integration test React.useState,redux.combineReducers(sch
 });
 
 
-describe("getUseLeafQuery: integration test React,redux.combineReducers(schemaReducerMap),getQuerySelector(schema)",()=>{
+describe("querySelectorToUseLeafQuery: integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)",()=>{
   let store,useLeafQuery,schema,querier,reducerMap;
 
   beforeEach(()=>{
@@ -317,25 +317,32 @@ describe("getUseLeafQuery: integration test React,redux.combineReducers(schemaRe
         y:{id:'y',name:'Y'},
       },
     });
-    useLeafQuery = getUseLeafQuery(querier,store,useState,useEffect,useMemo);
+    useLeafQuery = querySelectorToUseLeafQuery(querier,store,useState,useEffect,useMemo);
   });
   afterAll(()=>{
     reducerMap=querier=schema=store=useLeafQuery=null;
   });
   
-  test('should work on scalars', () => {
+  test('should convert scalar props to their value', () => {
     const query=gql(`{SomeScalar}`)
     const { result } = renderHook(() =>useLeafQuery(query));
     expect(result.current).toEqual(1);
   });
-  test('should work on objects', () => {
-    const query=gql(`{Person{id}}`);
-    const { result } = renderHook(() =>useLeafQuery(query));
-    const { result:oneResult } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id}}`)));
-    const { result:twoResults } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id,name}}`)));
+  test('should convert objects with a single selection to a collection of that selection', () => {
+    const { result } = renderHook(() =>useLeafQuery(gql(`{Person{id}}`)));
     expect(result.current).toEqual({a:'a',b:'b',c:'c'});
-    expect(oneResult.current).toEqual('a');
-    expect(twoResults.current).toEqual({a:{id:'a',name:'A'}});
+  });
+  test('should convert a single selected object + selection to the selected value', () => {
+    const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id}}`)));
+    expect(result.current).toEqual('a');
+  });
+  test('should convert one object with two selections to the object with only that selection', () => {
+    const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id,name}}`)));
+    expect(result.current).toEqual({a:{id:'a',name:'A'}});
+  });
+  test('should convert a nested property selection to the selected value', () => {
+    const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){best{id}}}`)));
+    expect(result.current).toEqual('b');
   });
 });
 
