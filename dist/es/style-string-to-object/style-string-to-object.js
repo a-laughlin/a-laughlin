@@ -103,7 +103,6 @@ const transObjectToArray = fn => (coll={}) => {
 
 const transToObject = makeCollectionFn(transArrayToObject,transObjectToObject);
 const transToArray = makeCollectionFn(transArrayToArray,transObjectToArray);
-const transToSame = makeCollectionFn(transArrayToArray,transObjectToObject);
 const filterToArray =pred=>transToArray((a,v,k)=>pred(v,k)&&(a[a.length]=v)); // _ equiv filter
 const filterToObject=pred=>transToObject((a,v,k)=>pred(v,k)&&(a[k]=v)); // _ equiv pickBy
 const filterToSame=makeCollectionFn(filterToArray,filterToObject);
@@ -144,10 +143,56 @@ const pget = cond( // polymorphic get
   [stubTrue,identity], // handles the function case
 );
 const pick=cond(
-  [isArray,keys=>obj=>transToSame((o,k)=>o[k]=obj[k])(keys)],
+  [isArray,keys=>obj=>transArrayToObject((o,k)=>o[k]=obj[k])(keys)],
   [isString,key=>obj=>obj[key]],
   [isFunction,filterToSame],
-);/**
+);
+
+
+// export const diffBy = (by, reducer) => (args = []) => {
+//   const diff = by ? diffObjs(args.map(keyBy(by))) : diffObjs(args);
+//   const { anb, anbc, bna, bnac, aib, aibc, aub, aubc, changed, changedc, a, b } = diff;
+//   const reused = { anb, anbc, bna, bnac, aib, aibc, aub, aubc, changed, changedc, a, b };
+//   // eliminate one of the three loops by combining this directly with diffObjs
+//   // put the first loop before the iterator, and the second in iterator, yielding while it goes
+//   // cons:
+//   // unsure how much of a performance hit iterable protocol is. Would need to test that.
+//   // counts inaccurate until after.  Keeping separate for now.
+//   // reused.diff = diff;
+//   if (reducer) {
+//     let k, acc;
+//     for (k in aub) {
+//       reused.anb = anb[k];
+//       reused.bna = bna[k];
+//       reused.aib = aib[k];
+//       reused.aub = aub[k];
+//       reused.changed = changed[k];
+//       reused.a = a[k];
+//       reused.b = b[k];
+//       reused.k = k;
+//       acc = reducer(acc, reused, k);
+//     }
+//     return acc;
+//   } else {
+//     // uncertain if this has performance benefits.  Need to test.
+//     reused[Symbol.iterator] = reused.next = function* () {
+//       let k;
+//       for (k in aub) {
+//         reused.anb = anb[k];
+//         reused.bna = bna[k];
+//         reused.aib = aib[k];
+//         reused.aub = aub[k];
+//         reused.changed = changed[k];
+//         reused.a = a[k];
+//         reused.b = b[k];
+//         reused.k = k;
+//         yield reused;
+//       }
+//     };
+//     return reused;
+//   }
+// };
+/**
  * Removes all key-value entries from the list cache.
  *
  * @private

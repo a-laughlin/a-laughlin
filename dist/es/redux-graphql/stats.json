@@ -1,7 +1,7 @@
 {
-  "bundleSize": 112035,
-  "bundleOrigSize": 127783,
-  "bundleReduction": 12.32,
+  "bundleSize": 112999,
+  "bundleOrigSize": 131014,
+  "bundleReduction": 13.75,
   "modules": [
     {
       "id": "/node_modules/graphql/language/parser.mjs",
@@ -17,7 +17,7 @@
         "\u0000/node_modules/graphql/language/parser.mjs?commonjs-proxy",
         "/node_modules/graphql-tag/src/index.js"
       ],
-      "percent": 36.24,
+      "percent": 35.93,
       "reduction": 1.1
     },
     {
@@ -32,7 +32,7 @@
       "dependents": [
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 13.94,
+      "percent": 13.82,
       "reduction": 1.33
     },
     {
@@ -47,27 +47,13 @@
       "dependents": [
         "/node_modules/graphql/error/syntaxError.mjs"
       ],
-      "percent": 10.6,
+      "percent": 10.51,
       "reduction": 2.65
     },
     {
-      "id": "/src/redux-graphql/redux-graphql.js",
-      "size": 10984,
-      "origSize": 11313,
-      "renderedExports": [
-        "schemaToStateOpsMapper",
-        "getObjectQuerier",
-        "getUseQuery"
-      ],
-      "removedExports": [],
-      "dependents": [],
-      "percent": 9.8,
-      "reduction": 2.91
-    },
-    {
       "id": "/src/fp-utils/fp-utils.js",
-      "size": 8243,
-      "origSize": 18895,
+      "size": 8792,
+      "origSize": 21054,
       "renderedExports": [
         "identity",
         "compose",
@@ -99,9 +85,12 @@
         "matches",
         "none",
         "cond",
+        "transArrayToObject",
+        "transArrayToArray",
+        "transObjectToObject",
+        "transObjectToArray",
         "transToObject",
         "transToArray",
-        "transToSame",
         "filterToArray",
         "filterToObject",
         "filterToSame",
@@ -116,14 +105,6 @@
         "groupByValues",
         "pget",
         "pick",
-        "transduce",
-        "appendArrayReducer",
-        "tdToArray",
-        "tdMap",
-        "tdFilter",
-        "tdDPipeToArray",
-        "tdReduceListValue",
-        "reduce",
         "memoize",
         "diffObjs",
         "diffBy"
@@ -160,6 +141,7 @@
         "immutableFilterObjectToObject",
         "ro",
         "ra",
+        "transToSame",
         "rx",
         "fa",
         "fo",
@@ -179,7 +161,6 @@
         "fmo",
         "filterMapToSame",
         "fmx",
-        "scan",
         "first",
         "last",
         "partition",
@@ -189,23 +170,33 @@
         "objStringifierFactory",
         "objToUrlParams",
         "uniqueId",
+        "transduce",
+        "appendArrayReducer",
         "appendObjectReducer",
+        "tdToArray",
         "tdToObject",
+        "tdToObjectImmutable",
         "tdToSame",
-        "tdValue",
+        "tdMap",
+        "tdMapKey",
         "tdMapWithAcc",
+        "tdMapKeyWithAcc",
         "tdAssign",
         "tdSet",
         "tdReduce",
         "tdIdentity",
         "tdTap",
         "tdLog",
+        "tdFilter",
         "tdFilterWithAcc",
         "tdOmit",
         "tdOmitWithAcc",
         "tdPipeToArray",
         "tdPipeToObject",
+        "tdDPipeToArray",
         "tdDPipeToObject",
+        "tdReduceListValue",
+        "reduce",
         "tdIfElse",
         "tdIfValueObjectLike",
         "tdDfObjectLikeValuesWith",
@@ -215,14 +206,31 @@
       ],
       "dependents": [
         "/src/redux-graphql/indexSchema.js",
+        "/src/redux-graphql/schemaToReducerMap.js",
+        "/src/redux-graphql/schemaToQuerySelector.js",
+        "/src/redux-graphql/querySelectorToUseLeafQuery.js",
         "/src/redux-graphql/redux-graphql.js"
       ],
-      "percent": 7.36,
-      "reduction": 56.37
+      "percent": 7.78,
+      "reduction": 58.24
+    },
+    {
+      "id": "/src/redux-graphql/schemaToQuerySelector.js",
+      "size": 5467,
+      "origSize": 5692,
+      "renderedExports": [
+        "schemaToQuerySelector"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/src/redux-graphql/redux-graphql.js"
+      ],
+      "percent": 4.84,
+      "reduction": 3.95
     },
     {
       "id": "/node_modules/graphql-tag/src/index.js",
-      "size": 5216,
+      "size": 5200,
       "origSize": 5252,
       "renderedExports": [
         "default",
@@ -232,8 +240,30 @@
       "dependents": [
         "/src/redux-graphql/redux-graphql.js"
       ],
-      "percent": 4.66,
-      "reduction": 0.69
+      "percent": 4.6,
+      "reduction": 0.99
+    },
+    {
+      "id": "/src/redux-graphql/indexSchema.js",
+      "size": 3308,
+      "origSize": 3663,
+      "renderedExports": [
+        "getDefName",
+        "getFieldTypeName",
+        "getFieldMeta",
+        "default"
+      ],
+      "removedExports": [
+        "getDefKind",
+        "getDefFields",
+        "getDefCollectionName"
+      ],
+      "dependents": [
+        "/src/redux-graphql/schemaToReducerMap.js",
+        "/src/redux-graphql/schemaToQuerySelector.js"
+      ],
+      "percent": 2.93,
+      "reduction": 9.69
     },
     {
       "id": "/node_modules/graphql/jsutils/inspect.mjs",
@@ -246,8 +276,22 @@
       "dependents": [
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 2.85,
+      "percent": 2.82,
       "reduction": 2.74
+    },
+    {
+      "id": "/src/redux-graphql/schemaToReducerMap.js",
+      "size": 2926,
+      "origSize": 3136,
+      "renderedExports": [
+        "schemaToReducerMap"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/src/redux-graphql/redux-graphql.js"
+      ],
+      "percent": 2.59,
+      "reduction": 6.7
     },
     {
       "id": "/node_modules/graphql/language/printLocation.mjs",
@@ -261,7 +305,7 @@
       "dependents": [
         "/node_modules/graphql/error/GraphQLError.mjs"
       ],
-      "percent": 2.16,
+      "percent": 2.15,
       "reduction": 2.45
     },
     {
@@ -279,7 +323,7 @@
         "/node_modules/graphql/language/lexer.mjs",
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 2.05,
+      "percent": 2.03,
       "reduction": 8.03
     },
     {
@@ -293,7 +337,7 @@
       "dependents": [
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 1.76,
+      "percent": 1.74,
       "reduction": 0.4
     },
     {
@@ -307,29 +351,8 @@
       "dependents": [
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 1.62,
-      "reduction": 5.9
-    },
-    {
-      "id": "/src/redux-graphql/indexSchema.js",
-      "size": 1800,
-      "origSize": 2141,
-      "renderedExports": [
-        "getDefName",
-        "getFieldTypeName",
-        "isListField",
-        "default"
-      ],
-      "removedExports": [
-        "getDefKind",
-        "getDefFields",
-        "getDefCollectionName"
-      ],
-      "dependents": [
-        "/src/redux-graphql/redux-graphql.js"
-      ],
       "percent": 1.61,
-      "reduction": 15.93
+      "reduction": 5.9
     },
     {
       "id": "/node_modules/graphql/language/blockString.mjs",
@@ -345,8 +368,22 @@
       "dependents": [
         "/node_modules/graphql/language/lexer.mjs"
       ],
-      "percent": 1.48,
+      "percent": 1.46,
       "reduction": 42.64
+    },
+    {
+      "id": "/src/redux-graphql/querySelectorToUseLeafQuery.js",
+      "size": 881,
+      "origSize": 1025,
+      "renderedExports": [
+        "querySelectorToUseLeafQuery"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/src/redux-graphql/redux-graphql.js"
+      ],
+      "percent": 0.78,
+      "reduction": 14.05
     },
     {
       "id": "/node_modules/graphql/language/directiveLocation.mjs",
@@ -363,6 +400,21 @@
       "reduction": 0.99
     },
     {
+      "id": "/src/redux-graphql/querySelectorToUseQuery.js",
+      "size": 633,
+      "origSize": 640,
+      "renderedExports": [
+        "querySelectorToUseQuery"
+      ],
+      "removedExports": [],
+      "dependents": [
+        "/src/redux-graphql/querySelectorToUseLeafQuery.js",
+        "/src/redux-graphql/redux-graphql.js"
+      ],
+      "percent": 0.56,
+      "reduction": 1.09
+    },
+    {
       "id": "/node_modules/graphql/jsutils/isObjectLike.mjs",
       "size": 613,
       "origSize": 617,
@@ -373,7 +425,7 @@
       "dependents": [
         "/node_modules/graphql/error/GraphQLError.mjs"
       ],
-      "percent": 0.55,
+      "percent": 0.54,
       "reduction": 0.65
     },
     {
@@ -417,7 +469,7 @@
       "dependents": [
         "/node_modules/graphql/language/ast.mjs"
       ],
-      "percent": 0.4,
+      "percent": 0.39,
       "reduction": 22.61
     },
     {
@@ -432,7 +484,7 @@
         "/node_modules/graphql/language/lexer.mjs",
         "/node_modules/graphql/language/parser.mjs"
       ],
-      "percent": 0.28,
+      "percent": 0.27,
       "reduction": 15.99
     },
     {
@@ -528,7 +580,17 @@
       ],
       "percent": 0.04,
       "reduction": 77.31
+    },
+    {
+      "id": "/src/redux-graphql/redux-graphql.js",
+      "size": 0,
+      "origSize": 370,
+      "renderedExports": [],
+      "removedExports": [],
+      "dependents": [],
+      "percent": 0,
+      "reduction": 100
     }
   ],
-  "moduleCount": 25
+  "moduleCount": 29
 }

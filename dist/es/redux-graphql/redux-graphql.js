@@ -113,7 +113,6 @@ const transObjectToArray = fn => (coll={}) => {
 
 const transToObject = makeCollectionFn(transArrayToObject,transObjectToObject);
 const transToArray = makeCollectionFn(transArrayToArray,transObjectToArray);
-const transToSame = makeCollectionFn(transArrayToArray,transObjectToObject);
 const filterToArray =pred=>transToArray((a,v,k)=>pred(v,k)&&(a[a.length]=v)); // _ equiv filter
 const filterToObject=pred=>transToObject((a,v,k)=>pred(v,k)&&(a[k]=v)); // _ equiv pickBy
 const filterToSame=makeCollectionFn(filterToArray,filterToObject);
@@ -161,37 +160,10 @@ const pget = cond( // polymorphic get
   [stubTrue,identity], // handles the function case
 );
 const pick=cond(
-  [isArray,keys=>obj=>transToSame((o,k)=>o[k]=obj[k])(keys)],
+  [isArray,keys=>obj=>transArrayToObject((o,k)=>o[k]=obj[k])(keys)],
   [isString,key=>obj=>obj[key]],
   [isFunction,filterToSame],
 );
-
-
-
-
-
-
-
-const transduce = (acc, itemCombiner , transducer, collection) =>
-  tdReduceListValue(transducer(itemCombiner))(acc,collection);
-
-const appendArrayReducer = (acc=[],v)=>{acc[acc.length]=v;return acc;};
-const tdToArray = transducer=>collection=>transduce([], appendArrayReducer, transducer, collection);
-
-const tdMap = mapper => nextReducer => (a,v,...kc) =>
-  nextReducer(a,mapper(v,...kc),...kc);
-const tdFilter = (pred=stubTrue) => nextReducer => (a,...args) => pred(...args) ? nextReducer(a,...args) : a;
-const tdDPipeToArray = (coll,...fns)=>tdToArray(compose(...fns))(coll);
-const tdReduceListValue = nextReducer=>(acc,v,k,...args)=>{
-  if (!isObjectLike(v))
-    return nextReducer(acc, v,k,...args);
-  if (isArray(v))
-    for(let kk=-1,l=v.length;++kk<l;) acc=nextReducer(acc, v[kk], kk, v);
-  else
-    for (const kk in v) acc=nextReducer(acc, v[kk], kk, v);
-  return acc;
-};
-const reduce = (fn) => (coll,acc) => tdReduceListValue(fn)(acc,coll);
 
 // lodash equivalents
 const memoize = (fn, by = identity) => {
@@ -218,47 +190,53 @@ const diffObjs = (a={},b={}) => {
 };
 
 // TODO decide behavior when collections are arrays and no "by" key to diff them by
-const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);const getDefName=schemaDefinition=>schemaDefinition.name.value;
-const getFieldTypeName=fieldDefinition=>{
-  let type=fieldDefinition.type;
-  while(type.kind!=='NamedType')type=type.type;
-  return type.name.value;
-};
-const isListField=fieldDefinition=>{
-  const type=fieldDefinition.type;
-  return (type.kind==='NonNullType'?type.type.kind:type.kind)==='ListType';
-};
-var indexSchema = memoize(schema=>{
-  const definitions=ensureArray(schema.definitions).filter(d=>/^(Query|Mutation|Subscription)$/.test(d.name.value)===false);
-  // const builtInDefinitions=['ID','Int','Float','String','Boolean']
-  //   .map(value=>({kind:'ScalarTypeDefinition',name:{value}}));
-  const builtInDefinitions=[];
-  const allDefs=builtInDefinitions.concat(definitions);
-  const definitionsByKind=allDefs.reduce((acc,d)=>{ensurePropIsObject(acc,d.kind)[d.kind][d.name.value]=d;return acc},{});
-  const objectDefs=Object.values(definitionsByKind.ObjectTypeDefinition);
-  return {
-    ...definitionsByKind,
-    definitions:allDefs,
-    definitionsByName:keyBy(getDefName)(allDefs),
-    objectFieldMeta:Object.values(definitionsByKind.ObjectTypeDefinition).reduce((acc,d)=>{
-      const dName=getDefName(d);
-      const m=acc[dName]={scalarNames:{},collectionNames:{},collectionKeysCount:0,scalarKeysCount:0,isListType:{},idKey:undefined};
-      for (const f of d.fields){
-        const [fName,fTypeName]=[getDefName(f),getFieldTypeName(f)];
-        if (fTypeName==='ID') m.idKey=fName;
-        m.isListType[fName]=isListField(f);
-        if  (fTypeName in definitionsByKind.ObjectTypeDefinition) {
-          m.collectionNames[fName]=fTypeName;
-          ++m.collectionKeysCount;
-        } else {
-          ++m.scalarKeysCount;
-          m.scalarNames[fName]=fTypeName;
-        }
-      }
-      return acc;
-    },{})
-  }
-});// istanbul ignore next (See: 'https://github.com/graphql/graphql-js/issues/2317')
+const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);
+
+
+// export const diffBy = (by, reducer) => (args = []) => {
+//   const diff = by ? diffObjs(args.map(keyBy(by))) : diffObjs(args);
+//   const { anb, anbc, bna, bnac, aib, aibc, aub, aubc, changed, changedc, a, b } = diff;
+//   const reused = { anb, anbc, bna, bnac, aib, aibc, aub, aubc, changed, changedc, a, b };
+//   // eliminate one of the three loops by combining this directly with diffObjs
+//   // put the first loop before the iterator, and the second in iterator, yielding while it goes
+//   // cons:
+//   // unsure how much of a performance hit iterable protocol is. Would need to test that.
+//   // counts inaccurate until after.  Keeping separate for now.
+//   // reused.diff = diff;
+//   if (reducer) {
+//     let k, acc;
+//     for (k in aub) {
+//       reused.anb = anb[k];
+//       reused.bna = bna[k];
+//       reused.aib = aib[k];
+//       reused.aub = aub[k];
+//       reused.changed = changed[k];
+//       reused.a = a[k];
+//       reused.b = b[k];
+//       reused.k = k;
+//       acc = reducer(acc, reused, k);
+//     }
+//     return acc;
+//   } else {
+//     // uncertain if this has performance benefits.  Need to test.
+//     reused[Symbol.iterator] = reused.next = function* () {
+//       let k;
+//       for (k in aub) {
+//         reused.anb = anb[k];
+//         reused.bna = bna[k];
+//         reused.aib = aib[k];
+//         reused.aub = aub[k];
+//         reused.changed = changed[k];
+//         reused.a = a[k];
+//         reused.b = b[k];
+//         reused.k = k;
+//         yield reused;
+//       }
+//     };
+//     return reused;
+//   }
+// };
+// istanbul ignore next (See: 'https://github.com/graphql/graphql-js/issues/2317')
 var nodejsCustomInspectSymbol = typeof Symbol === 'function' && typeof Symbol.for === 'function' ? Symbol.for('nodejs.util.inspect.custom') : undefined;function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 var MAX_ARRAY_LENGTH = 10;
 var MAX_RECURSIVE_DEPTH = 2;
@@ -3403,7 +3381,7 @@ function disableExperimentalFragmentVariables() {
 }
 
 // XXX This should eventually disallow arbitrary string interpolation, like Relay does
-function gql$1(/* arguments */) {
+function gql(/* arguments */) {
   var args = Array.prototype.slice.call(arguments);
 
   var literals = args[0];
@@ -3425,14 +3403,88 @@ function gql$1(/* arguments */) {
 }
 
 // Support typescript, which isn't as nice as Babel about default exports
-gql$1.default = gql$1;
-gql$1.resetCaches = resetCaches;
-gql$1.disableFragmentWarnings = disableFragmentWarnings;
-gql$1.enableExperimentalFragmentVariables = enableExperimentalFragmentVariables;
-gql$1.disableExperimentalFragmentVariables = disableExperimentalFragmentVariables;
+gql.default = gql;
+gql.resetCaches = resetCaches;
+gql.disableFragmentWarnings = disableFragmentWarnings;
+gql.enableExperimentalFragmentVariables = enableExperimentalFragmentVariables;
+gql.disableExperimentalFragmentVariables = disableExperimentalFragmentVariables;
 
-var src = gql$1;const keyDiff=(v,k)=>k;
-const defaultActions = {
+var src = gql;const getDefName=schemaDefinition=>schemaDefinition.name.value;
+const getFieldTypeName=fieldDefinition=>{
+  let type=fieldDefinition.type;
+  while(type.kind!=='NamedType')type=type.type;
+  return type.name.value;
+};
+const getFieldMeta=f=>{
+  let isList=false,isNonNullList=false,isNonNull=false;
+  if(f.type.kind==='NamedType')return {isList,isNonNullList,isNonNull};
+  if(f.type.kind==='NonNullType'&&f.type.f.type.kind==='NamedType') return {isList:false,isNonNullList:false,isNonNull:true};
+  isList=true;
+  isNonNullList=f.type.kind==='NonNullType';
+  isNonNull=isNonNullList&&f.type.type.type.kind==='NonNullType';
+  return {isList,isNonNull,isNonNullList};
+};
+var indexSchema = memoize(schema=>{
+  const definitions=ensureArray(schema.definitions).filter(d=>/^(Query|Mutation|Subscription)$/.test(d.name.value)===false);
+  // const builtInDefinitions=['ID','Int','Float','String','Boolean']
+  //   .map(value=>({kind:'ScalarTypeDefinition',name:{value}}));
+  const builtInDefinitions=[];
+  const allDefs=builtInDefinitions.concat(definitions);
+  const definitionsByKind=allDefs.reduce((acc,d)=>{ensurePropIsObject(acc,d.kind)[d.kind][d.name.value]=d;return acc},{});
+  const definitionsByName=keyBy(getDefName)(allDefs);
+  const result = {
+    ...definitionsByKind,
+    definitions:allDefs,
+    definitionsByName,
+    selectionMeta:transToObject((acc,d,dName)=>{
+      const meta=acc[dName]={};
+      Object.defineProperty(meta,'defName',{value:dName,enumerable:false,writable:false,configurable:false});
+      Object.defineProperty(meta,'defKind',{
+        value:dName in definitionsByKind.ObjectTypeDefinition?'object':'scalar',
+        enumerable:false,
+        writable:false,
+        configurable:false
+      });
+      if (dName in definitionsByKind.ObjectTypeDefinition){
+        Object.defineProperty(meta,'objectFields',{
+          value:[],
+          enumerable:false,
+          writable:false,
+          configurable:false
+        });
+        // Object.defineProperty(m,'_scalarTypes',{enumerable:false,writable:false,configurable:false});
+        // Object.defineProperty(m,'_objectTypes',{enumerable:false,writable:false,configurable:false});
+        for (const f of d.fields){
+          const [fName,typeName,{isList,isNonNull,isNonNullList}]=[getDefName(f),getFieldTypeName(f),getFieldMeta(f)];
+          if (meta._idKey===undefined && typeName==='ID') Object.defineProperty(meta,'_idKey',{value:fName,enumerable:false,writable:false,configurable:false});
+          meta[fName]={
+            name:fName,
+            isList,
+            isNonNull,
+            isNonNullList,
+            defKind:typeName in definitionsByKind.ObjectTypeDefinition?'object':'scalar',
+            rel:typeName,
+          };
+          if(typeName in definitionsByKind.ObjectTypeDefinition){
+            meta.objectFields.push(meta[fName]);
+          }
+        }
+      }
+    })(definitionsByName)
+  };
+  // cross_link
+  for (const dName in definitionsByKind.ObjectTypeDefinition){
+    const oMeta=result.selectionMeta[dName];
+    for (const fName in oMeta){
+      const fMeta=oMeta[fName];
+      // if a definition exists with this type (if not, it's a built in scalar type)
+      if (fMeta.rel in result.selectionMeta) {
+        fMeta.rel=result.selectionMeta[fMeta.rel];
+      }
+    }
+  }
+  return result;
+});const defaultActions = {
   ADD:nextReducer=>(prevState,action)=>{
     // if collection/item/value
     // which has a simpler dependency graph topology?  These fns, handling different types, or or a mutation tree?
@@ -3440,7 +3492,7 @@ const defaultActions = {
     return nextReducer(({...prevState,...action.payload}),action)
   },
   SUBTRACT:nextReducer=>(prevState,action)=>{
-    const diff = diffBy(keyDiff,[prevState,action.payload]);
+    const diff = diffBy((v,k)=>k,[prevState,action.payload]);
     let nextState={},k;
     if (diff.aibc===0) return nextReducer(prevState,action); // no intersection to remove
     if (diff.aibc===diff.aubc) return nextReducer(nextState,action); // complete intersection. remove everything
@@ -3448,13 +3500,13 @@ const defaultActions = {
     return nextReducer(nextState,action);
   },
   UNION:nextReducer=>(prevState,action)=>{
-    const diff = diffBy(keyDiff,[prevState,action.payload]);
+    const diff = diffBy((v,k)=>k,[prevState,action.payload]);
     let nextState={},k;
     for (k in diff.aub)nextState[k]=action.payload[k]??prevState[k];
     return nextReducer(diff.changedc===0?prevState:nextState,action);
   },
   INTERSECTION:nextReducer=>(prevState,action)=>{
-    const diff = diffBy(keyDiff,[prevState,action.payload]);
+    const diff = diffBy((v,k)=>k,[prevState,action.payload]);
     let nextState={},k;
     for (k in diff.aib)nextState[k]=action.payload[k];
     return nextReducer(diff.changedc===0?prevState:nextState,action);
@@ -3463,228 +3515,157 @@ const defaultActions = {
   GET:nextReducer=>(prevState,action)=>nextReducer(prevState,action)
 };
 
-const schemaToStateOpsMapper=(
-  schema=gql('type DefaultType {id:ID!}')
-)=>( ops=defaultActions )=>{
-  // const transduce = (initial,finalReducer,transducer,val)
-  const {objectFieldMeta,definitionsByName}=indexSchema(schema);
-  const actionNormalizers = transToObject((o,_,dName)=>{
-    const notGQLObject = payload=>!(dName in objectFieldMeta);
-    const idKey=(objectFieldMeta[dName]??{}).idKey;
-    const normalizePayload=cond(
-      // leave scalars and other non-object types
-      [notGQLObject,identity],
-      // convert number/string id to collection
-      [isString,payload=>({[payload]:{[idKey]:payload}})],
-      // convert number/string id to collection
-      [isInteger,payload=>({[payload]:{[idKey]:`${payload}`}})],
-      // convert array to collection
-      [isArray,transToObject((o,v)=>{
+const schemaToReducerMap = (schema) => (ops=defaultActions)=>{
+  const {selectionMeta}=indexSchema(schema);
+  const actionNormalizers = mapToObject(({defKind,_idKey})=>cond(
+    [_=>defKind!=='object',identity],                             // leave scalars and other non-object types
+    [isString,payload=>({[payload]:{[_idKey]:payload}})],         // convert number/string id to collection
+    [isInteger,payload=>({[payload]:{[_idKey]:`${payload}`}})],   // convert number/string id to collection
+    [isObjectLike,cond(
+      [isArray,transArrayToObject((o,v)=>{                        // convert array to collection
         v=normalizePayload(v);
-        o[v[idKey]]=v;
+        o[v[_idKey]]=v;
       })],
-      // convert single item to collection
-      [and(isObjectLike,hasKey(idKey)), payload=>({[payload[idKey]]:payload})],
-      // collection, leave as is
-      [stubTrue,identity]
-    );
-    o[dName] = normalizePayload;
-  })(definitionsByName);
+      [hasKey(_idKey), payload=>({[payload[_idKey]]:payload})],   // convert single item to collection
+      [stubTrue,identity]                                         // collection, leave as is
+    )],
+    [stubTrue,payload=>new Error(`unrecognized payload type\n${JSON.stringify(payload,null,2)}`)]
+  ))(selectionMeta);
   
   return transToObject((acc,actionNormalizer,dName)=>{
     const opFns=transToObject((o,opFn,OP)=>o[`${dName.toUpperCase()}_${OP}`]=opFn(identity))(ops);
-    acc[dName]=(prevState=null,action={})=>{
-      return action.type in opFns
-        ? opFns[action.type](prevState,{...action,payload:actionNormalizer(action.payload)})
-        : prevState;
-    };
+    acc[dName]=(prevState=null,action={})=>action.type in opFns
+      ? opFns[action.type](prevState,{...action,payload:actionNormalizer(action.payload)})
+      : prevState;
   })(actionNormalizers);
-};
-
-const getObjectQuerier=(
-  schema,
-  queryMatchers={
-    // filtering language ... a dsl is complicated https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
-
-    // for mvp mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter
-    filter:toPredicate,
-    omit:x=>not(toPredicate(x))
-  }
-)=>{
-  const {objectFieldMeta}=indexSchema(schema);
-  
-  const populateArgsFromVars = (args=[],vars={})=>{
-    let result={},name,value;
-    for ({name:{value:name},value} of args){
-      if(value.kind==='Variable'){ result[name]= vars[value.name.value]; }
-      else if (value.kind==='ObjectValue') {
-        // todo, figure out what about the structure made the recursive call not work
-        // else if (value.kind==='ObjectValue') result[name]=populateArgsFromVars(value.fields,vars)
-        result[name]=transToObject((o,f)=>{
-          o[f.name.value]=f.value.value;
-        })(value.fields);
-      }
-      else result[name] = value.value;
-      // may need to delist and denull here
-    }
-    return result;
-  };
-  const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=>{
-    let vars = {},name,defaultValue;
-    // default per spec is returning only what's in variableDefinitions, but this eliminates the duplicate definitions in each query to pass a variable, given it's usually specified in the schema already.  Can always change it to the more verbose version and add validation if necessary.
-    if (variableDefinitions.length===0) return passedVariables;
-    for ({variable:{name:{value:name}},defaultValue} of variableDefinitions)
-      vars[name]=passedVariables[name]??((defaultValue??{}).value);
-      // may need to de-null and de-list here.f
-    return vars;
-  };
-
-  const queryCollection = (rootState,collName,id,Field,vars)=>{
-    if (Field.selectionSet===undefined){ // leaf
-      if (id===undefined){
-        return (Field.name.value in rootState)
-          ? rootState[Field.name.value] // root scalars
-          : new Error('cannot request collection without selecting fields');
-      }
-      if(Field.name.value in objectFieldMeta[collName].collectionNames)
-        return new Error('cannot request object without selecting fields');
-      return rootState[collName][id][Field.name.value]; // prop scalars
-    }
-    if (id === undefined){
-      // what if we're filtering the collection
-      if (Field.arguments.length===0)
-        return transToObject((o,_,k)=>o[k]=queryCollection(rootState,collName,k,Field,vars))(rootState[collName]);
-
-      const args = populateArgsFromVars(Field.arguments,vars);
-
-      const queryMatcherFns=tdDPipeToArray(
-        args,
-        tdFilter((v,k)=>k in queryMatchers),
-        tdMap((v,k)=>queryMatchers[k](args[k])),
-      );
-      queryMatcherFns[0]||(queryMatcherFns[0]=queryMatchers.filter(args));
-      const matchesFn = and(...queryMatcherFns);
-
-      return transToObject(
-        (o,item,k)=>matchesFn(item)&&(o[k]=queryCollection(rootState,collName,k,Field,vars))
-      )(rootState[collName]);
-    }
-    const {collectionNames}=objectFieldMeta[collName];
-    if (Array.isArray(id))
-      return transToObject((o,k)=>o[k]=queryCollection(rootState,collName,k,Field,vars))(id);
-
-    let f,fName,newItem={},item=rootState[collName][id];
-    for (f of Field.selectionSet.selections){
-      fName=f.name.value;
-      newItem[fName]=(fName in collectionNames)
-        ? queryCollection( rootState, collectionNames[fName], item[fName],f, vars)
-        : item[fName];
-    }
-    return newItem;
-  };
-
-  return (rootState,query,passedVariables={})=>
-    transToObject((result,{variableDefinitions=[],selectionSet:{selections=[]}={}})=>{
-      const vars = variableDefinitionsToObject(variableDefinitions,passedVariables);
-      selections.forEach(s=>result[s.name.value]=queryCollection(rootState,s.name.value,undefined,s,vars));
-    })(query.definitions);
-};
-
-const getUseQuery=(store,querier,schema,useState,useEffect)=>{
-  const {definitionsByName,objectFieldMeta}=indexSchema(schema);
-  const getFieldCollectionNames=reduce((acc=new Set(),{name:{value},selectionSet:{selections=[]}={}},i,c)=>{
-    if (value in definitionsByName) acc.add(value);
-    for (const s of selections)getFieldCollectionNames(acc,s);
-    return acc;
+};// returns a function that populates query arguments with passed variables
+const getArgsPopulator = vars=>{
+  const getArgs = transArrayToObject((result,{name:{value:name},value})=>{
+    if(value.kind==='Variable') result[name] = vars[value.name.value];
+    else if (value.kind==='ObjectValue') result[name] = getArgs(value.fields);
+    else result[name] = value.value;
   });
-  const opKeyIdx=new WeakMap();
+  return getArgs;
+};
+
+
+// converts query variable definitions array to an object, populating any relevant variables passsed
+// default per spec is returning only what's in variableDefinitions
+// this version provides the option to eliminate the duplicate definitions in each query to pass a variable
+// given the def is often specified in the schema already.
+const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=>
+  variableDefinitions.length === 0 ? passedVariables : transArrayToObject((vars,{variable:{name:{value:name}},defaultValue})=>{
+    vars[name]=passedVariables[name]??((defaultValue??{}).value);
+  })(variableDefinitions);
+
+
+// predicates for schemaToQuerySelector
+const isScalarField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='scalar';
+const isObjectField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='object';
+const isPrimitiveValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>!isObjectLike(vNorm);
+const isObjectValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm);
+const isItemValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm)&&meta._idKey in vNorm;
+const isCollectionValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm) && !(meta._idKey in vNorm);
+
+
+// for filtering, a dsl is complicated
+// https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
+// Mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter for MVP
+const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate, omit:x=>not(toPredicate(x))} )=>{
+  
+  // Denormalizes a single collection item
+  // Somewhat redundant with mapSelection, though loops over individual fields. Could use the same error checking though. Might be able to merge them.
+  const mapItem=([meta,{selectionSet:{selections=[]}={}},vDenormPrev={},vNorm,vNormPrev={},prevDenormRoot,rootState,prevRoot,getArgs])=>{
+    let vDenorm = {}, changed = vNorm !== vNormPrev;
+    for (const f of selections){
+      const k = f.name.value, {rel,isList,defKind} = meta[k];
+      vDenorm[k] = defKind==='scalar'
+        ? rootState[meta.defName][vNorm[meta._idKey]][k]
+        : isList
+          ? mapCollection([ rel, f, vDenormPrev[k], pick(vNorm[k])(rootState[rel.defName]), pick(vNormPrev[k])(prevRoot[rel.defName]), prevDenormRoot,rootState,prevRoot, getArgs])
+          : mapItem([ rel, f, vDenormPrev[k]||{}, rootState[rel.defName][vNorm[k]]||{}, prevRoot[rel.defName][vNorm[k]]||{}, prevDenormRoot,rootState,prevRoot,getArgs ]);
+      if(vDenorm[k] !== vDenormPrev[k]) changed = true;
+    }
+    return changed ? vDenorm : vDenormPrev;
+  };
+
+  const mapCollection=([meta,Field,vDenormPrev={},vNorm,vNormPrev={},prevDenormRoot,rootState,prevRoot,getArgs])=>{
+    // on the first traverse up, break if the final collection is unchanged since its items will be too.
+    if(meta.objectFields.length===0&&vNorm===vNormPrev) return vDenormPrev;
+    const args = getArgs(Field.arguments);
+    const argIds = ensureArray(args[meta._idKey]);
+    if(argIds.length) vNorm=transArrayToObject((o,i)=>o[i]=vNorm[i])(argIds);
+    const queryMatcherFns=transObjectToArray((a,arg,k)=>k in queryMatchers && (a[a.length]=queryMatchers[k](arg)))(args);
+    const matchesFn = queryMatcherFns.length === 0 ? queryMatchers.filter(args) : and(...queryMatcherFns);
+    let vDenorm={},changed=vNorm!==vNormPrev;
+    for(const id in vNorm){
+      matchesFn(vNorm[id])&&(vDenorm[id]=mapItem([meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],prevDenormRoot,rootState,prevRoot,getArgs]));
+      if(vDenorm[id]!==vDenormPrev[id])changed=true;
+    }
+    return changed?vDenorm:vDenormPrev;
+  };
+
+  const mapSelection=cond(
+    [isScalarField,cond(
+      [isObjectValue,()=>new Error('cannot request object without selecting fields')],
+      [isPrimitiveValue,([meta,Field,vDenormPrev,vNorm])=>vNorm]
+    )],
+    [isObjectField,cond(
+      [isPrimitiveValue,([{defName},Field,vDenormPrev,vNorm])=>new Error(`cannot request fields of a primitive ${JSON.stringify({value:vNorm,defName},null,2)}`)],
+      [isCollectionValue,mapCollection],
+      [isItemValue,mapItem],// item (worth noting that root state is also an item with no key, given its heterogenous values);
+    )],
+  );
+
+  const {selectionMeta}=indexSchema(schema);
+  const mapQuery= (query,passedVariables={})=>{
+    const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
+    const selections=query.definitions[0].selectionSet.selections;
+    return (rootState={},prevRoot=rootState,prevDenormRoot={})=>{
+      let denormRoot={},changed=rootState!==prevRoot;
+      for (const s of selections){
+        const k=s.name.value;
+        denormRoot[k]=mapSelection([selectionMeta[k],s,prevDenormRoot[k],rootState[k],prevRoot[k],prevDenormRoot,rootState,prevRoot,argsPopulator]);
+        if(denormRoot[k]!==prevDenormRoot[k])changed=true;
+      }
+      return changed?denormRoot:prevDenormRoot;
+    };
+  };
+  return mapQuery;
+};const querySelectorToUseQuery=(querier,store,useState,useEffect,useMemo)=>{
   return (query,variables)=>{
-    !opKeyIdx.has(query) && opKeyIdx.set(query,Array.from(getFieldCollectionNames(query.definitions.flatMap(d=>(d.selectionSet.selections)))));
-    const [state,setState] = useState([store.getState(),querier(store.getState(),query,variables)]);
+    // probably need a useRef here so queryFn will be current in useEffect.
+    const querySelector=useMemo(()=>querier(query,variables),[variables]);
+    const [state,setState] = useState([store.getState(),querySelector(store.getState())]);
     useEffect(()=>store.subscribe(()=> { // returns the unsubscribe function
       setState(([prevNormed,prevDenormed])=>{
-        // TODO different tests for collection/item/value
         const normed = store.getState();
-        const changedKeys=opKeyIdx.get(query).filter(k=>prevNormed[k]!==normed[k]);
-        if (changedKeys.length===0) return [prevNormed,prevDenormed];
-        const denormed=querier(normed,query,variables);
-        for (const k of changedKeys){
-          if(objectFieldMeta[k]){
-            for (const kk in denormed){
-              if (normed[kk]!==prevNormed[kk]) return [normed,denormed];
-            }
-            for (const kk in prevDenormed){
-              if (normed[kk]!==prevNormed[kk]) return [normed,denormed];
-            }
-          } else {
-            if(prevNormed[k]!==normed[k])return [normed,denormed];
-          }
-        }
-        return [prevNormed,prevDenormed];
+        return [normed,querySelector(normed,prevNormed,prevDenormed)];
       });
     }),[]);
     return state[1];
   };
-};
-
-
-
-
-
-// export const diffBy = (by, reducer) => (args = []) => {
-//   const diff = by ? diffObjs(args.map(keyBy(by))) : diffObjs(args);
-//   const { anb, anbc, bna, bnac, aib, aibc, aub, aubc, changed, changedc, a, b } = diff;
-//   const reused = { anb, anbc, bna, bnac, aib, aibc, aub, aubc, changed, changedc, a, b };
-//   // eliminate one of the three loops by combining this directly with diffObjs
-//   // put the first loop before the iterator, and the second in iterator, yielding while it goes
-//   // cons:
-//   // unsure how much of a performance hit iterable protocol is. Would need to test that.
-//   // counts inaccurate until after.  Keeping separate for now.
-//   // reused.diff = diff;
-//   if (reducer) {
-//     let k, acc;
-//     for (k in aub) {
-//       reused.anb = anb[k];
-//       reused.bna = bna[k];
-//       reused.aib = aib[k];
-//       reused.aub = aub[k];
-//       reused.changed = changed[k];
-//       reused.a = a[k];
-//       reused.b = b[k];
-//       reused.k = k;
-//       acc = reducer(acc, reused, k);
-//     }
-//     return acc;
-//   } else {
-//     // uncertain if this has performance benefits.  Need to test.
-//     reused[Symbol.iterator] = reused.next = function* () {
-//       let k;
-//       for (k in aub) {
-//         reused.anb = anb[k];
-//         reused.bna = bna[k];
-//         reused.aib = aib[k];
-//         reused.aub = aub[k];
-//         reused.changed = changed[k];
-//         reused.a = a[k];
-//         reused.b = b[k];
-//         reused.k = k;
-//         yield reused;
-//       }
-//     };
-//     return reused;
-//   }
-// };
-
-// Common case: transforming two graphs is special case of transforming one, where the reducer derives
-// a third graph while walking. The derived graph's nodes are pairs of [ANode,BNode]
-// TODO more efficient (i.e. non-array resizing) queue implementation
-// some initial research led to https://github.com/invertase/denque
-// const noopGraphReducer = (acc, currentNode, addNextNode = (nodes = []) => []) => acc;
-// export const reduceGraphBF = (reducer = noopGraphReducer, startNodes = []) => {
-//   const queue = [...startNodes];
-//   const addNextNode = node => { queue[queue.length] = node; }
-//   let acc, node;
-//   while (node = queue.shift()) (acc = reducer(acc, node, addNextNode));
-//   return acc;
-// };
-export{getObjectQuerier,getUseQuery,src as gql,schemaToStateOpsMapper};
+};// version of useQuery that minimizes the returned object tree
+const querySelectorToUseLeafQuery=(querier,store,useState,useEffect,useMemo)=>{
+  const useQuery=querySelectorToUseQuery(querier,store,useState,useEffect,useMemo);
+  return (query,variables)=>{
+    let selections=query.definitions[0].selectionSet.selections;
+    let result = useQuery(query,variables);
+    while(selections.length===1 && isObjectLike(result)){
+      if(selections[0].name.value in result){
+        result = result[selections[0].name.value];
+      } else {
+        let count=0,id;
+        result=mapToObject((v,i)=>{
+          ++count;
+          id=i;
+          return v[selections[0].name.value]
+        })(result);
+        
+        if (count===1) result = result[id];
+      }
+      selections = selections[0].selectionSet ? selections[0].selectionSet.selections : [];
+    }
+    return result;
+  };
+};export{src as gql,querySelectorToUseLeafQuery,querySelectorToUseQuery,schemaToQuerySelector,schemaToReducerMap};

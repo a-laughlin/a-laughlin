@@ -14,47 +14,62 @@
   <body>
     <div id="root"></div>
     <script type="text/babel">
-      const {gql,getObjectQuerier,getUseQuery,schemaToStateOpsMapper}=ReduxGraphql;
+      const {gql,schemaToQuerySelector,querySelectorToUseLeafQuery,schemaToReducerMap}=ReduxGraphql;
       const {combineReducers,createStore}=Redux;
-      const {useState,useEffect}=React;
+      const {useState,useEffect,useMemo}=React;
+      
+      // setup
       const schema=gql(`
         type Todo{
           id:ID
           text:String
         }
       `);
-      const todoFactory=(()=>{
-        let uniqueID=2;
-        // has issues with string/number on IDs, so ensure factories use strings
-        // likely to queries' strict id matching
-        return ({id=`${++uniqueID}`,name=`name is ${id}`}={})=>({id,name});
-      })();
-      const rootState={
-        Todo:['1','2'].reduce((o,id)=>({...o,[id]:todoFactory({id,name:id})}),{})
-      };
 
-      // setup
-      const reducerMap = schemaToStateOpsMapper(schema)();
-      const rootReducer = combineReducers(reducerMap);
-      const queryState = getObjectQuerier(schema);
-      const store = createStore(rootReducer,rootState);
-      const useQuery = getUseQuery(store,queryState,schema,useState,useEffect);
-      let lastTodo;
-      const Todos=()=>{
-        const {Todo}=useQuery(gql(`{Todo{id}}`));
-        console.log(`Todo`,store.getState().Todo,Todo);
-        return (<ul>{
-          Object.values(Todo).map(t=><li key={t.id}>{t.id} <RemoveButton data-stateloc={`{Todo(id:"${t.id}" ) {id}}`}/></li>)
-        }</ul>);
+      const rootState={
+        Todo:{
+          '1':{id:'1',name:'1'},
+          '2':{id:'2',name:'2'},
+        }
       };
+      const getTodoId=(()=>{let curID=2;return (id=`${++curID}`)=>id;})();
+
+      const reducerMap={
+        ...schemaToReducerMap(schema)(),
+        TODO_ADD:(prevState,{payload:{id=getTodoId(),name=`name is ${id}`}={}})=>({...prevState,[id]:{id,name}})
+      }
+
+      const store = createStore( combineReducers(reducerMap), rootState );
+      
+
+      // Query Hook
+      const useLeafQuery = querySelectorToUseLeafQuery( schemaToQuerySelector(schema), store, useState, useEffect, useMemo );
+
+
+      // Components
       const AddButton=()=>{
-        const addTodo=()=>store.dispatch({type:'TODO_ADD',payload:todoFactory()});
+        const addTodo=()=>store.dispatch({type:'TODO_ADD',payload:{}});
         return <button onClick={addTodo}>Add Todo</button>;
       }
-      const RemoveButton=({['data-stateloc']:stateLoc})=>{
-        const {Todo} = useQuery(gql(stateLoc));
-        console.log(`RemoveButton Todo`,stateLoc,`Todo`,Todo);
-        const remove=()=>store.dispatch({type:'TODO_SUBTRACT',payload:Todo});
+
+      const Todos=()=>{
+        const ids=useLeafQuery(gql(`{Todo{id}}`));
+        return (<ul>{
+          Object.values(ids).map(id=>(
+            <li key={id}>
+              {id}
+              <RemoveButton data-gql={`{Todo(id:"${id}"){id}}`}/>
+            </li>
+          ))
+        }</ul>);
+      };
+      
+      const RemoveButton=({['data-gql']:gqlString})=>{
+        // remove need for specific action name, to minimize component AST edges and keep button presentational
+        // return <button onClick={getMutationDispatcher(gql(gqlString))}>Remove</button>;
+        const payload = useLeafQuery(gql(gqlString));
+        console.log(`RemoveButton gqlString`,gqlString,`payload`,payload);
+        const remove=()=>store.dispatch({type:'TODO_SUBTRACT',payload});
         return <button onClick={remove}>Remove</button>;
       }
 
@@ -65,7 +80,7 @@
           <AddButton/>
         </>;
       };
-      // import {schemaToActionNormalizers} from './redux-graphql.js';
+
       ReactDOM.render(
         <App/>,
         document.getElementById('root')

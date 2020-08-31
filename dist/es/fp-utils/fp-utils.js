@@ -104,8 +104,14 @@ const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(ensureArr
 const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
 
-const overObj = fnsObj=>(...args)=>mo(f=>f(...args))(fnsObj);
-const overArray = fnsArray=>(...args)=>ma(f=>f(...args))(fnsArray);
+const overObj = (fnsObj={})=>(...args)=>{
+  // console.log(`fnsObj`,fnsObj)
+  return mo(f=>{
+    if(typeof f!=='function')console.log('typeof f',f);
+    return f(...args);
+  })(fnsObj);
+};
+const overArray = (fnsArray=[])=>(...args)=>ma(f=>f(...args))(fnsArray);
 const over = x=>isArray(x)?overArray(x):overObj(x);
 const converge = over;//backwards compat;
 
@@ -232,14 +238,6 @@ const fmo = filterMapToObject; // backward compatability
 const filterMapToSame=makeCollectionFn(filterMapToArray,filterMapToObject);
 const fmx=filterMapToSame; // backward compatability
 
-const scan=fn=>{
-  let lastValue;
-  return (value,...args)=>{
-    const result=fn(lastValue,value,...args);
-    lastValue=value;
-    return result;
-  }
-};
 const first = c=>{
   if (isArray(c)) return c[0];
   for (const k in c)return c[k];
@@ -307,7 +305,7 @@ const pget = cond( // polymorphic get
   [stubTrue,identity], // handles the function case
 );
 const pick=cond(
-  [isArray,keys=>obj=>transToSame((o,k)=>o[k]=obj[k])(keys)],
+  [isArray,keys=>obj=>transArrayToObject((o,k)=>o[k]=obj[k])(keys)],
   [isString,key=>obj=>obj[key]],
   [isFunction,filterToSame],
 );
@@ -353,13 +351,29 @@ const appendArrayReducer = (acc=[],v)=>{acc[acc.length]=v;return acc;};
 const appendObjectReducer = (acc={},v,k)=>{acc[k]=v;return acc;};
 const tdToArray = transducer=>collection=>transduce([], appendArrayReducer, transducer, collection);
 const tdToObject = transducer=>collection=>transduce(({}), appendObjectReducer, transducer, collection);
+const tdToObjectImmutable = transducer=>{
+  let lastOutput={};
+  let lastCount;
+  return collection=>{
+    // console.log(`transducer`,transducer)
+    let count=0,changed=false;
+    const output=tdToObject(compose(
+      transducer,
+      tdTap((a,v,k,c)=>{++count;if(v!==lastOutput[k]){changed=true;}})
+    ))(collection);
+    if(changed===true||lastCount!==count){
+      lastCount=count;
+      lastOutput=output;
+    }
+    return lastOutput;
+  };
+};
 const tdToSame = transducer=>collection=>(Array.isArray(collection)?tdToArray:tdToObject)(transducer)(collection);
-const tdValue = transducer=>value=>transduce(undefined, identity, transducer, [value]);
 
-const tdMap = mapper => nextReducer => (a,v,...kc) =>
-  nextReducer(a,mapper(v,...kc),...kc);
-const tdMapWithAcc = mapper => nextReducer => (a,v,...kc) =>
-  nextReducer(a,mapper(a,v,...kc),...kc);
+const tdMap = mapper => nextReducer => (a,v,...kc) => nextReducer(a,mapper(v,...kc),...kc);
+const tdMapKey = mapper => nextReducer => (a,v,k,...c) => nextReducer(a,v,mapper(v,k,...c),...c);
+const tdMapWithAcc = mapper => nextReducer => (a,v,...kc) => nextReducer(a,mapper(a,v,...kc),...kc);
+const tdMapKeyWithAcc = mapper => nextReducer => (a,v,k,...c) => nextReducer(a,v,mapper(a,v,k,...c),...c);
 const tdAssign = f=>nextReducer => (a,v,...kc) =>nextReducer({...a,...f(a,v,...kc)},v,...kc);
 const tdSet = (key,f)=>nextReducer => (a,v,...kc) =>{
   const next = f(a,v,...kc);
@@ -478,4 +492,50 @@ const diffObjs = (a={},b={}) => {
 };
 
 // TODO decide behavior when collections are arrays and no "by" key to diff them by
-const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);export{_is,acceptArrayOrArgs,and,appendArrayReducer,appendObjectReducer,compose,cond,condNoExec,constant,converge,curry,diffBy,diffObjs,dpipe,ensureArray,ensureFunction,ensureProp,ensurePropIsArray,ensurePropIsObject,ensurePropWith,ensureString,fa,filterMapToArray,filterMapToObject,filterMapToSame,filterToArray,filterToObject,filterToSame,first,fma,fmo,fmx,fo,frozenEmptyArray,frozenEmptyObject,fx,groupBy,groupByKeys,groupByValues,has,hasKey,identity,ifElse,ifElseUnary,immutableFilterObjectToObject,immutableTransArrayToArray,immutableTransObjectToObject,invokeArgsOnObj,invokeObjectWithArgs,is,isArray,isDeepEqual,isError,isFinite,isFunction,isInteger,isObjectLike,isProductionEnv,isPromise,isString,isUndefOrNull,keyBy,last,len,len0,len1,ma,mapToArray,mapToObject,mapToSame,matches,matchesProperty,memoize,mo,mx,none,noop,not,oa,objStringifierFactory,objToUrlParams,omitToArray,omitToObject,omitToSame,oo,or,over,overArray,overObj,ox,partition,pget,pick,pipe,plog,ra,range,reduce,ro,rx,scan,stubArray,stubFalse,stubNull,stubObject,stubString,stubTrue,tdAssign,tdDPipeToArray,tdDPipeToObject,tdDfObjectLikeValuesWith,tdFilter,tdFilterWithAcc,tdIdentity,tdIfElse,tdIfValueObjectLike,tdKeyBy,tdLog,tdMap,tdMapWithAcc,tdOmit,tdOmitWithAcc,tdPipeToArray,tdPipeToObject,tdReduce,tdReduceListValue,tdSet,tdTap,tdToArray,tdToObject,tdToSame,tdValue,toPredicate,transToArray,transToObject,transToSame,transduce,transduceBF,transduceDF,uniqueId,xor};
+const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);
+
+
+// export const diffBy = (by, reducer) => (args = []) => {
+//   const diff = by ? diffObjs(args.map(keyBy(by))) : diffObjs(args);
+//   const { anb, anbc, bna, bnac, aib, aibc, aub, aubc, changed, changedc, a, b } = diff;
+//   const reused = { anb, anbc, bna, bnac, aib, aibc, aub, aubc, changed, changedc, a, b };
+//   // eliminate one of the three loops by combining this directly with diffObjs
+//   // put the first loop before the iterator, and the second in iterator, yielding while it goes
+//   // cons:
+//   // unsure how much of a performance hit iterable protocol is. Would need to test that.
+//   // counts inaccurate until after.  Keeping separate for now.
+//   // reused.diff = diff;
+//   if (reducer) {
+//     let k, acc;
+//     for (k in aub) {
+//       reused.anb = anb[k];
+//       reused.bna = bna[k];
+//       reused.aib = aib[k];
+//       reused.aub = aub[k];
+//       reused.changed = changed[k];
+//       reused.a = a[k];
+//       reused.b = b[k];
+//       reused.k = k;
+//       acc = reducer(acc, reused, k);
+//     }
+//     return acc;
+//   } else {
+//     // uncertain if this has performance benefits.  Need to test.
+//     reused[Symbol.iterator] = reused.next = function* () {
+//       let k;
+//       for (k in aub) {
+//         reused.anb = anb[k];
+//         reused.bna = bna[k];
+//         reused.aib = aib[k];
+//         reused.aub = aub[k];
+//         reused.changed = changed[k];
+//         reused.a = a[k];
+//         reused.b = b[k];
+//         reused.k = k;
+//         yield reused;
+//       }
+//     };
+//     return reused;
+//   }
+// };
+export{_is,acceptArrayOrArgs,and,appendArrayReducer,appendObjectReducer,compose,cond,condNoExec,constant,converge,curry,diffBy,diffObjs,dpipe,ensureArray,ensureFunction,ensureProp,ensurePropIsArray,ensurePropIsObject,ensurePropWith,ensureString,fa,filterMapToArray,filterMapToObject,filterMapToSame,filterToArray,filterToObject,filterToSame,first,fma,fmo,fmx,fo,frozenEmptyArray,frozenEmptyObject,fx,groupBy,groupByKeys,groupByValues,has,hasKey,identity,ifElse,ifElseUnary,immutableFilterObjectToObject,immutableTransArrayToArray,immutableTransObjectToObject,invokeArgsOnObj,invokeObjectWithArgs,is,isArray,isDeepEqual,isError,isFinite,isFunction,isInteger,isObjectLike,isProductionEnv,isPromise,isString,isUndefOrNull,keyBy,last,len,len0,len1,ma,mapToArray,mapToObject,mapToSame,matches,matchesProperty,memoize,mo,mx,none,noop,not,oa,objStringifierFactory,objToUrlParams,omitToArray,omitToObject,omitToSame,oo,or,over,overArray,overObj,ox,partition,pget,pick,pipe,plog,ra,range,reduce,ro,rx,stubArray,stubFalse,stubNull,stubObject,stubString,stubTrue,tdAssign,tdDPipeToArray,tdDPipeToObject,tdDfObjectLikeValuesWith,tdFilter,tdFilterWithAcc,tdIdentity,tdIfElse,tdIfValueObjectLike,tdKeyBy,tdLog,tdMap,tdMapKey,tdMapKeyWithAcc,tdMapWithAcc,tdOmit,tdOmitWithAcc,tdPipeToArray,tdPipeToObject,tdReduce,tdReduceListValue,tdSet,tdTap,tdToArray,tdToObject,tdToObjectImmutable,tdToSame,toPredicate,transArrayToArray,transArrayToObject,transObjectToArray,transObjectToObject,transToArray,transToObject,transToSame,transduce,transduceBF,transduceDF,uniqueId,xor};

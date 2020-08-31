@@ -1,7 +1,7 @@
 {
-  "bundleSize": 72104,
-  "bundleOrigSize": 95044,
-  "bundleReduction": 24.14,
+  "bundleSize": 73612,
+  "bundleOrigSize": 97203,
+  "bundleReduction": 24.27,
   "modules": [
     {
       "id": "/src/style-string-to-object/style-string-to-object.js",
@@ -14,13 +14,13 @@
       "dependents": [
         "/src/react-utils/react-utils.js"
       ],
-      "percent": 13.72,
+      "percent": 13.44,
       "reduction": 1.14
     },
     {
       "id": "/src/fp-utils/fp-utils.js",
-      "size": 5308,
-      "origSize": 18895,
+      "size": 6816,
+      "origSize": 21054,
       "renderedExports": [
         "identity",
         "compose",
@@ -42,9 +42,12 @@
         "or",
         "none",
         "cond",
+        "transArrayToObject",
+        "transArrayToArray",
+        "transObjectToObject",
+        "transObjectToArray",
         "transToObject",
         "transToArray",
-        "transToSame",
         "filterToArray",
         "filterToObject",
         "filterToSame",
@@ -100,6 +103,7 @@
         "immutableFilterObjectToObject",
         "ro",
         "ra",
+        "transToSame",
         "rx",
         "fa",
         "fo",
@@ -120,7 +124,6 @@
         "fmo",
         "filterMapToSame",
         "fmx",
-        "scan",
         "first",
         "last",
         "partition",
@@ -136,10 +139,12 @@
         "appendObjectReducer",
         "tdToArray",
         "tdToObject",
+        "tdToObjectImmutable",
         "tdToSame",
-        "tdValue",
         "tdMap",
+        "tdMapKey",
         "tdMapWithAcc",
+        "tdMapKeyWithAcc",
         "tdAssign",
         "tdSet",
         "tdReduce",
@@ -169,8 +174,8 @@
       "dependents": [
         "/src/style-string-to-object/style-string-to-object.js"
       ],
-      "percent": 7.36,
-      "reduction": 71.91
+      "percent": 9.26,
+      "reduction": 67.63
     },
     {
       "id": "/node_modules/lodash-es/_baseMergeDeep.js",
@@ -183,7 +188,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseMerge.js"
       ],
-      "percent": 3.28,
+      "percent": 3.21,
       "reduction": 22.99
     },
     {
@@ -197,7 +202,7 @@
       "dependents": [
         "/node_modules/lodash-es/isTypedArray.js"
       ],
-      "percent": 2.87,
+      "percent": 2.81,
       "reduction": 6.71
     },
     {
@@ -256,7 +261,7 @@
       ],
       "removedExports": [],
       "dependents": [],
-      "percent": 2.81,
+      "percent": 2.75,
       "reduction": 7.41
     },
     {
@@ -270,7 +275,7 @@
       "dependents": [
         "/node_modules/lodash-es/keysIn.js"
       ],
-      "percent": 2.1,
+      "percent": 2.05,
       "reduction": 14.92
     },
     {
@@ -284,7 +289,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 2.08,
+      "percent": 2.04,
       "reduction": 8.92
     },
     {
@@ -298,7 +303,7 @@
       "dependents": [
         "/node_modules/lodash-es/_getNative.js"
       ],
-      "percent": 1.72,
+      "percent": 1.69,
       "reduction": 12.16
     },
     {
@@ -312,7 +317,7 @@
       "dependents": [
         "/src/style-string-to-object/style-string-to-object.js"
       ],
-      "percent": 1.53,
+      "percent": 1.5,
       "reduction": 9.44
     },
     {
@@ -326,7 +331,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseGetTag.js"
       ],
-      "percent": 1.49,
+      "percent": 1.46,
       "reduction": 5.63
     },
     {
@@ -341,7 +346,7 @@
         "/node_modules/lodash-es/_arrayLikeKeys.js",
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 1.44,
+      "percent": 1.41,
       "reduction": 6.92
     },
     {
@@ -355,7 +360,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseRest.js"
       ],
-      "percent": 1.43,
+      "percent": 1.4,
       "reduction": 5.58
     },
     {
@@ -369,7 +374,7 @@
       "dependents": [
         "/node_modules/lodash-es/merge.js"
       ],
-      "percent": 1.41,
+      "percent": 1.38,
       "reduction": 23.53
     },
     {
@@ -383,7 +388,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 1.38,
+      "percent": 1.35,
       "reduction": 5.88
     },
     {
@@ -397,7 +402,7 @@
       "dependents": [
         "/node_modules/lodash-es/isTypedArray.js"
       ],
-      "percent": 1.31,
+      "percent": 1.28,
       "reduction": 4.93
     },
     {
@@ -411,7 +416,7 @@
       "dependents": [
         "/node_modules/lodash-es/merge.js"
       ],
-      "percent": 1.27,
+      "percent": 1.24,
       "reduction": 11.92
     },
     {
@@ -425,7 +430,7 @@
       "dependents": [
         "/node_modules/lodash-es/toPlainObject.js"
       ],
-      "percent": 1.27,
+      "percent": 1.24,
       "reduction": 12.28
     },
     {
@@ -439,7 +444,7 @@
       "dependents": [
         "/node_modules/lodash-es/_setToString.js"
       ],
-      "percent": 1.26,
+      "percent": 1.24,
       "reduction": 2.88
     },
     {
@@ -454,7 +459,7 @@
         "/node_modules/lodash-es/_arrayLikeKeys.js",
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 1.26,
+      "percent": 1.23,
       "reduction": 11.52
     },
     {
@@ -470,7 +475,7 @@
         "/node_modules/lodash-es/isArrayLike.js",
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 1.22,
+      "percent": 1.2,
       "reduction": 11
     },
     {
@@ -484,7 +489,7 @@
       "dependents": [
         "/node_modules/lodash-es/_copyObject.js"
       ],
-      "percent": 1.1,
+      "percent": 1.08,
       "reduction": 11.37
     },
     {
@@ -501,7 +506,7 @@
         "/node_modules/lodash-es/_assignValue.js",
         "/node_modules/lodash-es/_isIterateeCall.js"
       ],
-      "percent": 1.08,
+      "percent": 1.05,
       "reduction": 2.63
     },
     {
@@ -516,7 +521,7 @@
         "/node_modules/lodash-es/isArrayLike.js",
         "/node_modules/lodash-es/_baseIsTypedArray.js"
       ],
-      "percent": 1.07,
+      "percent": 1.05,
       "reduction": 3.38
     },
     {
@@ -531,7 +536,7 @@
         "/node_modules/lodash-es/_arrayLikeKeys.js",
         "/node_modules/lodash-es/_isIterateeCall.js"
       ],
-      "percent": 1.02,
+      "percent": 1,
       "reduction": 2.91
     },
     {
@@ -547,7 +552,7 @@
         "/node_modules/lodash-es/keysIn.js",
         "/node_modules/lodash-es/_isIterateeCall.js"
       ],
-      "percent": 1,
+      "percent": 0.98,
       "reduction": 13.16
     },
     {
@@ -561,7 +566,7 @@
       "dependents": [
         "/node_modules/lodash-es/keysIn.js"
       ],
-      "percent": 0.99,
+      "percent": 0.97,
       "reduction": 17.51
     },
     {
@@ -575,7 +580,7 @@
       "dependents": [
         "/node_modules/lodash-es/_Stack.js"
       ],
-      "percent": 0.99,
+      "percent": 0.97,
       "reduction": 16.1
     },
     {
@@ -595,7 +600,7 @@
         "/node_modules/lodash-es/_baseMerge.js",
         "/node_modules/lodash-es/_isIterateeCall.js"
       ],
-      "percent": 0.98,
+      "percent": 0.96,
       "reduction": 3.69
     },
     {
@@ -609,7 +614,7 @@
       "dependents": [
         "/node_modules/lodash-es/_Hash.js"
       ],
-      "percent": 0.98,
+      "percent": 0.96,
       "reduction": 8.57
     },
     {
@@ -623,7 +628,7 @@
       "dependents": [
         "/node_modules/lodash-es/_createAssigner.js"
       ],
-      "percent": 0.97,
+      "percent": 0.95,
       "reduction": 20.46
     },
     {
@@ -637,7 +642,7 @@
       "dependents": [
         "/node_modules/lodash-es/_ListCache.js"
       ],
-      "percent": 0.96,
+      "percent": 0.94,
       "reduction": 10.61
     },
     {
@@ -651,7 +656,7 @@
       "dependents": [
         "/node_modules/lodash-es/_overRest.js"
       ],
-      "percent": 0.95,
+      "percent": 0.93,
       "reduction": 3.37
     },
     {
@@ -668,7 +673,7 @@
         "/node_modules/lodash-es/isPlainObject.js",
         "/node_modules/lodash-es/_baseIsTypedArray.js"
       ],
-      "percent": 0.89,
+      "percent": 0.87,
       "reduction": 19.11
     },
     {
@@ -682,7 +687,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 0.88,
+      "percent": 0.86,
       "reduction": 14.82
     },
     {
@@ -696,7 +701,7 @@
       "dependents": [
         "/node_modules/lodash-es/_initCloneObject.js"
       ],
-      "percent": 0.85,
+      "percent": 0.84,
       "reduction": 9.94
     },
     {
@@ -710,7 +715,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 0.85,
+      "percent": 0.84,
       "reduction": 16.89
     },
     {
@@ -724,7 +729,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseFor.js"
       ],
-      "percent": 0.85,
+      "percent": 0.83,
       "reduction": 4.95
     },
     {
@@ -739,7 +744,7 @@
         "/node_modules/lodash-es/toPlainObject.js",
         "/node_modules/lodash-es/_baseMerge.js"
       ],
-      "percent": 0.85,
+      "percent": 0.83,
       "reduction": 20.88
     },
     {
@@ -753,7 +758,7 @@
       "dependents": [
         "/node_modules/lodash-es/_stackSet.js"
       ],
-      "percent": 0.84,
+      "percent": 0.82,
       "reduction": 30.33
     },
     {
@@ -770,7 +775,7 @@
         "/node_modules/lodash-es/_stackSet.js",
         "/node_modules/lodash-es/_Stack.js"
       ],
-      "percent": 0.82,
+      "percent": 0.81,
       "reduction": 31.6
     },
     {
@@ -788,7 +793,7 @@
         "/node_modules/lodash-es/isPlainObject.js",
         "/node_modules/lodash-es/_baseIsTypedArray.js"
       ],
-      "percent": 0.81,
+      "percent": 0.79,
       "reduction": 4.74
     },
     {
@@ -802,7 +807,7 @@
       "dependents": [
         "/node_modules/lodash-es/_Hash.js"
       ],
-      "percent": 0.77,
+      "percent": 0.76,
       "reduction": 10.58
     },
     {
@@ -816,7 +821,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseGetTag.js"
       ],
-      "percent": 0.75,
+      "percent": 0.73,
       "reduction": 4.44
     },
     {
@@ -832,7 +837,7 @@
         "/node_modules/lodash-es/_assignValue.js",
         "/node_modules/lodash-es/_copyObject.js"
       ],
-      "percent": 0.74,
+      "percent": 0.73,
       "reduction": 13.8
     },
     {
@@ -846,7 +851,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseIsNative.js"
       ],
-      "percent": 0.73,
+      "percent": 0.72,
       "reduction": 4.87
     },
     {
@@ -860,7 +865,7 @@
       "dependents": [
         "/node_modules/lodash-es/_Hash.js"
       ],
-      "percent": 0.73,
+      "percent": 0.71,
       "reduction": 11.74
     },
     {
@@ -874,7 +879,7 @@
       "dependents": [
         "/node_modules/lodash-es/_mapCacheClear.js"
       ],
-      "percent": 0.73,
+      "percent": 0.71,
       "reduction": 29.4
     },
     {
@@ -889,7 +894,7 @@
         "/node_modules/lodash-es/_arrayLikeKeys.js",
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 0.73,
+      "percent": 0.71,
       "reduction": 24.1
     },
     {
@@ -903,7 +908,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseMerge.js"
       ],
-      "percent": 0.71,
+      "percent": 0.7,
       "reduction": 12.86
     },
     {
@@ -917,7 +922,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseSetToString.js"
       ],
-      "percent": 0.69,
+      "percent": 0.68,
       "reduction": 5.13
     },
     {
@@ -931,7 +936,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseIsNative.js"
       ],
-      "percent": 0.68,
+      "percent": 0.67,
       "reduction": 12.63
     },
     {
@@ -945,7 +950,7 @@
       "dependents": [
         "/node_modules/lodash-es/_setToString.js"
       ],
-      "percent": 0.66,
+      "percent": 0.65,
       "reduction": 25.04
     },
     {
@@ -959,7 +964,7 @@
       "dependents": [
         "/node_modules/lodash-es/_arrayLikeKeys.js"
       ],
-      "percent": 0.66,
+      "percent": 0.64,
       "reduction": 5.58
     },
     {
@@ -973,7 +978,7 @@
       "dependents": [
         "/node_modules/lodash-es/_ListCache.js"
       ],
-      "percent": 0.65,
+      "percent": 0.64,
       "reduction": 14.34
     },
     {
@@ -988,7 +993,7 @@
         "/node_modules/lodash-es/_baseMergeDeep.js",
         "/node_modules/lodash-es/_baseMerge.js"
       ],
-      "percent": 0.64,
+      "percent": 0.63,
       "reduction": 19.83
     },
     {
@@ -1003,7 +1008,7 @@
         "/node_modules/lodash-es/_arrayLikeKeys.js",
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 0.64,
+      "percent": 0.63,
       "reduction": 4.94
     },
     {
@@ -1017,7 +1022,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseMerge.js"
       ],
-      "percent": 0.64,
+      "percent": 0.63,
       "reduction": 37.02
     },
     {
@@ -1031,7 +1036,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseKeysIn.js"
       ],
-      "percent": 0.63,
+      "percent": 0.62,
       "reduction": 6.35
     },
     {
@@ -1046,7 +1051,7 @@
         "/node_modules/lodash-es/_initCloneObject.js",
         "/node_modules/lodash-es/_baseKeysIn.js"
       ],
-      "percent": 0.63,
+      "percent": 0.61,
       "reduction": 5.44
     },
     {
@@ -1060,7 +1065,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 0.6,
+      "percent": 0.59,
       "reduction": 17.14
     },
     {
@@ -1075,7 +1080,7 @@
         "/node_modules/lodash-es/_baseMergeDeep.js",
         "/node_modules/lodash-es/_baseMerge.js"
       ],
-      "percent": 0.59,
+      "percent": 0.58,
       "reduction": 5.73
     },
     {
@@ -1092,7 +1097,7 @@
         "/node_modules/lodash-es/_listCacheHas.js",
         "/node_modules/lodash-es/_listCacheSet.js"
       ],
-      "percent": 0.59,
+      "percent": 0.58,
       "reduction": 11.96
     },
     {
@@ -1106,7 +1111,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 0.59,
+      "percent": 0.58,
       "reduction": 6.19
     },
     {
@@ -1120,7 +1125,7 @@
       "dependents": [
         "/node_modules/lodash-es/_Hash.js"
       ],
-      "percent": 0.57,
+      "percent": 0.56,
       "reduction": 6.55
     },
     {
@@ -1134,7 +1139,7 @@
       "dependents": [
         "/node_modules/lodash-es/_MapCache.js"
       ],
-      "percent": 0.57,
+      "percent": 0.56,
       "reduction": 15.2
     },
     {
@@ -1148,7 +1153,7 @@
       "dependents": [
         "/node_modules/lodash-es/_createAssigner.js"
       ],
-      "percent": 0.57,
+      "percent": 0.56,
       "reduction": 26.57
     },
     {
@@ -1162,7 +1167,7 @@
       "dependents": [
         "/node_modules/lodash-es/_getMapData.js"
       ],
-      "percent": 0.55,
+      "percent": 0.54,
       "reduction": 6.54
     },
     {
@@ -1176,7 +1181,7 @@
       "dependents": [
         "/node_modules/lodash-es/_Stack.js"
       ],
-      "percent": 0.52,
+      "percent": 0.51,
       "reduction": 7.44
     },
     {
@@ -1190,7 +1195,7 @@
       "dependents": [
         "/node_modules/lodash-es/_MapCache.js"
       ],
-      "percent": 0.51,
+      "percent": 0.5,
       "reduction": 17.19
     },
     {
@@ -1204,7 +1209,7 @@
       "dependents": [
         "/node_modules/lodash-es/_cloneTypedArray.js"
       ],
-      "percent": 0.51,
+      "percent": 0.5,
       "reduction": 17.67
     },
     {
@@ -1220,7 +1225,7 @@
         "/node_modules/lodash-es/_nativeCreate.js",
         "/node_modules/lodash-es/_defineProperty.js"
       ],
-      "percent": 0.51,
+      "percent": 0.5,
       "reduction": 23.91
     },
     {
@@ -1234,7 +1239,7 @@
       "dependents": [
         "/node_modules/lodash-es/isArguments.js"
       ],
-      "percent": 0.5,
+      "percent": 0.49,
       "reduction": 25.1
     },
     {
@@ -1248,7 +1253,7 @@
       "dependents": [
         "/node_modules/lodash-es/_getPrototype.js"
       ],
-      "percent": 0.49,
+      "percent": 0.48,
       "reduction": 6.84
     },
     {
@@ -1263,7 +1268,7 @@
         "/node_modules/lodash-es/_baseSetToString.js",
         "/node_modules/lodash-es/_baseRest.js"
       ],
-      "percent": 0.48,
+      "percent": 0.47,
       "reduction": 6.79
     },
     {
@@ -1277,7 +1282,7 @@
       "dependents": [
         "/node_modules/lodash-es/_ListCache.js"
       ],
-      "percent": 0.47,
+      "percent": 0.46,
       "reduction": 18.9
     },
     {
@@ -1294,7 +1299,7 @@
         "/node_modules/lodash-es/_mapCacheHas.js",
         "/node_modules/lodash-es/_mapCacheSet.js"
       ],
-      "percent": 0.45,
+      "percent": 0.44,
       "reduction": 17.84
     },
     {
@@ -1308,7 +1313,7 @@
       "dependents": [
         "/node_modules/lodash-es/_ListCache.js"
       ],
-      "percent": 0.45,
+      "percent": 0.44,
       "reduction": 19.7
     },
     {
@@ -1322,7 +1327,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseMergeDeep.js"
       ],
-      "percent": 0.44,
+      "percent": 0.43,
       "reduction": 35.12
     },
     {
@@ -1350,7 +1355,7 @@
       "dependents": [
         "/node_modules/lodash-es/isTypedArray.js"
       ],
-      "percent": 0.42,
+      "percent": 0.41,
       "reduction": 8.48
     },
     {
@@ -1364,7 +1369,7 @@
       "dependents": [
         "/node_modules/lodash-es/_getNative.js"
       ],
-      "percent": 0.41,
+      "percent": 0.4,
       "reduction": 8.36
     },
     {
@@ -1378,7 +1383,7 @@
       "dependents": [
         "/node_modules/lodash-es/_Stack.js"
       ],
-      "percent": 0.41,
+      "percent": 0.4,
       "reduction": 8.41
     },
     {
@@ -1392,7 +1397,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseRest.js"
       ],
-      "percent": 0.37,
+      "percent": 0.36,
       "reduction": 31.54
     },
     {
@@ -1406,7 +1411,7 @@
       "dependents": [
         "/node_modules/lodash-es/_MapCache.js"
       ],
-      "percent": 0.36,
+      "percent": 0.35,
       "reduction": 34.27
     },
     {
@@ -1434,7 +1439,7 @@
       "dependents": [
         "/node_modules/lodash-es/isBuffer.js"
       ],
-      "percent": 0.35,
+      "percent": 0.34,
       "reduction": 10.07
     },
     {
@@ -1448,7 +1453,7 @@
       "dependents": [
         "/node_modules/lodash-es/_Stack.js"
       ],
-      "percent": 0.34,
+      "percent": 0.33,
       "reduction": 10.04
     },
     {
@@ -1467,7 +1472,7 @@
         "/node_modules/lodash-es/_Uint8Array.js",
         "/node_modules/lodash-es/isBuffer.js"
       ],
-      "percent": 0.32,
+      "percent": 0.31,
       "reduction": 22.48
     },
     {
@@ -1524,7 +1529,7 @@
         "/node_modules/lodash-es/_baseAssignValue.js",
         "/node_modules/lodash-es/_baseSetToString.js"
       ],
-      "percent": 0.22,
+      "percent": 0.21,
       "reduction": 32.47
     },
     {
@@ -1539,7 +1544,7 @@
         "/node_modules/lodash-es/_root.js",
         "/node_modules/lodash-es/_nodeUtil.js"
       ],
-      "percent": 0.2,
+      "percent": 0.19,
       "reduction": 16.96
     },
     {
@@ -1556,7 +1561,7 @@
         "/node_modules/lodash-es/_hashHas.js",
         "/node_modules/lodash-es/_hashSet.js"
       ],
-      "percent": 0.16,
+      "percent": 0.15,
       "reduction": 39.46
     },
     {
@@ -1571,7 +1576,7 @@
         "/node_modules/lodash-es/_mapCacheClear.js",
         "/node_modules/lodash-es/_stackSet.js"
       ],
-      "percent": 0.14,
+      "percent": 0.13,
       "reduction": 49.22
     },
     {
@@ -1600,7 +1605,7 @@
         "/node_modules/lodash-es/_initCloneObject.js",
         "/node_modules/lodash-es/isPlainObject.js"
       ],
-      "percent": 0.13,
+      "percent": 0.12,
       "reduction": 42.86
     },
     {
