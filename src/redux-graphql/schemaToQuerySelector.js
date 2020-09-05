@@ -38,21 +38,21 @@ export const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate,
   
   // Denormalizes a single collection item
   // Somewhat redundant with mapSelection, though loops over individual fields. Could use the same error checking though. Might be able to merge them.
-  const mapItem=([meta,{selectionSet:{selections=[]}={}},vDenormPrev={},vNorm,vNormPrev={},prevDenormRoot,rootState,prevRoot,getArgs])=>{
+  const mapItem=([meta,{selectionSet:{selections=[]}={}},vDenormPrev={},vNorm,vNormPrev={},rootState,prevRoot,getArgs])=>{
     let vDenorm = {}, changed = vNorm !== vNormPrev;
     for (const f of selections){
       const k = f.name.value, {rel,isList,defKind} = meta[k];
       vDenorm[k] = defKind==='scalar'
         ? rootState[meta.defName][vNorm[meta._idKey]][k]
         : isList
-          ? mapCollection([ rel, f, vDenormPrev[k], pick(vNorm[k])(rootState[rel.defName]), pick(vNormPrev[k])(prevRoot[rel.defName]), prevDenormRoot,rootState,prevRoot, getArgs])
-          : mapItem([ rel, f, vDenormPrev[k]||{}, rootState[rel.defName][vNorm[k]]||{}, prevRoot[rel.defName][vNorm[k]]||{}, prevDenormRoot,rootState,prevRoot,getArgs ]);
+          ? mapCollection([ rel, f, vDenormPrev[k], pick(vNorm[k])(rootState[rel.defName]), pick(vNormPrev[k])(prevRoot[rel.defName]), rootState,prevRoot, getArgs])
+          : mapItem([ rel, f, vDenormPrev[k]||{}, rootState[rel.defName][vNorm[k]]||{}, prevRoot[rel.defName][vNorm[k]]||{}, rootState,prevRoot,getArgs ]);
       if(vDenorm[k] !== vDenormPrev[k]) changed = true;
     }
     return changed ? vDenorm : vDenormPrev;
   };
 
-  const mapCollection=([meta,Field,vDenormPrev={},vNorm,vNormPrev={},prevDenormRoot,rootState,prevRoot,getArgs])=>{
+  const mapCollection=([meta,Field,vDenormPrev={},vNorm,vNormPrev={},rootState,prevRoot,getArgs])=>{
     // on the first traverse up, break if the final collection is unchanged since its items will be too.
     if(meta.objectFields.length===0&&vNorm===vNormPrev) return vDenormPrev;
     const args = getArgs(Field.arguments);
@@ -62,7 +62,7 @@ export const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate,
     const matchesFn = queryMatcherFns.length === 0 ? queryMatchers.filter(args) : and(...queryMatcherFns);
     let vDenorm={},changed=vNorm!==vNormPrev;
     for(const id in vNorm){
-      matchesFn(vNorm[id])&&(vDenorm[id]=mapItem([meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],prevDenormRoot,rootState,prevRoot,getArgs]));
+      matchesFn(vNorm[id])&&(vDenorm[id]=mapItem([meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],rootState,prevRoot,getArgs]));
       if(vDenorm[id]!==vDenormPrev[id])changed=true;
     }
     return changed?vDenorm:vDenormPrev;
@@ -88,7 +88,7 @@ export const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate,
       let denormRoot={},changed=rootState!==prevRoot;
       for (const s of selections){
         const k=s.name.value;
-        denormRoot[k]=mapSelection([selectionMeta[k],s,prevDenormRoot[k],rootState[k],prevRoot[k],prevDenormRoot,rootState,prevRoot,argsPopulator])
+        denormRoot[k]=mapSelection([selectionMeta[k],s,prevDenormRoot[k],rootState[k],prevRoot[k],rootState,prevRoot,argsPopulator])
         if(denormRoot[k]!==prevDenormRoot[k])changed=true;
       }
       return changed?denormRoot:prevDenormRoot;
