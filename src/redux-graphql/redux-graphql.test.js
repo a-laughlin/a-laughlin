@@ -345,6 +345,59 @@ describe("querySelectorToUseLeafQuery: integration test React.useState,redux.com
     expect(result.current).toEqual('b');
   });
 });
+// describe("queryReducer: integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)",()=>{
+//   let store,useLeafQuery,schema,mutationReducer,dispatchMutation;
+
+//   beforeEach(()=>{
+//     schema = gql`
+//       type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
+//       type Pet{id:ID,name:String}
+//       scalar SomeScalar
+//     `;
+//     mutationReducer = schemaToMutationReducer(schema);
+//     // fold the query down, merging transformed collections into root state as it goes
+//     store = createStore(mutationReducer,{
+//       SomeScalar:1,
+//       Person:{
+//         a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
+//         b:{id:'b',name:'B',best:'a',friends:['a']},
+//         c:{id:'c',name:'C',best:'a',friends:['a']},
+//       },
+//       Pet:{
+//         x:{id:'x',name:'X'},
+//         y:{id:'y',name:'Y'},
+//       },
+//     });
+//     dispatchMutation=(gqlDoc)=>store.dispatch({type:'mutation',payload:gqlDoc});
+    
+//     useLeafQuery = querySelectorToUseLeafQuery(querier,store,useState,useEffect,useMemo);
+//   });
+//   afterAll(()=>{
+//     reducerMap=querier=schema=store=useLeafQuery=null;
+//   });
+  
+//   test('should convert scalar props to their value', () => {
+//     const query=gql(`{SomeScalar}`)
+//     const { result } = renderHook(() =>useLeafQuery(query));
+//     expect(result.current).toEqual(1);
+//   });
+//   test('should convert objects with a single selection to a collection of that selection', () => {
+//     const { result } = renderHook(() =>useLeafQuery(gql(`{Person{id}}`)));
+//     expect(result.current).toEqual({a:'a',b:'b',c:'c'});
+//   });
+//   test('should convert a single selected object + selection to the selected value', () => {
+//     const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id}}`)));
+//     expect(result.current).toEqual('a');
+//   });
+//   test('should convert one object with two selections to the object with only that selection', () => {
+//     const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id,name}}`)));
+//     expect(result.current).toEqual({a:{id:'a',name:'A'}});
+//   });
+//   test('should convert a nested property selection to the selected value', () => {
+//     const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){best{id}}}`)));
+//     expect(result.current).toEqual('b');
+//   });
+// });
 
 // describe("getUseQuery: integration test react+redux+useQuery+boundary values directive",()=>{
 //   let store,useQuery,querier,reducerMap;
