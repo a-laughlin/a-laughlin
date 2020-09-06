@@ -18,6 +18,8 @@ export const getFieldMeta=f=>{
   isNonNull=isNonNullList&&f.type.type.type.kind==='NonNullType';
   return {isList,isNonNull,isNonNullList};
 }
+const defineProp = (obj,key,value)=>Object.defineProperty(obj,key,{value,enumerable:false,writable:false,configurable:false});
+
 export default memoize(schema=>{
   const definitions=ensureArray(schema.definitions).filter(d=>/^(Query|Mutation|Subscription)$/.test(d.name.value)===false);
   // const builtInDefinitions=['ID','Int','Float','String','Boolean']
@@ -32,22 +34,10 @@ export default memoize(schema=>{
     definitionsByName,
     selectionMeta:transToObject((acc,d,dName)=>{
       const meta=acc[dName]={};
-      Object.defineProperty(meta,'defName',{value:dName,enumerable:false,writable:false,configurable:false});
-      Object.defineProperty(meta,'defKind',{
-        value:dName in definitionsByKind.ObjectTypeDefinition?'object':'scalar',
-        enumerable:false,
-        writable:false,
-        configurable:false
-      });
+      defineProp(meta,'defName',dName);
+      defineProp(meta,'defKind',dName in definitionsByKind.ObjectTypeDefinition?'object':'scalar');
       if (dName in definitionsByKind.ObjectTypeDefinition){
-        Object.defineProperty(meta,'objectFields',{
-          value:[],
-          enumerable:false,
-          writable:false,
-          configurable:false
-        });
-        // Object.defineProperty(m,'_scalarTypes',{enumerable:false,writable:false,configurable:false});
-        // Object.defineProperty(m,'_objectTypes',{enumerable:false,writable:false,configurable:false});
+        defineProp(meta,'objectFields',[]);
         for (const f of d.fields){
           const [fName,typeName,{isList,isNonNull,isNonNullList}]=[getDefName(f),getFieldTypeName(f),getFieldMeta(f)];
           if (meta._idKey===undefined && typeName==='ID') Object.defineProperty(meta,'_idKey',{value:fName,enumerable:false,writable:false,configurable:false});
