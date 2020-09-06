@@ -2,6 +2,7 @@
   "name": "a-laughlin",
   "private": true,
   "root": true,
+  "repository":"github:a-laughlin/a-laughlin",
   "workspaces": [
     "src/*"
   ],
