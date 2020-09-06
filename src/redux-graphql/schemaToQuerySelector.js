@@ -25,11 +25,11 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
 const isScalarField=([meta])=>meta.defKind==='scalar';
 const isObjectField=([meta])=>meta.defKind==='object';
 const isListField=([meta])=>meta.isList;
-const isPrimitiveValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>!isObjectLike(vNorm);
-const isObjectValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm);
-const isItemValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm)&&meta.idKey in vNorm;
-const isCollectionValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm) && !(meta.idKey in vNorm);
-
+const isPrimitiveValue=([meta,Field,vDenormPrev,vNorm])=>!isObjectLike(vNorm);
+const isObjectValue=([meta,Field,vDenormPrev,vNorm])=>isObjectLike(vNorm);
+const isItemValue=([meta,Field,vDenormPrev,vNorm])=>isObjectLike(vNorm) && meta.idKey in vNorm;
+const isCollectionValue=([meta,Field,vDenormPrev,vNorm])=>isObjectLike(vNorm) && !(meta.idKey in vNorm);
+                         
 
 // for filtering, a dsl is complicated
 // https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
@@ -38,23 +38,23 @@ export const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate,
   
   // Denormalizes a single collection item
   // Somewhat redundant with mapSelection, though loops over individual fields. Could use the same error checking though. Might be able to merge them.
-  const mapItem=([meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs])=>{
+  const mapItem=([meta,Field,vDenormPrev={},vNorm,vNormPrev={},rootNorm,rootNormPrev,getArgs])=>{
     let changed = vNorm !== vNormPrev,vDenorm={};
     const {selectionSet:{selections=[]}={}}=Field;
     for (const f of selections){
       const k = f.name.value;
-      // console.log(...Object.entries(meta[k]));
-      // if(meta[k].fieldName===undefined)console.log('fieldName undefined',meta[k].defName,k);
-      // if(meta[k].defName===undefined)console.log('defName undefined',meta[k].fieldName,k);
+      if(meta[k].fieldName===undefined)console.log('fieldName undefined',meta[k].defName,k);
+      if(meta[k].defName===undefined)console.log('defName undefined',meta[k].fieldName,k);
       if (meta[k].defKind==='scalar') (vDenorm[k] = mapSelection([meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs]));
-      else if (meta[k].isList) (vDenorm[k] = mapSelection([ meta[k], f, vDenormPrev[k], pick(vNorm[k])(rootNorm[meta[k].defName]), pick(vNormPrev[k])(rootNormPrev[meta[k].defName]), rootNorm,rootNormPrev, getArgs]));
-      else (vDenorm[k]=mapSelection([ meta[k], f, vDenormPrev[k], rootNorm[meta[k].defName][vNorm[k]], rootNormPrev[meta[k].defName][vNorm[k]], rootNorm,rootNormPrev,getArgs ]));
+      else if (meta[k].isList) (vDenorm[k] = mapSelection([ meta[k], f, vDenormPrev[k], pick(vNorm[k]??[])(rootNorm[meta[k].defName]||{}), pick(vNormPrev[k]??[])(rootNormPrev[meta[k].defName]||{}), rootNorm,rootNormPrev, getArgs]));
+      else (vDenorm[k]=mapSelection([ meta[k], f, vDenormPrev[k], rootNorm[meta[k].defName][vNorm[k]]||{}, rootNormPrev[meta[k].defName][vNorm[k]]||{}, rootNorm,rootNormPrev,getArgs ]));
       if(vDenorm[k] !== vDenormPrev[k]) changed = true;
     }
+    // console.log(`vDenorm`,vDenorm)
     return changed ? vDenorm : vDenormPrev;
   };
 
-  const mapCollection=([meta,Field,vDenormPrev={},vNorm,vNormPrev={},rootNorm,rootNormPrev,getArgs])=>{
+  const mapCollection=([meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs])=>{
     // on the first traverse up, break if the final collection is unchanged since its items will be too.
     if(meta.objectFields.length===0&&vNorm===vNormPrev) return vDenormPrev;
     const args = getArgs(Field.arguments);
@@ -64,7 +64,7 @@ export const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate,
     const matchesFn = queryMatcherFns.length === 0 ? queryMatchers.filter(args) : and(...queryMatcherFns);
     let vDenorm={},changed=vNorm!==vNormPrev;
     for(const id in vNorm){
-      matchesFn(vNorm[id])&&(vDenorm[id]=mapItem([meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],rootNorm,rootNormPrev,getArgs]));
+      matchesFn(vNorm[id])&&(vDenorm[id]=mapItem([meta,Field,vDenormPrev[id]||{},vNorm[id]||{},vNormPrev[id]||{},rootNorm,rootNormPrev,getArgs]));
       if(vDenorm[id]!==vDenormPrev[id])changed=true;
     }
     return changed?vDenorm:vDenormPrev;
@@ -74,10 +74,10 @@ export const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate,
     [isScalarField,cond(
       [isListField,([meta,Field,vDenormPrev,vNorm])=>vNorm],
       [isPrimitiveValue,([meta,Field,vDenormPrev,vNorm])=>vNorm],
-      [isObjectValue,()=>new Error('cannot request object without selecting fields')],
+      [isObjectValue,()=>{throw new Error('cannot request object without selecting fields')}],
     )],
     [isObjectField,cond(
-      [isPrimitiveValue,([{defName},Field,vDenormPrev,vNorm])=>new Error(`cannot request fields of a primitive ${JSON.stringify({value:vNorm,defName},null,2)}`)],
+      [isPrimitiveValue,([{defName,defKind},Field,vDenormPrev,vNorm])=>{throw new Error(`cannot request fields of a primitive ${JSON.stringify({vNorm:vNorm||'undef',defName,defKind},null,2)}`)}],
       [isCollectionValue,mapCollection],
       [isItemValue,mapItem],// item (worth noting that root state is also an item with no key, given its heterogenous values);
     )],
@@ -88,7 +88,10 @@ export const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate,
     const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
     const selections=query.definitions[0].selectionSet.selections;
     return (rootNorm={},rootNormPrev=rootNorm,rootDenormPrev={})=>{
-      // return mapItem([selectionMeta._query,query.definitions[0],rootDenormPrev,rootNorm,rootNormPrev,rootNorm,rootNormPrev,argsPopulator])._query;
+      // const result = mapItem([selectionMeta._query,query.definitions[0],rootDenormPrev,rootNorm,rootNormPrev,rootNorm,rootNormPrev,argsPopulator]);
+      // console.log(`result`,result);
+      // const meta = selectionMeta._query,Field=query.definitions[0];
+      // return mapItem([meta,Field,rootDenormPrev,rootNorm,rootNormPrev,rootNorm,rootNormPrev,argsPopulator]);
       let denormRoot={},changed=rootNorm!==rootNormPrev;
       for (const s of selections){
         const k=s.name.value;

@@ -71,21 +71,18 @@ export default memoize(schema=>{
       delete fMeta.defNameTemp;
     }
   }
-  // custom query definition, to eliminate the need to create a query Object repeating each type
+  // create a custom "Query" index of all types, so defining one manually is unnecessary
   // namespaced as _query to prevent conflicts with Query should one be defined
   result.selectionMeta._query = transToObject((acc,meta,defName)=>{
-    acc[defName]={
-      fieldName:defName,
-      isList:false,
-      isNonNull:false,
-      isNonNullList:false,
-    }
-    assignAllProps(acc[defName],meta);
+    const fMeta = acc[defName] = {};
+    defineHiddenProp(fMeta,'fieldName',defName);
+    defineHiddenProp(fMeta,'isList',meta.defKind==='object');
+    defineHiddenProp(fMeta,'isNonNull',false);
+    defineHiddenProp(fMeta,'isNonNullList',false);
+    assignAllProps(fMeta,meta);
   })(result.selectionMeta);
   defineHiddenProp(result.selectionMeta._query,'defName','_query');
   defineHiddenProp(result.selectionMeta._query,'defKind','object');
-  // for (const d in result.selectionMeta._query){
-  //   console.log('d',d,result.selectionMeta._query[d].defName);
-  // }
+
   return result;
 });
