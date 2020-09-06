@@ -34,16 +34,16 @@ const defaultActions = {
 
 export const schemaToReducerMap = (schema) => (ops=defaultActions)=>{
   const {selectionMeta}=indexSchema(schema);
-  const actionNormalizers = mapToObject(({defKind,_idKey})=>cond(
+  const actionNormalizers = mapToObject(({defKind,idKey})=>cond(
     [_=>defKind!=='object',identity],                             // leave scalars and other non-object types
-    [isString,payload=>({[payload]:{[_idKey]:payload}})],         // convert number/string id to collection
-    [isInteger,payload=>({[payload]:{[_idKey]:`${payload}`}})],   // convert number/string id to collection
+    [isString,payload=>({[payload]:{[idKey]:payload}})],         // convert number/string id to collection
+    [isInteger,payload=>({[payload]:{[idKey]:`${payload}`}})],   // convert number/string id to collection
     [isObjectLike,cond(
       [isArray,transArrayToObject((o,v)=>{                        // convert array to collection
         v=normalizePayload(v);
-        o[v[_idKey]]=v;
+        o[v[idKey]]=v;
       })],
-      [hasKey(_idKey), payload=>({[payload[_idKey]]:payload})],   // convert single item to collection
+      [hasKey(idKey), payload=>({[payload[idKey]]:payload})],   // convert single item to collection
       [stubTrue,identity]                                         // collection, leave as is
     )],
     [stubTrue,payload=>new Error(`unrecognized payload type\n${JSON.stringify(payload,null,2)}`)]

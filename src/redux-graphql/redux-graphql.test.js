@@ -41,7 +41,7 @@ describe("schemaToReducerMap", () => {
   });
   it("should generate keys for each type ,plus scalars",()=>{
     expect(Object.keys(reducerMap).sort())
-    .toEqual(['Person','Pet','SomeScalar']);
+    .toEqual(['Person','Pet','SomeScalar','Boolean','Float','ID','Int','String','_query'].sort());
   });
   it("should read values as default",()=>{
     expect(reducerMap.Person(state.Person))

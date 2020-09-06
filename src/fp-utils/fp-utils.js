@@ -308,8 +308,9 @@ export const pget = cond( // polymorphic get
 );
 export const pick=cond(
   [isArray,keys=>obj=>transArrayToObject((o,k)=>o[k]=obj[k])(keys)],
-  [isString,key=>obj=>obj[key]],
+  [isString,key=>obj=>({[key]:obj[key]})],
   [isFunction,filterToSame],
+  [stubTrue,keys=>obj=>new Error('unsupported type for pick: '+typeof keys)]
 );
 
 
