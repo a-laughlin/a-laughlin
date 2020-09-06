@@ -1,4 +1,4 @@
-import {not,isObjectLike,cond,and,toPredicate, pick,ensureArray, transArrayToObject,transObjectToArray} from '@a-laughlin/fp-utils';
+import {not,isObjectLike,cond,and,toPredicate, pick,ensureArray, transArrayToObject,transObjectToArray, or, stubTrue} from '@a-laughlin/fp-utils';
 import indexSchema from './indexSchema';
 // returns a function that populates query arguments with passed variables
 const getArgsPopulator = vars=>{
@@ -22,9 +22,9 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
 
 
 // predicates for schemaToQuerySelector
-const isScalarField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='scalar';
-const isObjectField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='object';
-const isListField=([meta,Field])=>meta.isList;
+const isScalarField=([meta])=>meta.defKind==='scalar';
+const isObjectField=([meta])=>meta.defKind==='object';
+const isListField=([meta])=>meta.isList;
 const isPrimitiveValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>!isObjectLike(vNorm);
 const isObjectValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm);
 const isItemValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm)&&meta._idKey in vNorm;
@@ -38,15 +38,14 @@ export const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate,
   
   // Denormalizes a single collection item
   // Somewhat redundant with mapSelection, though loops over individual fields. Could use the same error checking though. Might be able to merge them.
-  const mapItem=([meta,{selectionSet:{selections=[]}={}},vDenormPrev={},vNorm,vNormPrev={},rootNorm,rootNormPrev,getArgs])=>{
-    let vDenorm = {}, changed = vNorm !== vNormPrev;
+  const mapItem=([meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs])=>{
+    let changed = vNorm !== vNormPrev,vDenorm={};
+    const {selectionSet:{selections=[]}={}}=Field;
     for (const f of selections){
-      const k = f.name.value, {rel,isList,defKind} = meta[k];
-      vDenorm[k] = defKind==='scalar'
-        ? rootNorm[meta.defName][vNorm[meta._idKey]][k]
-        : isList
-          ? mapCollection([ rel, f, vDenormPrev[k], pick(vNorm[k])(rootNorm[rel.defName]), pick(vNormPrev[k])(rootNormPrev[rel.defName]), rootNorm,rootNormPrev, getArgs])
-          : mapItem([ rel, f, vDenormPrev[k]||{}, rootNorm[rel.defName][vNorm[k]]||{}, rootNormPrev[rel.defName][vNorm[k]]||{}, rootNorm,rootNormPrev,getArgs ]);
+      const k = f.name.value, {rel,isList,defKind,defName} = meta[k];
+      if (defKind==='scalar') (vDenorm[k] = mapSelection([meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs]));
+      else if (isList) (vDenorm[k] = mapSelection([ rel, f, vDenormPrev[k], pick(vNorm[k])(rootNorm[rel.defName]), pick(vNormPrev[k])(rootNormPrev[rel.defName]), rootNorm,rootNormPrev, getArgs]));
+      else (vDenorm[k]=mapSelection([ rel, f, vDenormPrev[k], rootNorm[rel.defName][vNorm[k]], rootNormPrev[rel.defName][vNorm[k]], rootNorm,rootNormPrev,getArgs ]));
       if(vDenorm[k] !== vDenormPrev[k]) changed = true;
     }
     return changed ? vDenorm : vDenormPrev;
@@ -70,8 +69,9 @@ export const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate,
 
   const mapSelection=cond(
     [isScalarField,cond(
+      [isListField,([meta,Field,vDenormPrev,vNorm])=>vNorm],
+      [isPrimitiveValue,([meta,Field,vDenormPrev,vNorm])=>vNorm],
       [isObjectValue,()=>new Error('cannot request object without selecting fields')],
-      [isPrimitiveValue,([meta,Field,vDenormPrev,vNorm])=>vNorm]
     )],
     [isObjectField,cond(
       [isPrimitiveValue,([{defName},Field,vDenormPrev,vNorm])=>new Error(`cannot request fields of a primitive ${JSON.stringify({value:vNorm,defName},null,2)}`)],
@@ -85,6 +85,7 @@ export const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate,
     const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
     const selections=query.definitions[0].selectionSet.selections;
     return (rootNorm={},rootNormPrev=rootNorm,rootDenormPrev={})=>{
+      // return mapItem([selectionMeta,query.definitions[0],rootDenormPrev,rootNorm,rootNormPrev,rootNorm,rootNormPrev,argsPopulator])
       let denormRoot={},changed=rootNorm!==rootNormPrev;
       for (const s of selections){
         const k=s.name.value;
