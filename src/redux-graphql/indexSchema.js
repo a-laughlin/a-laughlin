@@ -49,10 +49,10 @@ export default memoize(schema=>{
           if (meta.idKey===undefined && fDefName==='ID') defineHiddenProp(meta,'idKey',fieldKeyName);
           const fMeta = meta[fieldKeyName]={};
           defineHiddenProp(fMeta,'fieldName',fieldKeyName);
+          defineHiddenProp(fMeta,'fieldKindName',fDefName);
           defineHiddenProp(fMeta,'isList',isList);
           defineHiddenProp(fMeta,'isNonNull',isNonNull);
           defineHiddenProp(fMeta,'isNonNullList',isNonNullList);
-          fMeta.defNameTemp=fDefName; // make visible since it'll be deleted when linking with definitions
           if(fDefName in definitionsByKind.ObjectTypeDefinition){
             meta.objectFields.push(meta[fieldKeyName]);
           }
@@ -67,22 +67,25 @@ export default memoize(schema=>{
   for (const dName in definitionsByKind.ObjectTypeDefinition){
     for (const fName in result.selectionMeta[dName]){
       const fMeta=result.selectionMeta[dName][fName];
-      assignAllProps(fMeta,result.selectionMeta[fMeta.defNameTemp]);
-      delete fMeta.defNameTemp;
+      assignAllProps(fMeta,result.selectionMeta[fMeta.fieldKindName]);
     }
   }
   // create a custom "Query" index of all types, so defining one manually is unnecessary
   // namespaced as _query to prevent conflicts with Query should one be defined
-  result.selectionMeta._query = transToObject((acc,meta,defName)=>{
-    const fMeta = acc[defName] = {};
-    defineHiddenProp(fMeta,'fieldName',defName);
-    defineHiddenProp(fMeta,'isList',meta.defKind==='object');
-    defineHiddenProp(fMeta,'isNonNull',false);
-    defineHiddenProp(fMeta,'isNonNullList',false);
-    assignAllProps(fMeta,meta);
-  })(result.selectionMeta);
+  result.selectionMeta._query = {};
   defineHiddenProp(result.selectionMeta._query,'defName','_query');
   defineHiddenProp(result.selectionMeta._query,'defKind','object');
+  defineHiddenProp(result.selectionMeta._query,'objectFields',[]);
+  defineHiddenProp(result.selectionMeta._query,'fieldName','_query');
+  defineHiddenProp(result.selectionMeta._query,'fieldKindName','_query');
+  transToObject((acc,meta,defName)=>{
+    const fMeta = result.selectionMeta._query[defName] = {};
+    assignAllProps(fMeta,meta);
+    defineHiddenProp(fMeta,'isList',false);
+    defineHiddenProp(fMeta,'isNonNull',false);
+    defineHiddenProp(fMeta,'isNonNullList',false);
+    if(meta.defKind==='object') result.selectionMeta._query.objectFields.push(fMeta);
+  })(result.selectionMeta);
 
   return result;
 });
