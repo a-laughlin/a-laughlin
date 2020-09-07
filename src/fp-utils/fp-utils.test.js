@@ -253,16 +253,6 @@ describe("tdToObject", () => {
     expect(blankObjectResult).toEqual({});
   });
 });
-describe("tdToObjectImmutable", () => {
-  it("tdToObjectImmutable should produce expected results",()=>{
-    const takeEvensAdd1=compose(tdFilter(x=>x%2===0),tdMap(x=>x+'a'));
-    const tdToObjFn=tdToObjectImmutable(takeEvensAdd1);
-    const arrayInputResult1=tdToObjFn([0,1,2,3,4]);
-    expect(arrayInputResult1).toEqual({"0":'0a',"2":'2a',"4":'4a'});
-    const arrayInputResult2=tdToObjFn([0,1,2,3,4]);
-    expect(arrayInputResult1).toBe(arrayInputResult2);
-  });
-});
 describe("transduceDF/BF", () => {
   it("should map synchronous trees",()=>{
     const oTree={a:{a1:{a11:true},a2:true},b:{b1:true}};

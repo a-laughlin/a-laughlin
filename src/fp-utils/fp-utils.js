@@ -354,25 +354,7 @@ export const appendArrayReducer = (acc=[],v)=>{acc[acc.length]=v;return acc;}
 export const appendObjectReducer = (acc={},v,k)=>{acc[k]=v;return acc;}
 export const tdToArray = transducer=>collection=>transduce([], appendArrayReducer, transducer, collection);
 export const tdToObject = transducer=>collection=>transduce(({}), appendObjectReducer, transducer, collection);
-export const tdToObjectImmutable = transducer=>{
-  let lastOutput={};
-  let lastCount;
-  return collection=>{
-    // console.log(`transducer`,transducer)
-    let count=0,changed=false;
-    const output=tdToObject(compose(
-      transducer,
-      tdTap((a,v,k,c)=>{++count;if(v!==lastOutput[k]){changed=true};})
-    ))(collection);
-    if(changed===true||lastCount!==count){
-      lastCount=count;
-      lastOutput=output;
-    }
-    return lastOutput;
-  };
-};
 export const tdToSame = transducer=>collection=>(Array.isArray(collection)?tdToArray:tdToObject)(transducer)(collection);
-
 export const tdMap = mapper => nextReducer => (a,v,...kc) => nextReducer(a,mapper(v,...kc),...kc);
 export const tdMapKey = mapper => nextReducer => (a,v,k,...c) => nextReducer(a,v,mapper(v,k,...c),...c);
 export const tdMapWithAcc = mapper => nextReducer => (a,v,...kc) => nextReducer(a,mapper(a,v,...kc),...kc);
@@ -430,7 +412,6 @@ export const transduceDF = ({
   )(edgeCombiner);
   const dfReducer = childrenLoopReducer(tempdfReducer);
   return dfReducer;
-  // return (a,v,k,c)=>isObjectLike(v) ? dfReducer(a,v,k,c) : tempdfReducer(a,v,k,c);
 };
 
 
