@@ -285,7 +285,7 @@ describe("transduceDF/BF", () => {
     // map to flattened tree
     const oTree={a:{a1:{a11:true},a2:true},b:{b1:true}};
     expect(transduceDF({
-      visit:tdDfObjectLikeValuesWith(identity),
+      visit:nextReducer=>(a,v,k,c,df)=>nextReducer(a,isObjectLike(v)?df(a,v):v,k,c),
       edgeCombiner:(acc={},v,k)=>(acc[k]=1)&&acc
     })({},oTree))
     .toEqual({a:1,a1:1,a11:1,a2:1,b:1,b1:1});

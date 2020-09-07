@@ -1,4 +1,4 @@
-import {not,isObjectLike,cond,and,toPredicate, pick,ensureArray, transArrayToObject,transObjectToArray, or, stubTrue, plog, transToObject, diffBy} from '@a-laughlin/fp-utils';
+import {not,isObjectLike,cond,and,toPredicate, pick,ensureArray, transArrayToObject,transObjectToArray, or, stubTrue, plog, transToObject, diffBy, appendObjectReducer, tdFilter, tdFilterWithAcc, mapToObject} from '@a-laughlin/fp-utils';
 import indexSchema from './indexSchema';
 // returns a function that populates query arguments with passed variables
 const getArgsPopulator = vars=>{
@@ -24,7 +24,7 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
 // predicates for schemaToQuerySelector
 const isScalarField=([meta])=>meta.defKind==='scalar';
 const isObjectField=([meta])=>meta.defKind==='object';
-const isListField=([meta])=>meta.isList;
+// const isListField=([meta])=>meta.isList;
 const isCollectionItemField=([meta])=>'fieldName' in meta;
 const isCollectionField=([meta])=>!('fieldName' in meta);
 const isPrimitiveValue=([meta,Field,vDenormPrev,vNorm])=>!isObjectLike( meta.isList?vNorm[0]:vNorm );
@@ -33,23 +33,25 @@ const isObjectValue=([meta,Field,vDenormPrev,vNorm])=>isObjectLike( meta.isList?
 // for filtering, a dsl is complicated
 // https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
 // Mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter for MVP
-export const schemaToQuerySelector=( schema, itemTransforms={
-  filter:toPredicate,
-  omit:x=>not(toPredicate(x))
-} )=>{
-
+export const withVnorm=fn=>(acc,arr,id)=>fn(arr[3],id);
+export const schemaToQuerySelector=( schema, transducers={} )=>{
+  transducers=Object.assign({
+    filter:nextFn=>x=>{const p=withVnorm(toPredicate(x));return(...args)=>p(...args)?nextFn(...args):args[0]},
+    omit:nextFn=>x=>{const p=withVnorm(toPredicate(x));return(...args)=>!p(...args)?nextFn(...args):args[0]},
+  },transducers);
+  
   const mapSelection=cond(
     [isScalarField,cond(
       [isObjectValue,()=>{throw new Error('cannot request object without selecting fields')}],
       [isPrimitiveValue,([meta,Field,vDenormPrev,vNorm])=>vNorm],
     )],
     [isObjectField,cond(
-      [isCollectionItemField, withDenormalizedItemValue(mapSelections)],
+      [isCollectionItemField, withDenormalizedItemIds(mapSelections)],
       [isPrimitiveValue,()=>{throw new Error('cannot select field of primitive value')}],
       [isCollectionField,mapCollection],
     )]
   );
-
+  
   function mapSelections([meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs]){
     let changed = vNorm !== vNormPrev,vDenorm={};
     Field.selectionSet.selections.forEach(f=>{
@@ -60,21 +62,24 @@ export const schemaToQuerySelector=( schema, itemTransforms={
     return changed ? vDenorm : vDenormPrev;
   };
 
-  function withDenormalizedItemValue(fn){
+  function withDenormalizedItemIds(fn){
     return ([m,f,vDP={},id='',idPrev='',rN,rNP,g])=>(
       m.isList
         ? transArrayToObject((o,i)=>o[i]=fn([m, f, vDP, rN[m.defName][i], rNP[m.defName]?.[i], rN,rNP, g]))(id)
         : fn([m, f, vDP, rN[m.defName][id], rNP[m.defName]?.[id], rN , rNP, g]));
   }
 
+  const collectionCombiner = (a,v,id)=>{a[id]=mapSelections(v);return a;};
+  const collectionReducers = Object.entries(transducers).reduce((o,[k,t])=>{o[k]=t(collectionCombiner);return o},{});
   function mapCollection([meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs]){
     // on the first traverse up, break if the final collection is unchanged since its items will be too.
     if(meta.objectFields.length===0&&vNorm===vNormPrev) return vDenormPrev;
-    const args = getArgs(Field.arguments);
-    const matchesFn=(Field.arguments?.reduce((f,{name:{value:v}})=>f||(itemTransforms[v]?.(args[v])),null))||itemTransforms.filter(args);
+    const a=Field.arguments;
+    const args = getArgs(a);
+    const reducer=(a.reduce((f,{name:{value:v}})=>f||(collectionReducers[v]?.(args[v])),null))||collectionReducers.filter(args);
     let vDenorm={},changed=vNorm!==vNormPrev;
     for(const id in vNorm){
-      matchesFn(vNorm[id])&&(vDenorm[id]=mapSelections([meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],rootNorm,rootNormPrev,getArgs]));
+      vDenorm=reducer(vDenorm,[meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],rootNorm,rootNormPrev,getArgs],id);
       if(vDenorm[id]!==vDenormPrev[id])changed=true;
     }
     return changed?vDenorm:vDenormPrev;
