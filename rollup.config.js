@@ -45,7 +45,7 @@ const modules = readdirSync('./src')
   input:join(inDir,file),
   plugins:[
     aliasPlugin,
-    ...(dir!=='redux-graphql'?[]:[copy([ { files: join(inDir,'*.html'), dest: outDir }])]),
+    ...(dir!=='gqdux'?[]:[copy([ { files: join(inDir,'*.html'), dest: outDir }])]),
     copy([ { files: join(inDir,'package.json'), dest: outDir }]),
     resolvePlugin,
     commonjsPlugin,

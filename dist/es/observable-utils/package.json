@@ -1,6 +1,6 @@
 {
   "name": "@a-laughlin/observable-utils",
-  "version": "0.0.5",
+  "version": "0.0.15",
   "description": "functional reactive programming utils (aka streams,observables)",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
@@ -12,5 +12,8 @@
   "dependencies": {
     "xstream": "^11.2.0"
   },
-  "gitHead": "512200fcbeeb52c75ade4780c28c7824bacc789b"
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "9160fc75cda365c28a31d80902e5ed7816e79602"
 }
