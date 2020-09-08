@@ -38,25 +38,14 @@ if (globalThis.process.env.NODE_ENV !== 'production') {
     return fns.reduce((acc, f) => f(acc), fn(...args));
   };
 }
-const stubTrue = ()=>true;
 
 // const stubs
 const frozenEmptyArray = Object.freeze([]);
 const frozenEmptyObject = Object.freeze(Object.create(null));
-
-
-// primitive predicates
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isFinite
-const isFinite = Number.isFinite || (v=>typeof value === 'number' && isFinite(value));
-const isInteger = Number.isInteger || (v => isFinite(v) && v % 1 === 0);
 const isString = arg=>typeof arg==='string';
-const isFunction = arg=>typeof arg==='function';
-const isObjectLike = arg=>typeof arg==='object' && arg !== null;
 const isArray = Array.isArray.bind(Array);
 // functions
 const makeCollectionFn=(arrayFn,objFn)=>(...args)=>ifElse(isArray,arrayFn(...args),objFn(...args));
-
-const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(ensureArray(args[0]));
 const ensureArray = (val=[])=>isArray(val) ? val : [val];
 const ensureString = (val)=>isString(val) ? val : `${val}`;
 
@@ -65,12 +54,11 @@ const ensureString = (val)=>isString(val) ? val : `${val}`;
 // const matches=o=>and(ma((v,k)=>is)(o),(o)
 const not = fn=>(...args)=>!fn(...args);
 const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
-const or = acceptArrayOrArgs((preds)=>(...args)=>{
+const or = (...preds)=>(...args)=>{
   for (const p of preds)if(p(...args)===true)return true;
   return false;
-});
+};
 const none = compose(not,or);
-const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);});
 
 
 
@@ -84,30 +72,13 @@ const transArrayToObject = fn => (coll=[]) => {
   while (++k < l) fn(acc, coll[k], k, coll);
   return acc;
 };
-const transArrayToArray = fn => (coll=[]) => {
-  const l = coll.length, acc = [];
-  let k = -1;
-  while (++k < l) fn(acc, coll[k], k, coll);
-  return acc;
-};
 const transObjectToObject = fn => (coll={}) => {
   let k, acc = Object.create(null);
   for (k in coll) fn(acc, coll[k], k, coll);
   return acc;
 };
-const transObjectToArray = fn => (coll={}) => {
-  let k, acc = [];
-  for (k in coll) fn(acc, coll[k], k, coll);
-  return acc;
-};
 
 const transToObject = makeCollectionFn(transArrayToObject,transObjectToObject);
-const transToArray = makeCollectionFn(transArrayToArray,transObjectToArray);
-const filterToArray =pred=>transToArray((a,v,k)=>pred(v,k)&&(a[a.length]=v)); // _ equiv filter
-const filterToObject=pred=>transToObject((a,v,k)=>pred(v,k)&&(a[k]=v)); // _ equiv pickBy
-const filterToSame=makeCollectionFn(filterToArray,filterToObject);
-const mapToObject=fn=>transToObject((a,v,k)=>a[k]=fn(v,k)); // _ equiv mapValues
-const mo=mapToObject; // backward compatability
 
 
 // collection predicates
@@ -130,23 +101,6 @@ const groupByValues = transToObject((o,v)=>{
     for (vv of ensureArray(v[k]))
       pushToArrayProp(o,v,ensureString(vv));
 });
-
-
-// getters
-const pget = cond( // polymorphic get
-  [isString,str=>{
-    str=str.split('.');
-    return targ=>str.reduce((t,s)=>isArray(t) && !isInteger(+s) ? t.map(o=>o[s]) : t[s], targ)
-  }],
-  [isArray,keys=>pick(keys)],
-  [isObjectLike, obj=>target=>mo(f=>pget(f)(target))(obj)],
-  [stubTrue,identity], // handles the function case
-);
-const pick=cond(
-  [isArray,keys=>obj=>transArrayToObject((o,k)=>o[k]=obj[k])(keys)],
-  [isString,key=>obj=>obj[key]],
-  [isFunction,filterToSame],
-);
 
 
 // export const diffBy = (by, reducer) => (args = []) => {
@@ -536,7 +490,7 @@ var asyncTag = '[object AsyncFunction]',
  * _.isFunction(/abc/);
  * // => false
  */
-function isFunction$1(value) {
+function isFunction(value) {
   if (!isObject(value)) {
     return false;
   }
@@ -620,7 +574,7 @@ function baseIsNative(value) {
   if (!isObject(value) || isMasked(value)) {
     return false;
   }
-  var pattern = isFunction$1(value) ? reIsNative : reIsHostCtor;
+  var pattern = isFunction(value) ? reIsNative : reIsHostCtor;
   return pattern.test(toSource(value));
 }/**
  * Gets the value at `key` of `object`.
@@ -1142,7 +1096,7 @@ function initCloneObject(object) {
  * _.isObjectLike(null);
  * // => false
  */
-function isObjectLike$1(value) {
+function isObjectLike(value) {
   return value != null && typeof value == 'object';
 }/** `Object#toString` result references. */
 var argsTag = '[object Arguments]';
@@ -1155,7 +1109,7 @@ var argsTag = '[object Arguments]';
  * @returns {boolean} Returns `true` if `value` is an `arguments` object,
  */
 function baseIsArguments(value) {
-  return isObjectLike$1(value) && baseGetTag(value) == argsTag;
+  return isObjectLike(value) && baseGetTag(value) == argsTag;
 }/** Used for built-in method references. */
 var objectProto$6 = Object.prototype;
 
@@ -1184,7 +1138,7 @@ var propertyIsEnumerable = objectProto$6.propertyIsEnumerable;
  * // => false
  */
 var isArguments = baseIsArguments(function() { return arguments; }()) ? baseIsArguments : function(value) {
-  return isObjectLike$1(value) && hasOwnProperty$4.call(value, 'callee') &&
+  return isObjectLike(value) && hasOwnProperty$4.call(value, 'callee') &&
     !propertyIsEnumerable.call(value, 'callee');
 };/**
  * Checks if `value` is classified as an `Array` object.
@@ -1267,7 +1221,7 @@ function isLength(value) {
  * // => false
  */
 function isArrayLike(value) {
-  return value != null && isLength(value.length) && !isFunction$1(value);
+  return value != null && isLength(value.length) && !isFunction(value);
 }/**
  * This method is like `_.isArrayLike` except that it also checks if `value`
  * is an object.
@@ -1294,7 +1248,7 @@ function isArrayLike(value) {
  * // => false
  */
 function isArrayLikeObject(value) {
-  return isObjectLike$1(value) && isArrayLike(value);
+  return isObjectLike(value) && isArrayLike(value);
 }/**
  * This method returns `false`.
  *
@@ -1387,7 +1341,7 @@ var objectCtorString = funcToString$2.call(Object);
  * // => true
  */
 function isPlainObject(value) {
-  if (!isObjectLike$1(value) || baseGetTag(value) != objectTag) {
+  if (!isObjectLike(value) || baseGetTag(value) != objectTag) {
     return false;
   }
   var proto = getPrototype(value);
@@ -1448,7 +1402,7 @@ typedArrayTags[weakMapTag] = false;
  * @returns {boolean} Returns `true` if `value` is a typed array, else `false`.
  */
 function baseIsTypedArray(value) {
-  return isObjectLike$1(value) &&
+  return isObjectLike(value) &&
     isLength(value.length) && !!typedArrayTags[baseGetTag(value)];
 }/**
  * The base implementation of `_.unary` without support for storing metadata.
@@ -1812,7 +1766,7 @@ function baseMergeDeep(object, source, key, srcIndex, mergeFunc, customizer, sta
       if (isArguments(objValue)) {
         newValue = toPlainObject(objValue);
       }
-      else if (!isObject(objValue) || isFunction$1(objValue)) {
+      else if (!isObject(objValue) || isFunction(objValue)) {
         newValue = initCloneObject(srcValue);
       }
     }

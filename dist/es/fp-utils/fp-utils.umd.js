@@ -100,17 +100,10 @@ const dpipe = (data,...args)=>exports.pipe(...args)(data);
 // functions
 const makeCollectionFn=(arrayFn,objFn)=>(...args)=>ifElse(isArray,arrayFn(...args),objFn(...args));
 
-const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(ensureArray(args[0]));
 const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
 
-const overObj = (fnsObj={})=>(...args)=>{
-  // console.log(`fnsObj`,fnsObj)
-  return mo(f=>{
-    if(typeof f!=='function')console.log('typeof f',f);
-    return f(...args);
-  })(fnsObj);
-};
+const overObj = (fnsObj={})=>(...args)=>mo(f=>f(...args))(fnsObj);
 const overArray = (fnsArray=[])=>(...args)=>ma(f=>f(...args))(fnsArray);
 const over = x=>isArray(x)?overArray(x):overObj(x);
 const converge = over;//backwards compat;
@@ -131,28 +124,28 @@ const ensurePropIsObject = ensurePropWith(stubObject);
 const not = fn=>(...args)=>!fn(...args);
 const ifElseUnary = (pred,T,F=identity)=>arg=>pred(arg)?T(arg):F(arg);
 const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
-const and = acceptArrayOrArgs((preds)=>(...args)=>{
+const and = (...preds)=>(...args)=>{
   // console.log(`preds`,preds)
   for (const p of preds)if(p(...args)!==true)return false;
   return true;
-});
-const or = acceptArrayOrArgs((preds)=>(...args)=>{
+};
+const or = (...preds)=>(...args)=>{
   for (const p of preds)if(p(...args)===true)return true;
   return false;
-});
-const xor = acceptArrayOrArgs((preds)=>(...args)=>{
+};
+const xor = (...preds)=>(...args)=>{
   let p,trues=0;
   for (p of preds)
     (p(...args)===true && (++trues));
   return trues===1;
-});
+};
 const _is = (x) => (y) => x===y;
 const hasKey=(k='')=>(coll={})=>k in coll;
 const matchesProperty=([k,v]=[])=>(o={})=>o[k]===v;
 const matches=(coll={})=>and(...mapToArray((v,k)=>matchesProperty([k,v]))(coll));
 const none = exports.compose(not,or);
-const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred,val] of arrs) if(pred(...x)) return val;});
-const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);});
+const condNoExec = (...arrs)=>(...x)=>{for (const [pred,val] of arrs) if(pred(...x)) return val;};
+const cond = (...arrs)=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);};
 
 
 
@@ -306,8 +299,9 @@ const pget = cond( // polymorphic get
 );
 const pick=cond(
   [isArray,keys=>obj=>transArrayToObject((o,k)=>o[k]=obj[k])(keys)],
-  [isString,key=>obj=>obj[key]],
+  [isString,key=>obj=>({[key]:obj[key]})],
   [isFunction,filterToSame],
+  [stubTrue,keys=>obj=>new Error('unsupported type for pick: '+typeof keys)]
 );
 
 
@@ -351,25 +345,7 @@ const appendArrayReducer = (acc=[],v)=>{acc[acc.length]=v;return acc;};
 const appendObjectReducer = (acc={},v,k)=>{acc[k]=v;return acc;};
 const tdToArray = transducer=>collection=>transduce([], appendArrayReducer, transducer, collection);
 const tdToObject = transducer=>collection=>transduce(({}), appendObjectReducer, transducer, collection);
-const tdToObjectImmutable = transducer=>{
-  let lastOutput={};
-  let lastCount;
-  return collection=>{
-    // console.log(`transducer`,transducer)
-    let count=0,changed=false;
-    const output=tdToObject(exports.compose(
-      transducer,
-      tdTap((a,v,k,c)=>{++count;if(v!==lastOutput[k]){changed=true;}})
-    ))(collection);
-    if(changed===true||lastCount!==count){
-      lastCount=count;
-      lastOutput=output;
-    }
-    return lastOutput;
-  };
-};
 const tdToSame = transducer=>collection=>(Array.isArray(collection)?tdToArray:tdToObject)(transducer)(collection);
-
 const tdMap = mapper => nextReducer => (a,v,...kc) => nextReducer(a,mapper(v,...kc),...kc);
 const tdMapKey = mapper => nextReducer => (a,v,k,...c) => nextReducer(a,v,mapper(v,k,...c),...c);
 const tdMapWithAcc = mapper => nextReducer => (a,v,...kc) => nextReducer(a,mapper(a,v,...kc),...kc);
@@ -407,14 +383,9 @@ const tdReduceListValue = nextReducer=>(acc,v,k,...args)=>{
 };
 const reduce = (fn) => (coll,acc) => tdReduceListValue(fn)(acc,coll);
 const tdIfElse=(pred,tdT,tdF=identity)=>nextReducer=>ifElse(pred,tdT(nextReducer),tdF(nextReducer));
-const isReducerValueObjectLike=(a,v)=>isObjectLike(v);
-const tdIfValueObjectLike=transducer=>tdIfElse(isReducerValueObjectLike,transducer);
-const tdDfObjectLikeValuesWith=(getChildAcc=stubObject)=>tdIfValueObjectLike(
-  nextReducer=>(a,v,k,c,childReducer)=>nextReducer(a,childReducer(getChildAcc(a,v,k,c),v),k,c),
-);
 const transduceDF = ({
   preVisit=tdIdentity,
-  visit=tdDfObjectLikeValuesWith(stubObject),
+  visit=nextReducer=>(a,v,k,c,df)=>nextReducer(a,isObjectLike(v)?df({},v):v,k,c),
   postVisit=tdIdentity,
   edgeCombiner=(acc={},v,k)=>{acc[k]=v;return acc;},
   childrenLoopReducer=tdReduceListValue
@@ -427,7 +398,6 @@ const transduceDF = ({
   )(edgeCombiner);
   const dfReducer = childrenLoopReducer(tempdfReducer);
   return dfReducer;
-  // return (a,v,k,c)=>isObjectLike(v) ? dfReducer(a,v,k,c) : tempdfReducer(a,v,k,c);
 };
 
 
@@ -456,6 +426,7 @@ const transduceBF = ({
       if(queue.length>0)
         reduceItem(...queue.shift());
     },
+    visit,
     postVisit
   )(edgeCombiner);
   return childrenLoopReducer((a,v,k,c)=>{
@@ -538,4 +509,4 @@ const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) 
 //     return reused;
 //   }
 // };
-exports._is=_is;exports.acceptArrayOrArgs=acceptArrayOrArgs;exports.and=and;exports.appendArrayReducer=appendArrayReducer;exports.appendObjectReducer=appendObjectReducer;exports.cond=cond;exports.condNoExec=condNoExec;exports.constant=constant;exports.converge=converge;exports.diffBy=diffBy;exports.diffObjs=diffObjs;exports.dpipe=dpipe;exports.ensureArray=ensureArray;exports.ensureFunction=ensureFunction;exports.ensureProp=ensureProp;exports.ensurePropIsArray=ensurePropIsArray;exports.ensurePropIsObject=ensurePropIsObject;exports.ensurePropWith=ensurePropWith;exports.ensureString=ensureString;exports.fa=fa;exports.filterMapToArray=filterMapToArray;exports.filterMapToObject=filterMapToObject;exports.filterMapToSame=filterMapToSame;exports.filterToArray=filterToArray;exports.filterToObject=filterToObject;exports.filterToSame=filterToSame;exports.first=first;exports.fma=fma;exports.fmo=fmo;exports.fmx=fmx;exports.fo=fo;exports.frozenEmptyArray=frozenEmptyArray;exports.frozenEmptyObject=frozenEmptyObject;exports.fx=fx;exports.groupBy=groupBy;exports.groupByKeys=groupByKeys;exports.groupByValues=groupByValues;exports.has=has;exports.hasKey=hasKey;exports.identity=identity;exports.ifElse=ifElse;exports.ifElseUnary=ifElseUnary;exports.immutableFilterObjectToObject=immutableFilterObjectToObject;exports.immutableTransArrayToArray=immutableTransArrayToArray;exports.immutableTransObjectToObject=immutableTransObjectToObject;exports.invokeArgsOnObj=invokeArgsOnObj;exports.invokeObjectWithArgs=invokeObjectWithArgs;exports.is=is;exports.isArray=isArray;exports.isDeepEqual=isDeepEqual;exports.isError=isError;exports.isFinite=isFinite;exports.isFunction=isFunction;exports.isInteger=isInteger;exports.isObjectLike=isObjectLike;exports.isProductionEnv=isProductionEnv;exports.isPromise=isPromise;exports.isString=isString;exports.isUndefOrNull=isUndefOrNull;exports.keyBy=keyBy;exports.last=last;exports.len=len;exports.len0=len0;exports.len1=len1;exports.ma=ma;exports.mapToArray=mapToArray;exports.mapToObject=mapToObject;exports.mapToSame=mapToSame;exports.matches=matches;exports.matchesProperty=matchesProperty;exports.memoize=memoize;exports.mo=mo;exports.mx=mx;exports.none=none;exports.noop=noop;exports.not=not;exports.oa=oa;exports.objStringifierFactory=objStringifierFactory;exports.objToUrlParams=objToUrlParams;exports.omitToArray=omitToArray;exports.omitToObject=omitToObject;exports.omitToSame=omitToSame;exports.oo=oo;exports.or=or;exports.over=over;exports.overArray=overArray;exports.overObj=overObj;exports.ox=ox;exports.partition=partition;exports.pget=pget;exports.pick=pick;exports.plog=plog;exports.ra=ra;exports.range=range;exports.reduce=reduce;exports.ro=ro;exports.rx=rx;exports.stubArray=stubArray;exports.stubFalse=stubFalse;exports.stubNull=stubNull;exports.stubObject=stubObject;exports.stubString=stubString;exports.stubTrue=stubTrue;exports.tdAssign=tdAssign;exports.tdDPipeToArray=tdDPipeToArray;exports.tdDPipeToObject=tdDPipeToObject;exports.tdDfObjectLikeValuesWith=tdDfObjectLikeValuesWith;exports.tdFilter=tdFilter;exports.tdFilterWithAcc=tdFilterWithAcc;exports.tdIdentity=tdIdentity;exports.tdIfElse=tdIfElse;exports.tdIfValueObjectLike=tdIfValueObjectLike;exports.tdKeyBy=tdKeyBy;exports.tdLog=tdLog;exports.tdMap=tdMap;exports.tdMapKey=tdMapKey;exports.tdMapKeyWithAcc=tdMapKeyWithAcc;exports.tdMapWithAcc=tdMapWithAcc;exports.tdOmit=tdOmit;exports.tdOmitWithAcc=tdOmitWithAcc;exports.tdPipeToArray=tdPipeToArray;exports.tdPipeToObject=tdPipeToObject;exports.tdReduce=tdReduce;exports.tdReduceListValue=tdReduceListValue;exports.tdSet=tdSet;exports.tdTap=tdTap;exports.tdToArray=tdToArray;exports.tdToObject=tdToObject;exports.tdToObjectImmutable=tdToObjectImmutable;exports.tdToSame=tdToSame;exports.toPredicate=toPredicate;exports.transArrayToArray=transArrayToArray;exports.transArrayToObject=transArrayToObject;exports.transObjectToArray=transObjectToArray;exports.transObjectToObject=transObjectToObject;exports.transToArray=transToArray;exports.transToObject=transToObject;exports.transToSame=transToSame;exports.transduce=transduce;exports.transduceBF=transduceBF;exports.transduceDF=transduceDF;exports.uniqueId=uniqueId;exports.xor=xor;Object.defineProperty(exports,'__esModule',{value:true});})));
+exports._is=_is;exports.and=and;exports.appendArrayReducer=appendArrayReducer;exports.appendObjectReducer=appendObjectReducer;exports.cond=cond;exports.condNoExec=condNoExec;exports.constant=constant;exports.converge=converge;exports.diffBy=diffBy;exports.diffObjs=diffObjs;exports.dpipe=dpipe;exports.ensureArray=ensureArray;exports.ensureFunction=ensureFunction;exports.ensureProp=ensureProp;exports.ensurePropIsArray=ensurePropIsArray;exports.ensurePropIsObject=ensurePropIsObject;exports.ensurePropWith=ensurePropWith;exports.ensureString=ensureString;exports.fa=fa;exports.filterMapToArray=filterMapToArray;exports.filterMapToObject=filterMapToObject;exports.filterMapToSame=filterMapToSame;exports.filterToArray=filterToArray;exports.filterToObject=filterToObject;exports.filterToSame=filterToSame;exports.first=first;exports.fma=fma;exports.fmo=fmo;exports.fmx=fmx;exports.fo=fo;exports.frozenEmptyArray=frozenEmptyArray;exports.frozenEmptyObject=frozenEmptyObject;exports.fx=fx;exports.groupBy=groupBy;exports.groupByKeys=groupByKeys;exports.groupByValues=groupByValues;exports.has=has;exports.hasKey=hasKey;exports.identity=identity;exports.ifElse=ifElse;exports.ifElseUnary=ifElseUnary;exports.immutableFilterObjectToObject=immutableFilterObjectToObject;exports.immutableTransArrayToArray=immutableTransArrayToArray;exports.immutableTransObjectToObject=immutableTransObjectToObject;exports.invokeArgsOnObj=invokeArgsOnObj;exports.invokeObjectWithArgs=invokeObjectWithArgs;exports.is=is;exports.isArray=isArray;exports.isDeepEqual=isDeepEqual;exports.isError=isError;exports.isFinite=isFinite;exports.isFunction=isFunction;exports.isInteger=isInteger;exports.isObjectLike=isObjectLike;exports.isProductionEnv=isProductionEnv;exports.isPromise=isPromise;exports.isString=isString;exports.isUndefOrNull=isUndefOrNull;exports.keyBy=keyBy;exports.last=last;exports.len=len;exports.len0=len0;exports.len1=len1;exports.ma=ma;exports.mapToArray=mapToArray;exports.mapToObject=mapToObject;exports.mapToSame=mapToSame;exports.matches=matches;exports.matchesProperty=matchesProperty;exports.memoize=memoize;exports.mo=mo;exports.mx=mx;exports.none=none;exports.noop=noop;exports.not=not;exports.oa=oa;exports.objStringifierFactory=objStringifierFactory;exports.objToUrlParams=objToUrlParams;exports.omitToArray=omitToArray;exports.omitToObject=omitToObject;exports.omitToSame=omitToSame;exports.oo=oo;exports.or=or;exports.over=over;exports.overArray=overArray;exports.overObj=overObj;exports.ox=ox;exports.partition=partition;exports.pget=pget;exports.pick=pick;exports.plog=plog;exports.ra=ra;exports.range=range;exports.reduce=reduce;exports.ro=ro;exports.rx=rx;exports.stubArray=stubArray;exports.stubFalse=stubFalse;exports.stubNull=stubNull;exports.stubObject=stubObject;exports.stubString=stubString;exports.stubTrue=stubTrue;exports.tdAssign=tdAssign;exports.tdDPipeToArray=tdDPipeToArray;exports.tdDPipeToObject=tdDPipeToObject;exports.tdFilter=tdFilter;exports.tdFilterWithAcc=tdFilterWithAcc;exports.tdIdentity=tdIdentity;exports.tdIfElse=tdIfElse;exports.tdKeyBy=tdKeyBy;exports.tdLog=tdLog;exports.tdMap=tdMap;exports.tdMapKey=tdMapKey;exports.tdMapKeyWithAcc=tdMapKeyWithAcc;exports.tdMapWithAcc=tdMapWithAcc;exports.tdOmit=tdOmit;exports.tdOmitWithAcc=tdOmitWithAcc;exports.tdPipeToArray=tdPipeToArray;exports.tdPipeToObject=tdPipeToObject;exports.tdReduce=tdReduce;exports.tdReduceListValue=tdReduceListValue;exports.tdSet=tdSet;exports.tdTap=tdTap;exports.tdToArray=tdToArray;exports.tdToObject=tdToObject;exports.tdToSame=tdToSame;exports.toPredicate=toPredicate;exports.transArrayToArray=transArrayToArray;exports.transArrayToObject=transArrayToObject;exports.transObjectToArray=transObjectToArray;exports.transObjectToObject=transObjectToObject;exports.transToArray=transToArray;exports.transToObject=transToObject;exports.transToSame=transToSame;exports.transduce=transduce;exports.transduceBF=transduceBF;exports.transduceDF=transduceDF;exports.uniqueId=uniqueId;exports.xor=xor;Object.defineProperty(exports,'__esModule',{value:true});})));

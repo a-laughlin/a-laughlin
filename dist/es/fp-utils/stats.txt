@@ -1,16 +1,16 @@
 -----------------------------
 Rollup File Analysis
 -----------------------------
-bundle size:    20.128 KB
-original size:  21.054 KB
-code reduction: 4.4 %
+bundle size:    19.106 KB
+original size:  20.013 KB
+code reduction: 4.53 %
 module count:   1
 
 ██████████████████████████████████████████████████
 file:            /src/fp-utils/fp-utils.js
 bundle space:    100 %
-rendered size:   20.128 KB
-original size:   21.054 KB
-code reduction:  4.4 %
+rendered size:   19.106 KB
+original size:   20.013 KB
+code reduction:  4.53 %
 dependents:      0
 

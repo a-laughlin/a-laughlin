@@ -53,8 +53,6 @@ const toPredicate = x=>{
 };
 // functions
 const makeCollectionFn=(arrayFn,objFn)=>(...args)=>ifElse(isArray,arrayFn(...args),objFn(...args));
-
-const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(ensureArray(args[0]));
 const ensureArray = (val=[])=>isArray(val) ? val : [val];
 const ensureString = (val)=>isString(val) ? val : `${val}`;
 const ensureProp = (obj,key,val)=>{obj.hasOwnProperty(key) ? obj[key] : (obj[key]=val);return obj;};
@@ -67,20 +65,20 @@ const ensurePropIsObject = ensurePropWith(stubObject);
 const not = fn=>(...args)=>!fn(...args);
 const ifElseUnary = (pred,T,F=identity)=>arg=>pred(arg)?T(arg):F(arg);
 const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
-const and = acceptArrayOrArgs((preds)=>(...args)=>{
+const and = (...preds)=>(...args)=>{
   // console.log(`preds`,preds)
   for (const p of preds)if(p(...args)!==true)return false;
   return true;
-});
-const or = acceptArrayOrArgs((preds)=>(...args)=>{
+};
+const or = (...preds)=>(...args)=>{
   for (const p of preds)if(p(...args)===true)return true;
   return false;
-});
+};
 const hasKey=(k='')=>(coll={})=>k in coll;
 const matchesProperty=([k,v]=[])=>(o={})=>o[k]===v;
 const matches=(coll={})=>and(...mapToArray((v,k)=>matchesProperty([k,v]))(coll));
 const none = compose(not,or);
-const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);});
+const cond = (...arrs)=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);};
 
 
 
@@ -113,12 +111,8 @@ const transObjectToArray = fn => (coll={}) => {
 
 const transToObject = makeCollectionFn(transArrayToObject,transObjectToObject);
 const transToArray = makeCollectionFn(transArrayToArray,transObjectToArray);
-const filterToArray =pred=>transToArray((a,v,k)=>pred(v,k)&&(a[a.length]=v)); // _ equiv filter
-const filterToObject=pred=>transToObject((a,v,k)=>pred(v,k)&&(a[k]=v)); // _ equiv pickBy
-const filterToSame=makeCollectionFn(filterToArray,filterToObject);
 const mapToArray=fn=>transToArray((a,v,k)=>a[a.length]=fn(v,k)); // _ equiv map
 const mapToObject=fn=>transToObject((a,v,k)=>a[k]=fn(v,k)); // _ equiv mapValues
-const mo=mapToObject; // backward compatability
 
 
 // collection predicates
@@ -147,23 +141,6 @@ const groupByValues = transToObject((o,v)=>{
     for (vv of ensureArray(v[k]))
       pushToArrayProp(o,v,ensureString(vv));
 });
-
-
-// getters
-const pget = cond( // polymorphic get
-  [isString,str=>{
-    str=str.split('.');
-    return targ=>str.reduce((t,s)=>isArray(t) && !isInteger(+s) ? t.map(o=>o[s]) : t[s], targ)
-  }],
-  [isArray,keys=>pick(keys)],
-  [isObjectLike, obj=>target=>mo(f=>pget(f)(target))(obj)],
-  [stubTrue,identity], // handles the function case
-);
-const pick=cond(
-  [isArray,keys=>obj=>transArrayToObject((o,k)=>o[k]=obj[k])(keys)],
-  [isString,key=>obj=>obj[key]],
-  [isFunction,filterToSame],
-);
 
 // lodash equivalents
 const memoize = (fn, by = identity) => {
@@ -3410,11 +3387,13 @@ gql.enableExperimentalFragmentVariables = enableExperimentalFragmentVariables;
 gql.disableExperimentalFragmentVariables = disableExperimentalFragmentVariables;
 
 var src = gql;const getDefName=schemaDefinition=>schemaDefinition.name.value;
+
 const getFieldTypeName=fieldDefinition=>{
   let type=fieldDefinition.type;
   while(type.kind!=='NamedType')type=type.type;
   return type.name.value;
 };
+
 const getFieldMeta=f=>{
   let isList=false,isNonNullList=false,isNonNull=false;
   if(f.type.kind==='NamedType')return {isList,isNonNullList,isNonNull};
@@ -3424,65 +3403,72 @@ const getFieldMeta=f=>{
   isNonNull=isNonNullList&&f.type.type.type.kind==='NonNullType';
   return {isList,isNonNull,isNonNullList};
 };
+
+const defineHiddenProp = (obj,key,value)=>Object.defineProperty(obj,key,{value,enumerable:false,writable:false,configurable:false});
+
+const assignAllProps = (dest,...srcs)=>srcs.reduceRight((acc,src)=>{
+  Object.defineProperties(acc,Object.getOwnPropertyDescriptors(src));
+  return acc;
+},dest);
+
 var indexSchema = memoize(schema=>{
   const definitions=ensureArray(schema.definitions).filter(d=>/^(Query|Mutation|Subscription)$/.test(d.name.value)===false);
-  // const builtInDefinitions=['ID','Int','Float','String','Boolean']
-  //   .map(value=>({kind:'ScalarTypeDefinition',name:{value}}));
-  const builtInDefinitions=[];
+  const builtInDefinitions=['ID','Int','Float','String','Boolean']
+    .map(value=>({kind:'ScalarTypeDefinition',name:{kind:'Name',value}}));
   const allDefs=builtInDefinitions.concat(definitions);
   const definitionsByKind=allDefs.reduce((acc,d)=>{ensurePropIsObject(acc,d.kind)[d.kind][d.name.value]=d;return acc},{});
   const definitionsByName=keyBy(getDefName)(allDefs);
+  
   const result = {
-    ...definitionsByKind,
-    definitions:allDefs,
-    definitionsByName,
-    selectionMeta:transToObject((acc,d,dName)=>{
-      const meta=acc[dName]={};
-      Object.defineProperty(meta,'defName',{value:dName,enumerable:false,writable:false,configurable:false});
-      Object.defineProperty(meta,'defKind',{
-        value:dName in definitionsByKind.ObjectTypeDefinition?'object':'scalar',
-        enumerable:false,
-        writable:false,
-        configurable:false
-      });
-      if (dName in definitionsByKind.ObjectTypeDefinition){
-        Object.defineProperty(meta,'objectFields',{
-          value:[],
-          enumerable:false,
-          writable:false,
-          configurable:false
-        });
-        // Object.defineProperty(m,'_scalarTypes',{enumerable:false,writable:false,configurable:false});
-        // Object.defineProperty(m,'_objectTypes',{enumerable:false,writable:false,configurable:false});
+    selectionMeta:transToObject((acc,d,cDefName)=>{
+      const meta=acc[cDefName]={};
+      // define all non-selection props as hidden so iterating over selections works;
+      defineHiddenProp(meta,'defName',cDefName);
+      if (cDefName in definitionsByKind.ObjectTypeDefinition){
+        defineHiddenProp(meta,'defKind','object');
+        defineHiddenProp(meta,'objectFields',[]);// enables checking the count of object fields to short-circuit
         for (const f of d.fields){
-          const [fName,typeName,{isList,isNonNull,isNonNullList}]=[getDefName(f),getFieldTypeName(f),getFieldMeta(f)];
-          if (meta._idKey===undefined && typeName==='ID') Object.defineProperty(meta,'_idKey',{value:fName,enumerable:false,writable:false,configurable:false});
-          meta[fName]={
-            name:fName,
-            isList,
-            isNonNull,
-            isNonNullList,
-            defKind:typeName in definitionsByKind.ObjectTypeDefinition?'object':'scalar',
-            rel:typeName,
-          };
-          if(typeName in definitionsByKind.ObjectTypeDefinition){
-            meta.objectFields.push(meta[fName]);
+          const [fieldKeyName,fDefName,{isList,isNonNull,isNonNullList}]=[f.name.value,getFieldTypeName(f),getFieldMeta(f)];
+          if (meta.idKey===undefined && fDefName==='ID') defineHiddenProp(meta,'idKey',fieldKeyName);
+          const fMeta = meta[fieldKeyName]={};
+          defineHiddenProp(fMeta,'fieldName',fieldKeyName);
+          defineHiddenProp(fMeta,'fieldKindName',fDefName);
+          defineHiddenProp(fMeta,'isList',isList);
+          defineHiddenProp(fMeta,'isNonNull',isNonNull);
+          defineHiddenProp(fMeta,'isNonNullList',isNonNullList);
+          if(fDefName in definitionsByKind.ObjectTypeDefinition){
+            meta.objectFields.push(meta[fieldKeyName]);
           }
         }
+      } else {
+        defineHiddenProp(meta,'defKind','scalar');
       }
     })(definitionsByName)
   };
-  // cross_link
-  for (const dName in definitionsByKind.ObjectTypeDefinition){
-    const oMeta=result.selectionMeta[dName];
-    for (const fName in oMeta){
-      const fMeta=oMeta[fName];
-      // if a definition exists with this type (if not, it's a built in scalar type)
-      if (fMeta.rel in result.selectionMeta) {
-        fMeta.rel=result.selectionMeta[fMeta.rel];
-      }
-    }
-  }
+
+  // link defs
+  Object.keys(definitionsByKind.ObjectTypeDefinition).forEach(dName=>{
+    Object.values(result.selectionMeta[dName]).forEach(fMeta=>{
+      assignAllProps(fMeta,result.selectionMeta[fMeta.fieldKindName]);
+    });
+  });
+  // create a custom "Query" index of all types, so defining one manually is unnecessary
+  // namespaced as _query to prevent conflicts with Query should one be defined
+  result.selectionMeta._query = {};
+  defineHiddenProp(result.selectionMeta._query,'defName','_query');
+  defineHiddenProp(result.selectionMeta._query,'defKind','object');
+  defineHiddenProp(result.selectionMeta._query,'objectFields',[]);
+  defineHiddenProp(result.selectionMeta._query,'fieldName','_query');
+  defineHiddenProp(result.selectionMeta._query,'fieldKindName','_query');
+  Object.entries(result.selectionMeta).forEach(([defName,meta])=>{
+    const fMeta = result.selectionMeta._query[defName] = {};
+    assignAllProps(fMeta,meta);
+    defineHiddenProp(fMeta,'isList',false);
+    defineHiddenProp(fMeta,'isNonNull',false);
+    defineHiddenProp(fMeta,'isNonNullList',false);
+    if(meta.defKind==='object') result.selectionMeta._query.objectFields.push(fMeta);
+  });
+
   return result;
 });const defaultActions = {
   ADD:nextReducer=>(prevState,action)=>{
@@ -3517,16 +3503,16 @@ var indexSchema = memoize(schema=>{
 
 const schemaToReducerMap = (schema) => (ops=defaultActions)=>{
   const {selectionMeta}=indexSchema(schema);
-  const actionNormalizers = mapToObject(({defKind,_idKey})=>cond(
+  const actionNormalizers = mapToObject(({defKind,idKey})=>cond(
     [_=>defKind!=='object',identity],                             // leave scalars and other non-object types
-    [isString,payload=>({[payload]:{[_idKey]:payload}})],         // convert number/string id to collection
-    [isInteger,payload=>({[payload]:{[_idKey]:`${payload}`}})],   // convert number/string id to collection
+    [isString,payload=>({[payload]:{[idKey]:payload}})],         // convert number/string id to collection
+    [isInteger,payload=>({[payload]:{[idKey]:`${payload}`}})],   // convert number/string id to collection
     [isObjectLike,cond(
       [isArray,transArrayToObject((o,v)=>{                        // convert array to collection
         v=normalizePayload(v);
-        o[v[_idKey]]=v;
+        o[v[idKey]]=v;
       })],
-      [hasKey(_idKey), payload=>({[payload[_idKey]]:payload})],   // convert single item to collection
+      [hasKey(idKey), payload=>({[payload[idKey]]:payload})],   // convert single item to collection
       [stubTrue,identity]                                         // collection, leave as is
     )],
     [stubTrue,payload=>new Error(`unrecognized payload type\n${JSON.stringify(payload,null,2)}`)]
@@ -3560,78 +3546,75 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
 
 
 // predicates for schemaToQuerySelector
-const isScalarField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='scalar';
-const isObjectField=([meta,Field])=>(meta[Field.name.value]??meta).defKind==='object';
-const isPrimitiveValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>!isObjectLike(vNorm);
-const isObjectValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm);
-const isItemValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm)&&meta._idKey in vNorm;
-const isCollectionValue=([meta,Field,vDenorm,vDenormPrev,vNorm])=>isObjectLike(vNorm) && !(meta._idKey in vNorm);
-
+const isScalarField=([meta])=>meta.defKind==='scalar';
+const isObjectField=([meta])=>meta.defKind==='object';
+// const isListField=([meta])=>meta.isList;
+const isCollectionItemField=([meta])=>'fieldName' in meta;
+const isCollectionField=([meta])=>!('fieldName' in meta);
+const isPrimitiveValue=([meta,Field,vDenormPrev,vNorm])=>!isObjectLike( meta.isList?vNorm[0]:vNorm );
+const isObjectValue=([meta,Field,vDenormPrev,vNorm])=>isObjectLike( meta.isList?vNorm[0]:vNorm );
 
 // for filtering, a dsl is complicated
 // https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
 // Mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter for MVP
-const schemaToQuerySelector=( schema, queryMatchers={ filter:toPredicate, omit:x=>not(toPredicate(x))} )=>{
+const withVnorm=fn=>(acc,arr,id)=>fn(arr[3],id);
+const schemaToQuerySelector=( schema, transducers={} )=>{
+  transducers=Object.assign({
+    filter:nextFn=>x=>{const p=withVnorm(toPredicate(x));return (...args)=>p(...args)?nextFn(...args):args[0]},
+    omit:nextFn=>x=>{const p=withVnorm(toPredicate(x));return (...args)=>!p(...args)?nextFn(...args):args[0]},
+  },transducers);
   
-  // Denormalizes a single collection item
-  // Somewhat redundant with mapSelection, though loops over individual fields. Could use the same error checking though. Might be able to merge them.
-  const mapItem=([meta,{selectionSet:{selections=[]}={}},vDenormPrev={},vNorm,vNormPrev={},prevDenormRoot,rootState,prevRoot,getArgs])=>{
-    let vDenorm = {}, changed = vNorm !== vNormPrev;
-    for (const f of selections){
-      const k = f.name.value, {rel,isList,defKind} = meta[k];
-      vDenorm[k] = defKind==='scalar'
-        ? rootState[meta.defName][vNorm[meta._idKey]][k]
-        : isList
-          ? mapCollection([ rel, f, vDenormPrev[k], pick(vNorm[k])(rootState[rel.defName]), pick(vNormPrev[k])(prevRoot[rel.defName]), prevDenormRoot,rootState,prevRoot, getArgs])
-          : mapItem([ rel, f, vDenormPrev[k]||{}, rootState[rel.defName][vNorm[k]]||{}, prevRoot[rel.defName][vNorm[k]]||{}, prevDenormRoot,rootState,prevRoot,getArgs ]);
+  const mapSelection=cond(
+    [isScalarField,cond(
+      [isObjectValue,()=>{throw new Error('cannot request object without selecting fields')}],
+      [isPrimitiveValue,([meta,Field,vDenormPrev,vNorm])=>vNorm],
+    )],
+    [isObjectField,cond(
+      [isCollectionItemField, withDenormalizedItemIds(mapSelections)],
+      [isPrimitiveValue,()=>{throw new Error('cannot select field of primitive value')}],
+      [isCollectionField,mapCollection],
+    )]
+  );
+  
+  function mapSelections([meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs]){
+    let changed = vNorm !== vNormPrev,vDenorm={};
+    Field.selectionSet.selections.forEach(f=>{
+      const k = f.name.value;
+      vDenorm[k]=mapSelection([meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs]);
       if(vDenorm[k] !== vDenormPrev[k]) changed = true;
-    }
+    });
     return changed ? vDenorm : vDenormPrev;
-  };
+  }
+  function withDenormalizedItemIds(fn){
+    return ([m,f,vDP={},id='',idPrev='',rN,rNP,g])=>(
+      m.isList
+        ? transArrayToObject((o,i)=>o[i]=fn([m, f, vDP, rN[m.defName][i], rNP[m.defName]?.[i], rN,rNP, g]))(id)
+        : fn([m, f, vDP, rN[m.defName][id], rNP[m.defName]?.[id], rN , rNP, g]));
+  }
 
-  const mapCollection=([meta,Field,vDenormPrev={},vNorm,vNormPrev={},prevDenormRoot,rootState,prevRoot,getArgs])=>{
+  const collectionCombiner = (a,v,id)=>{a[id]=mapSelections(v);return a;};
+  const collectionReducers = Object.entries(transducers).reduce((o,[k,t])=>{o[k]=t(collectionCombiner);return o},{});
+  function mapCollection([meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs]){
     // on the first traverse up, break if the final collection is unchanged since its items will be too.
     if(meta.objectFields.length===0&&vNorm===vNormPrev) return vDenormPrev;
-    const args = getArgs(Field.arguments);
-    const argIds = ensureArray(args[meta._idKey]);
-    if(argIds.length) vNorm=transArrayToObject((o,i)=>o[i]=vNorm[i])(argIds);
-    const queryMatcherFns=transObjectToArray((a,arg,k)=>k in queryMatchers && (a[a.length]=queryMatchers[k](arg)))(args);
-    const matchesFn = queryMatcherFns.length === 0 ? queryMatchers.filter(args) : and(...queryMatcherFns);
+    const a=Field.arguments;
+    const args = getArgs(a);
+    const reducer=(a.reduce((f,{name:{value:v}})=>f||(collectionReducers[v]?.(args[v])),null))||collectionReducers.filter(args);
     let vDenorm={},changed=vNorm!==vNormPrev;
     for(const id in vNorm){
-      matchesFn(vNorm[id])&&(vDenorm[id]=mapItem([meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],prevDenormRoot,rootState,prevRoot,getArgs]));
+      vDenorm=reducer(vDenorm,[meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],rootNorm,rootNormPrev,getArgs],id);
       if(vDenorm[id]!==vDenormPrev[id])changed=true;
     }
     return changed?vDenorm:vDenormPrev;
-  };
-
-  const mapSelection=cond(
-    [isScalarField,cond(
-      [isObjectValue,()=>new Error('cannot request object without selecting fields')],
-      [isPrimitiveValue,([meta,Field,vDenormPrev,vNorm])=>vNorm]
-    )],
-    [isObjectField,cond(
-      [isPrimitiveValue,([{defName},Field,vDenormPrev,vNorm])=>new Error(`cannot request fields of a primitive ${JSON.stringify({value:vNorm,defName},null,2)}`)],
-      [isCollectionValue,mapCollection],
-      [isItemValue,mapItem],// item (worth noting that root state is also an item with no key, given its heterogenous values);
-    )],
-  );
+  }
 
   const {selectionMeta}=indexSchema(schema);
-  const mapQuery= (query,passedVariables={})=>{
+  return function mapQuery (query, passedVariables={}){
     const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
-    const selections=query.definitions[0].selectionSet.selections;
-    return (rootState={},prevRoot=rootState,prevDenormRoot={})=>{
-      let denormRoot={},changed=rootState!==prevRoot;
-      for (const s of selections){
-        const k=s.name.value;
-        denormRoot[k]=mapSelection([selectionMeta[k],s,prevDenormRoot[k],rootState[k],prevRoot[k],prevDenormRoot,rootState,prevRoot,argsPopulator]);
-        if(denormRoot[k]!==prevDenormRoot[k])changed=true;
-      }
-      return changed?denormRoot:prevDenormRoot;
+    return (rootNorm={},rootNormPrev={},rootDenormPrev={})=>{
+      return mapSelections([selectionMeta._query,query.definitions[0],rootDenormPrev,rootNorm,rootNormPrev,rootNorm,rootNormPrev,argsPopulator]);
     };
   };
-  return mapQuery;
 };const querySelectorToUseQuery=(querier,store,useState,useEffect,useMemo)=>{
   return (query,variables)=>{
     // probably need a useRef here so queryFn will be current in useEffect.

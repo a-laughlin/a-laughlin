@@ -1,12 +1,12 @@
 {
-  "bundleSize": 20128,
-  "bundleOrigSize": 21054,
-  "bundleReduction": 4.4,
+  "bundleSize": 19106,
+  "bundleOrigSize": 20013,
+  "bundleReduction": 4.53,
   "modules": [
     {
       "id": "/src/fp-utils/fp-utils.js",
-      "size": 20128,
-      "origSize": 21054,
+      "size": 19106,
+      "origSize": 20013,
       "renderedExports": [
         "identity",
         "curry",
@@ -36,7 +36,6 @@
         "toPredicate",
         "plog",
         "dpipe",
-        "acceptArrayOrArgs",
         "invokeArgsOnObj",
         "invokeObjectWithArgs",
         "overObj",
@@ -123,7 +122,6 @@
         "appendObjectReducer",
         "tdToArray",
         "tdToObject",
-        "tdToObjectImmutable",
         "tdToSame",
         "tdMap",
         "tdMapKey",
@@ -146,8 +144,6 @@
         "tdReduceListValue",
         "reduce",
         "tdIfElse",
-        "tdIfValueObjectLike",
-        "tdDfObjectLikeValuesWith",
         "transduceDF",
         "transduceBF",
         "memoize",
@@ -158,7 +154,7 @@
       "removedExports": [],
       "dependents": [],
       "percent": 100,
-      "reduction": 4.4
+      "reduction": 4.53
     }
   ],
   "moduleCount": 1

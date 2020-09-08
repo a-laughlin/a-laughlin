@@ -100,17 +100,10 @@ const dpipe = (data,...args)=>pipe(...args)(data);
 // functions
 const makeCollectionFn=(arrayFn,objFn)=>(...args)=>ifElse(isArray,arrayFn(...args),objFn(...args));
 
-const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(ensureArray(args[0]));
 const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
 
-const overObj = (fnsObj={})=>(...args)=>{
-  // console.log(`fnsObj`,fnsObj)
-  return mo(f=>{
-    if(typeof f!=='function')console.log('typeof f',f);
-    return f(...args);
-  })(fnsObj);
-};
+const overObj = (fnsObj={})=>(...args)=>mo(f=>f(...args))(fnsObj);
 const overArray = (fnsArray=[])=>(...args)=>ma(f=>f(...args))(fnsArray);
 const over = x=>isArray(x)?overArray(x):overObj(x);
 const converge = over;//backwards compat;
@@ -131,28 +124,28 @@ const ensurePropIsObject = ensurePropWith(stubObject);
 const not = fn=>(...args)=>!fn(...args);
 const ifElseUnary = (pred,T,F=identity)=>arg=>pred(arg)?T(arg):F(arg);
 const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
-const and = acceptArrayOrArgs((preds)=>(...args)=>{
+const and = (...preds)=>(...args)=>{
   // console.log(`preds`,preds)
   for (const p of preds)if(p(...args)!==true)return false;
   return true;
-});
-const or = acceptArrayOrArgs((preds)=>(...args)=>{
+};
+const or = (...preds)=>(...args)=>{
   for (const p of preds)if(p(...args)===true)return true;
   return false;
-});
-const xor = acceptArrayOrArgs((preds)=>(...args)=>{
+};
+const xor = (...preds)=>(...args)=>{
   let p,trues=0;
   for (p of preds)
     (p(...args)===true && (++trues));
   return trues===1;
-});
+};
 const _is = (x) => (y) => x===y;
 const hasKey=(k='')=>(coll={})=>k in coll;
 const matchesProperty=([k,v]=[])=>(o={})=>o[k]===v;
 const matches=(coll={})=>and(...mapToArray((v,k)=>matchesProperty([k,v]))(coll));
 const none = compose(not,or);
-const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred,val] of arrs) if(pred(...x)) return val;});
-const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);});
+const condNoExec = (...arrs)=>(...x)=>{for (const [pred,val] of arrs) if(pred(...x)) return val;};
+const cond = (...arrs)=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);};
 
 
 
@@ -306,8 +299,9 @@ const pget = cond( // polymorphic get
 );
 const pick=cond(
   [isArray,keys=>obj=>transArrayToObject((o,k)=>o[k]=obj[k])(keys)],
-  [isString,key=>obj=>obj[key]],
+  [isString,key=>obj=>({[key]:obj[key]})],
   [isFunction,filterToSame],
+  [stubTrue,keys=>obj=>new Error('unsupported type for pick: '+typeof keys)]
 );
 
 
@@ -351,25 +345,7 @@ const appendArrayReducer = (acc=[],v)=>{acc[acc.length]=v;return acc;};
 const appendObjectReducer = (acc={},v,k)=>{acc[k]=v;return acc;};
 const tdToArray = transducer=>collection=>transduce([], appendArrayReducer, transducer, collection);
 const tdToObject = transducer=>collection=>transduce(({}), appendObjectReducer, transducer, collection);
-const tdToObjectImmutable = transducer=>{
-  let lastOutput={};
-  let lastCount;
-  return collection=>{
-    // console.log(`transducer`,transducer)
-    let count=0,changed=false;
-    const output=tdToObject(compose(
-      transducer,
-      tdTap((a,v,k,c)=>{++count;if(v!==lastOutput[k]){changed=true;}})
-    ))(collection);
-    if(changed===true||lastCount!==count){
-      lastCount=count;
-      lastOutput=output;
-    }
-    return lastOutput;
-  };
-};
 const tdToSame = transducer=>collection=>(Array.isArray(collection)?tdToArray:tdToObject)(transducer)(collection);
-
 const tdMap = mapper => nextReducer => (a,v,...kc) => nextReducer(a,mapper(v,...kc),...kc);
 const tdMapKey = mapper => nextReducer => (a,v,k,...c) => nextReducer(a,v,mapper(v,k,...c),...c);
 const tdMapWithAcc = mapper => nextReducer => (a,v,...kc) => nextReducer(a,mapper(a,v,...kc),...kc);
@@ -407,14 +383,9 @@ const tdReduceListValue = nextReducer=>(acc,v,k,...args)=>{
 };
 const reduce = (fn) => (coll,acc) => tdReduceListValue(fn)(acc,coll);
 const tdIfElse=(pred,tdT,tdF=identity)=>nextReducer=>ifElse(pred,tdT(nextReducer),tdF(nextReducer));
-const isReducerValueObjectLike=(a,v)=>isObjectLike(v);
-const tdIfValueObjectLike=transducer=>tdIfElse(isReducerValueObjectLike,transducer);
-const tdDfObjectLikeValuesWith=(getChildAcc=stubObject)=>tdIfValueObjectLike(
-  nextReducer=>(a,v,k,c,childReducer)=>nextReducer(a,childReducer(getChildAcc(a,v,k,c),v),k,c),
-);
 const transduceDF = ({
   preVisit=tdIdentity,
-  visit=tdDfObjectLikeValuesWith(stubObject),
+  visit=nextReducer=>(a,v,k,c,df)=>nextReducer(a,isObjectLike(v)?df({},v):v,k,c),
   postVisit=tdIdentity,
   edgeCombiner=(acc={},v,k)=>{acc[k]=v;return acc;},
   childrenLoopReducer=tdReduceListValue
@@ -427,7 +398,6 @@ const transduceDF = ({
   )(edgeCombiner);
   const dfReducer = childrenLoopReducer(tempdfReducer);
   return dfReducer;
-  // return (a,v,k,c)=>isObjectLike(v) ? dfReducer(a,v,k,c) : tempdfReducer(a,v,k,c);
 };
 
 
@@ -456,6 +426,7 @@ const transduceBF = ({
       if(queue.length>0)
         reduceItem(...queue.shift());
     },
+    visit,
     postVisit
   )(edgeCombiner);
   return childrenLoopReducer((a,v,k,c)=>{
@@ -538,4 +509,4 @@ const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) 
 //     return reused;
 //   }
 // };
-export{_is,acceptArrayOrArgs,and,appendArrayReducer,appendObjectReducer,compose,cond,condNoExec,constant,converge,curry,diffBy,diffObjs,dpipe,ensureArray,ensureFunction,ensureProp,ensurePropIsArray,ensurePropIsObject,ensurePropWith,ensureString,fa,filterMapToArray,filterMapToObject,filterMapToSame,filterToArray,filterToObject,filterToSame,first,fma,fmo,fmx,fo,frozenEmptyArray,frozenEmptyObject,fx,groupBy,groupByKeys,groupByValues,has,hasKey,identity,ifElse,ifElseUnary,immutableFilterObjectToObject,immutableTransArrayToArray,immutableTransObjectToObject,invokeArgsOnObj,invokeObjectWithArgs,is,isArray,isDeepEqual,isError,isFinite,isFunction,isInteger,isObjectLike,isProductionEnv,isPromise,isString,isUndefOrNull,keyBy,last,len,len0,len1,ma,mapToArray,mapToObject,mapToSame,matches,matchesProperty,memoize,mo,mx,none,noop,not,oa,objStringifierFactory,objToUrlParams,omitToArray,omitToObject,omitToSame,oo,or,over,overArray,overObj,ox,partition,pget,pick,pipe,plog,ra,range,reduce,ro,rx,stubArray,stubFalse,stubNull,stubObject,stubString,stubTrue,tdAssign,tdDPipeToArray,tdDPipeToObject,tdDfObjectLikeValuesWith,tdFilter,tdFilterWithAcc,tdIdentity,tdIfElse,tdIfValueObjectLike,tdKeyBy,tdLog,tdMap,tdMapKey,tdMapKeyWithAcc,tdMapWithAcc,tdOmit,tdOmitWithAcc,tdPipeToArray,tdPipeToObject,tdReduce,tdReduceListValue,tdSet,tdTap,tdToArray,tdToObject,tdToObjectImmutable,tdToSame,toPredicate,transArrayToArray,transArrayToObject,transObjectToArray,transObjectToObject,transToArray,transToObject,transToSame,transduce,transduceBF,transduceDF,uniqueId,xor};
+export{_is,and,appendArrayReducer,appendObjectReducer,compose,cond,condNoExec,constant,converge,curry,diffBy,diffObjs,dpipe,ensureArray,ensureFunction,ensureProp,ensurePropIsArray,ensurePropIsObject,ensurePropWith,ensureString,fa,filterMapToArray,filterMapToObject,filterMapToSame,filterToArray,filterToObject,filterToSame,first,fma,fmo,fmx,fo,frozenEmptyArray,frozenEmptyObject,fx,groupBy,groupByKeys,groupByValues,has,hasKey,identity,ifElse,ifElseUnary,immutableFilterObjectToObject,immutableTransArrayToArray,immutableTransObjectToObject,invokeArgsOnObj,invokeObjectWithArgs,is,isArray,isDeepEqual,isError,isFinite,isFunction,isInteger,isObjectLike,isProductionEnv,isPromise,isString,isUndefOrNull,keyBy,last,len,len0,len1,ma,mapToArray,mapToObject,mapToSame,matches,matchesProperty,memoize,mo,mx,none,noop,not,oa,objStringifierFactory,objToUrlParams,omitToArray,omitToObject,omitToSame,oo,or,over,overArray,overObj,ox,partition,pget,pick,pipe,plog,ra,range,reduce,ro,rx,stubArray,stubFalse,stubNull,stubObject,stubString,stubTrue,tdAssign,tdDPipeToArray,tdDPipeToObject,tdFilter,tdFilterWithAcc,tdIdentity,tdIfElse,tdKeyBy,tdLog,tdMap,tdMapKey,tdMapKeyWithAcc,tdMapWithAcc,tdOmit,tdOmitWithAcc,tdPipeToArray,tdPipeToObject,tdReduce,tdReduceListValue,tdSet,tdTap,tdToArray,tdToObject,tdToSame,toPredicate,transArrayToArray,transArrayToObject,transObjectToArray,transObjectToObject,transToArray,transToObject,transToSame,transduce,transduceBF,transduceDF,uniqueId,xor};
