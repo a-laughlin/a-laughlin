@@ -2,13 +2,9 @@
   "packages": [
     "src/**"
   ],
-  "version": "0.0.16",
   "npmClient": "yarn",
   "useWorkspaces": true,
-  "publishConfig": {
-    "access": "public",
-    "directory": "dist"
-  },
+  "version": "independent",
   "command": {
     "publish": {
       "ignoreChanges": [
@@ -17,11 +13,7 @@
       ],
       "message": "chore(release): publish",
       "registry": "https://registry.npmjs.org/",
-      "publishConfig": {
-        "access": "public",
-        "directory": "dist"
-      },
-      "access": "public",
+      "graphType": "all",
       "directory": "dist"
     },
     "bootstrap": {

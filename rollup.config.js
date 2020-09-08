@@ -25,28 +25,44 @@ const commonjsPlugin = commonjs({esmExternals:true});
 const analyzePlugin = analyze({
   summaryOnly:true,
 });
-const aliasPlugin = alias({entries: [
-  { find: '@a-laughlin/fp-utils', replacement: '../fp-utils/fp-utils.js' },
-  { find: 'react', replacement: 'https://unpkg.com/react@16/umd/react.development.js' },
-]});
-const modules = readdirSync('./src')
+// const aliasPlugin = alias({entries: [
+//   // { find: '@a-laughlin/fp-utils', replacement: '../../fp-utils' },
+//   { find: 'react', replacement: 'https://unpkg.com/react@16/umd/react.development.js' },
+// ]});
+const modules = readdirSync('packages')
 .filter(dir=>dir!=='.DS_Store')
-.map(dir=>({dir,file:`${dir}.js`}))
-.map(({dir,file})=>({
+.map(dir=>({
   dir,
-  file,
-  dirFile:join(dir,file),
-  inDir:join('src',dir),
-  outDir:join('dist/es',dir)
+  outDir:join(`packages`,dir,'dist'),
+  inDir:join(`packages`,dir,'src'),
+  entryFileNames:join(`packages`,dir,'src',`${dir}.js`),
 }))
-// ...flatmap (other bundling types)
-.map(({dir,file,dirFile,inDir,outDir})=>({
-  external:[ 'lodash-es', 'react', 'react-dom', 'xstream' ],
-  input:join(inDir,file),
+.map(({dir,outDir,inDir,entryFileNames})=>({
+  external:[
+    'lodash-es',
+    'react',
+    'react-dom',
+    'xstream',
+    '@a-laughlin/fp-utils',
+    '@a-laughlin/style-string-to-object'
+  ],
+  input:join(inDir,`${dir}.js`),
+  output:['es','umd','cjs'].flatMap(format=>[
+    {format, file:join(outDir,format,`${dir}.js`),compact:true, entryFileNames},
+    {format, file:join(outDir,format,`${dir}.min.js`),compact:true, entryFileNames, plugins:[terser()]},
+  ]).map(o=>o.format!=='umd'?o:{
+    ...o,
+    name:snakeToStartCase(dir),
+    globals:{
+      react:'react',
+      xstream:'xstream',
+      '@a-laughlin/fp-utils':'fpUtils',
+      '@a-laughlin/style-string-to-object':'styleStringToObject'
+    }
+  }),
   plugins:[
-    aliasPlugin,
-    ...(dir!=='gqdux'?[]:[copy([ { files: join(inDir,'*.html'), dest: outDir }])]),
-    copy([ { files: join(inDir,'package.json'), dest: outDir }]),
+    // aliasPlugin,
+    // copy([ { files: join(`packages`,dir,'package.json'), dest: outDir }]),
     resolvePlugin,
     commonjsPlugin,
     analyze({
@@ -56,14 +72,7 @@ const modules = readdirSync('./src')
     visualizer({ template:"treemap", filename:join(outDir,'stats-treemap.html')}),
     visualizer({ template:"network", filename:join(outDir,'stats-network.html')}),
   ],
-  output:[
-    {format:'es', file:join(outDir,file.replace('.js','.min.js')),compact:true, entryFileNames:dirFile, plugins:[terser()]},
-    {format:'es', file:join(outDir,file),compact:true, entryFileNames:dirFile},
-    {format:'umd', file:join(outDir,file.replace('.js','.umd.min.js')),compact:true, entryFileNames:dirFile, plugins:[terser()],name:snakeToStartCase(dir)},
-    {format:'umd', file:join(outDir,file.replace('.js','.umd.js')),compact:true, entryFileNames:dirFile,name:snakeToStartCase(dir)},
-  ]
-}));
-
+}))
 export default modules;
 
   // const getExamplePlugin = ()=>({
