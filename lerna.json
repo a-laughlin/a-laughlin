@@ -8,8 +8,7 @@
   "command": {
     "publish": {
       "ignoreChanges": [
-        "ignored-file",
-        "*.md"
+        "ignored-file"
       ],
       "message": "chore(release): publish"
     },
