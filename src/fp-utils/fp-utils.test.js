@@ -1,6 +1,4 @@
 import {
-  acceptArrayOrArgs,
-  identity,
   condNoExec,
   cond,
   stubTrue,
@@ -22,22 +20,16 @@ import {
   transduceDF,
   partition,
   isString,
-  partitionObject,
-  partitionArray,
   tdOmit,
   tdMapWithAcc,
   over,
   isObjectLike,
-  reduceAny,
   mapToObject,
-  tdLog,
   appendArrayReducer,
-  tdDfObjectLikeValuesWith,
   transduceBF,
   matches,
   matchesProperty,
   xor,
-  tdToObjectImmutable
 } from './fp-utils'
 describe("and", () => {
   it('should ensure multiple predicates pass', () =>{
@@ -63,8 +55,6 @@ describe("xor", () => {
   it('should ensure exactly 1 predicate passes', () =>{
     const is5=x=>x===5;
     const not5=x=>x!==5;
-    expect(xor(is5)(5)).toBe(true);
-    expect(xor([is5])(5)).toBe(true);
     expect(xor(is5,is5)(5)).toBe(false);
     expect(xor(is5,not5)(5)).toBe(true);
     expect(xor(not5,is5)(5)).toBe(true);
@@ -96,11 +86,6 @@ describe("pipe", () => {
   it('should be referentially transparent', () =>expect(pipe(add1,add1,add1)(0)).toBe(pipe(add1,pipe(add1,add1))(0)));
   const addFIrstARgs=(a,b)=>a+b;
   it('should pass all args to first fn', () =>expect(pipe(addFIrstARgs)(1,1)).toBe(2));
-});
-describe("acceptArrayOrArgs", () => {
-  const testFn = acceptArrayOrArgs(identity);
-  it('should convert args to an array', () =>expect(testFn(1,2,3)).toEqual([1,2,3]));
-  it('should keep an array', () =>expect(testFn([1,2,3])).toEqual([1,2,3]));
 });
 describe('transToArray',()=>{
   it('should reduce an array or object to an array, ignoring return value', () =>{
@@ -146,32 +131,28 @@ describe('transToObject',()=>{
 
 describe("condNoExec", () => {
   const pred = x=>x===1
-  const fn1 = condNoExec([ [pred,'is_1'], [stubTrue,'not_1'] ]);
+  const fn1 = condNoExec([pred,'is_1'], [stubTrue,'not_1']);
   it('returns values when passed non-function values', () =>  expect(fn1(1)).toBe('is_1'));
-  const fn2 = condNoExec([ [pred,pred], [stubTrue,stubTrue] ]);
+  const fn2 = condNoExec([pred,pred], [stubTrue,stubTrue]);
   it('does not call function values', () =>  expect(fn2(1)).toBe(pred));
-  const fn3 = condNoExec([ [pred,'is_1'], [stubTrue,'not_1'] ]);
+  const fn3 = condNoExec([pred,'is_1'], [stubTrue,'not_1']);
   it('stops after the first passing predicate and returns the value', () =>expect(fn3(1)).toBe('is_1'));
-  const fn4 = condNoExec([ [stubFalse,1], [stubFalse,2], [stubFalse,3] ]);
+  const fn4 = condNoExec([stubFalse,1], [stubFalse,2], [stubFalse,3]);
   it('returns nothing when no predicates pass', () =>expect(fn4(2)).toBe(undefined));
 });
 
 describe("cond", () => {
   const pred = x=>x===1;
   const is1=()=>'is_1',not1=()=>'not_1';
-  const fn1 = cond([ [pred,is1], [stubTrue,not1] ]);
-  it('works with and without wrapping arrays', () =>  {
-    expect(cond([ [pred,is1], [stubTrue,not1] ])(2)).toBe('not_1');
-    expect(cond([pred,is1], [stubTrue,not1])(2)).toBe('not_1');
-  });
+  const fn1 = cond([pred,is1], [stubTrue,not1]);
   it('errors when passed non-function values', () =>  {
     [undefined,null,[],{},1,''].forEach(v=>expect(() => { cond([pred,v])(1) }).toThrow());
   });
-  const fn2 = cond([ [pred,is1], [stubTrue,not1] ]);
+  const fn2 = cond([pred,is1], [stubTrue,not1]);
   it('calls functions with passed args', () =>  expect(fn2(1)).toBe('is_1'));
-  const fn3 = cond([ [pred,is1], [stubTrue,not1] ]);
+  const fn3 = cond([pred,is1], [stubTrue,not1]);
   it('stops after the first passing predicate and returns the value', () =>expect(fn3(1)).toBe('is_1'));
-  const fn4 = cond([ [stubFalse,1], [stubFalse,2], [stubFalse,3] ]);
+  const fn4 = cond([stubFalse,1], [stubFalse,2], [stubFalse,3]);
   it('returns undefined when no predicates pass', () =>expect(fn4(2)).toBe(undefined));
 });
 

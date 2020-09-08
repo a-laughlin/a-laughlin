@@ -102,17 +102,10 @@ export const dpipe = (data,...args)=>pipe(...args)(data);
 // functions
 const makeCollectionFn=(arrayFn,objFn)=>(...args)=>ifElse(isArray,arrayFn(...args),objFn(...args));
 
-export const acceptArrayOrArgs = fn=>(...args)=>args.length>1 ? fn(args) : fn(ensureArray(args[0]));
 export const invokeArgsOnObj = (...args) => mapValues(fn=>fn(...args));
 export const invokeObjectWithArgs = (obj)=>(...args) => mapValues(fn=>isFunction(fn) ? fn(...args) : fn)(obj);
 
-export const overObj = (fnsObj={})=>(...args)=>{
-  // console.log(`fnsObj`,fnsObj)
-  return mo(f=>{
-    if(typeof f!=='function')console.log('typeof f',f);
-    return f(...args);
-  })(fnsObj);
-}
+export const overObj = (fnsObj={})=>(...args)=>mo(f=>f(...args))(fnsObj);
 export const overArray = (fnsArray=[])=>(...args)=>ma(f=>f(...args))(fnsArray);
 export const over = x=>isArray(x)?overArray(x):overObj(x);
 export const converge = over;//backwards compat;
@@ -133,28 +126,28 @@ export const ensurePropIsObject = ensurePropWith(stubObject);
 export const not = fn=>(...args)=>!fn(...args);
 export const ifElseUnary = (pred,T,F=identity)=>arg=>pred(arg)?T(arg):F(arg);
 export const ifElse = (pred,T,F=identity)=>(...args)=>(pred(...args) ? T : F)(...args);
-export const and = acceptArrayOrArgs((preds)=>(...args)=>{
+export const and = (...preds)=>(...args)=>{
   // console.log(`preds`,preds)
   for (const p of preds)if(p(...args)!==true)return false;
   return true;
-});
-export const or = acceptArrayOrArgs((preds)=>(...args)=>{
+};
+export const or = (...preds)=>(...args)=>{
   for (const p of preds)if(p(...args)===true)return true;
   return false;
-});
-export const xor = acceptArrayOrArgs((preds)=>(...args)=>{
+};
+export const xor = (...preds)=>(...args)=>{
   let p,trues=0;
   for (p of preds)
     (p(...args)===true && (++trues));
   return trues===1;
-});
+};
 export const _is = (x) => (y) => x===y;
 export const hasKey=(k='')=>(coll={})=>k in coll;
 export const matchesProperty=([k,v]=[])=>(o={})=>o[k]===v;
 export const matches=(coll={})=>and(...mapToArray((v,k)=>matchesProperty([k,v]))(coll));
 export const none = compose(not,or);
-export const condNoExec = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred,val] of arrs) if(pred(...x)) return val;});
-export const cond = acceptArrayOrArgs(arrs=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);});
+export const condNoExec = (...arrs)=>(...x)=>{for (const [pred,val] of arrs) if(pred(...x)) return val;};
+export const cond = (...arrs)=>(...x)=>{for (const [pred, fn] of arrs) if (pred(...x)) return fn(...x);};
 
 
 
