@@ -16,7 +16,13 @@
         "*.md"
       ],
       "message": "chore(release): publish",
-      "registry": "https://registry.npmjs.org/"
+      "registry": "https://registry.npmjs.org/",
+      "publishConfig": {
+        "access": "public",
+        "directory": "dist"
+      },
+      "access": "public",
+      "directory": "dist"
     },
     "bootstrap": {
       "ignore": "component-*",

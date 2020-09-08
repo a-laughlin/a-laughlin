@@ -11,6 +11,7 @@ Simple, Redux-first GraphQL utilities optimized for developer speed.
     - We can do anything with 1-length list that we can with a single object
     - Eliminating unnecessary decisions improves speed.
 
+
 ## Philosophy
 
 Minimize AST Edges.
