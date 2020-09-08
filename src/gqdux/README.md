@@ -1,4 +1,4 @@
-# Redux-GraphQL
+# GQDux
 
 Simple, Redux-first GraphQL utilities optimized for developer speed.
 

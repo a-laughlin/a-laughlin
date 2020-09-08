@@ -9,7 +9,7 @@ import {
   querySelectorToUseQuery,
   gql,
   querySelectorToUseLeafQuery
-} from './redux-graphql';
+} from './gqdux';
 
 
 describe("schemaToReducerMap", () => {

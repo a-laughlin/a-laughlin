@@ -1,14 +1,14 @@
 {
-  "name": "redux-graphql",
-  "version": "0.0.15",
-  "description": "auto-generate redux graphql selector, reducers, and action creators from a graphql schema",
+  "name": "gqdux",
+  "version": "0.0.0",
+  "description": "Simple, Redux-first GraphQL utilities optimized for developer speed.",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
   "license": "ISC",
   "type": "module",
-  "main": "redux-graphql.js",
-  "browser": "redux-graphql.js",
-  "module": "redux-graphql.js",
+  "main": "gqdux.js",
+  "browser": "gqdux.js",
+  "module": "gqdux.js",
   "//graphql-tag requires graphql": "",
   "publishConfig": {
     "access": "public"
@@ -22,6 +22,5 @@
     "react-dom": "^16.13.1",
     "react-test-renderer": "^16.13.1",
     "redux": "^4.0.5"
-  },
-  "gitHead": "f72490bfac4ea626bcc6222433ad205807fb1e66"
+  }
 }
