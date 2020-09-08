@@ -1,6 +1,6 @@
 {
   "name": "@a-laughlin/fp-utils",
-  "version": "0.0.9",
+  "version": "0.0.6",
   "description": "functional programming utils",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
