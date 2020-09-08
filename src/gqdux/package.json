@@ -1,6 +1,6 @@
 {
   "name": "gqdux",
-  "version": "0.0.0",
+  "version": "0.0.16",
   "description": "Simple, Redux-first GraphQL utilities optimized for developer speed.",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
@@ -14,7 +14,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@a-laughlin/fp-utils": "^0.0.15",
+    "@a-laughlin/fp-utils": "^0.0.16",
     "@testing-library/react-hooks": "^3.3.0",
     "graphql": "^15.3.0",
     "graphql-tag": "^2.10.4",
