@@ -1,6 +1,6 @@
 {
   "name": "@a-laughlin/react-utils",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "react utils",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
@@ -10,7 +10,7 @@
   "main": "react-utils.js",
   "browser": "react-utils.js",
   "dependencies": {
-    "@a-laughlin/fp-utils": "^0.0.12",
+    "@a-laughlin/fp-utils": "^0.0.13",
     "react": ">=16.9"
   },
   "gitHead": "69581753c00e8526bfe37234c010c8483599568b"
