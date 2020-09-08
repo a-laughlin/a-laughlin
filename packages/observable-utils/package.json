@@ -1,6 +1,6 @@
 {
   "name": "@a-laughlin/observable-utils",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "description": "functional reactive programming utils (aka streams,observables)",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
