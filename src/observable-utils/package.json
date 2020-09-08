@@ -12,5 +12,8 @@
   "dependencies": {
     "xstream": "^11.2.0"
   },
-  "gitHead": "ce8800e942f6a74a743e5455313a9e641138ac07"
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "f72490bfac4ea626bcc6222433ad205807fb1e66"
 }

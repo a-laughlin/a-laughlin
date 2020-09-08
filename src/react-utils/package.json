@@ -9,9 +9,12 @@
   "module": "react-utils.js",
   "main": "react-utils.js",
   "browser": "react-utils.js",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@a-laughlin/fp-utils": "^0.0.14",
     "react": ">=16.9"
   },
-  "gitHead": "ce8800e942f6a74a743e5455313a9e641138ac07"
+  "gitHead": "f72490bfac4ea626bcc6222433ad205807fb1e66"
 }

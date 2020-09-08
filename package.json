@@ -1,6 +1,7 @@
 {
   "name": "a-laughlin",
   "root": true,
+  "private":true,
   "repository": "https://github.com/a-laughlin/a-laughlin",
   "workspaces": [
     "src/*"
