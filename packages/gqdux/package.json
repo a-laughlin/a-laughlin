@@ -13,7 +13,9 @@
     "access": "public"
   },
   "dependencies": {
-    "@a-laughlin/fp-utils": "^0.0.19",
+    "@a-laughlin/fp-utils": "^0.0.19"
+  },
+  "devDependencies":{
     "@testing-library/react-hooks": "^3.3.0",
     "graphql": "^15.3.0",
     "graphql-tag": "^2.10.4",

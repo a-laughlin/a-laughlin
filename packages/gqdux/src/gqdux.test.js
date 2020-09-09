@@ -7,9 +7,9 @@ import {
   schemaToReducerMap,
   schemaToQuerySelector,
   querySelectorToUseQuery,
-  gql,
   querySelectorToUseLeafQuery
 } from './gqdux';
+import gql from 'graphql-tag';
 
 
 describe("schemaToReducerMap", () => {

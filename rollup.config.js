@@ -15,18 +15,25 @@ const snakeToStartCase = s=>s.split('-').map(s=>s[0].toUpperCase()+s.slice(1)).j
 import {readdirSync,writeFileSync} from 'fs';
 import {join} from 'path';
 // import terser from '@rollup/plugin-terser';
+import injectProcessEnv from 'rollup-plugin-inject-process-env';
 
+// how to use this for 3 loops, one for dev, one for prod, one for prod-min
+// sets the process object in each environment
+const processEnvPlugin = injectProcessEnv({ 
+  NODE_ENV: process.env.NODE_ENV||'production'
+});
 
-
-
-const resolvePlugin = resolve({customResolveOptions: {moduleDirectory: 'node_modules'}});
-const commonjsPlugin = commonjs({esmExternals:true});
+const resolvePlugin = resolve({
+  customResolveOptions: {
+    moduleDirectory: 'node_modules'
+  },
+  mainFields: ['module', 'main', 'browser']
+});
+const commonjsPlugin = commonjs({ esmExternals:true });
 const sourceMapPlugin = sourcemap();
 const terserPlugin = terser();
-// const aliasPlugin = alias({entries: [
-//   // { find: '@a-laughlin/fp-utils', replacement: '../../fp-utils' },
-//   { find: 'react', replacement: 'https://unpkg.com/react@16/umd/react.development.js' },
-// ]});
+
+
 const modules = readdirSync('packages')
 .filter(dir=>dir!=='.DS_Store')
 .map(dir=>({
@@ -41,8 +48,6 @@ const modules = readdirSync('packages')
     'react',
     'react-dom',
     'xstream',
-    '@a-laughlin/fp-utils',
-    '@a-laughlin/style-string-to-object'
   ],
   input:join(inDir,`${dir}.js`),
   output:['es','umd','cjs'].flatMap(format=>[
@@ -59,10 +64,17 @@ const modules = readdirSync('packages')
     }
   }),
   plugins:[
-    copy([ { files: join(`packages`,dir,'{LICENSE,package.json}'), dest: outDir }]),
-    sourceMapPlugin,
+    alias({entries: [
+      // rollup is unaware of yarn workspaces, so alias input paths when building
+      { find: '@a-laughlin/fp-utils', replacement: 'packages/fp-utils/src/fp-utils.js' },
+      { find: '@a-laughlin/style-string-to-object', replacement: 'packages/style-string-to-object/src/style-string-to-object.js' },
+      // { find: 'react', replacement: 'https://unpkg.com/react@16/umd/react.development.js' },
+    ]}),
     resolvePlugin,
-    commonjsPlugin,
+    commonjsPlugin, // must go after resolve
+    processEnvPlugin, // must go after commonjs
+    sourceMapPlugin,
+    copy([ { files: join(`packages`,dir,'{LICENSE,package.json}'), dest: outDir }]),
     analyze({
       onAnalysis:o=>writeFileSync(join(outDir,'stats.json'),JSON.stringify(o,null,2)),
       writeTo:s=>writeFileSync(join(outDir,'stats.txt'),s)

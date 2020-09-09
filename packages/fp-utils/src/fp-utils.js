@@ -1,9 +1,6 @@
 // curry/compose/pipe, for later fns
 let curry,compose,pipe;
 export const identity=x=>x;
-if(globalThis.process===undefined){
-  globalThis.process={env:{NODE_ENV:'production'}}
-}
 if (globalThis.process.env.NODE_ENV !== 'production') {
   // debugging versions
   const fToString = fn => fn.name ? fn.name : fn.toString();
@@ -68,9 +65,6 @@ export const range=(end=10,start=0,step=1,mapper=identity)=>{
   return result;
 }
 
-// const stubs
-export const frozenEmptyArray = Object.freeze([]);
-export const frozenEmptyObject = Object.freeze(Object.create(null));
 
 
 // primitive predicates
