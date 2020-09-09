@@ -76,8 +76,9 @@ const modules = readdirSync('packages')
     sourceMapPlugin,
     copy([ { files: join(`packages`,dir,'{LICENSE,package.json}'), dest: outDir }]),
     analyze({
-      onAnalysis:o=>writeFileSync(join(outDir,'stats.json'),JSON.stringify(o,null,2)),
-      writeTo:s=>writeFileSync(join(outDir,'stats.txt'),s)
+      showExports:true,
+      writeTo:s=>writeFileSync(join(`packages`,dir,'generated_stats.txt'),s),
+      onAnalysis:o=>writeFileSync(join(`packages`,dir,'generated_stats.json'),JSON.stringify(o,null,2)),
     }),
     visualizer({ template:"treemap", filename:join(outDir,'stats-treemap.html')}),
     visualizer({ template:"network", filename:join(outDir,'stats-network.html')}),
