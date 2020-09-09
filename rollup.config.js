@@ -1,16 +1,15 @@
 // rollup.config.js
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs'; // only for xstream and react
-import html from '@rollup/plugin-html'; // only for xstream and react
 import visualizer from 'rollup-plugin-visualizer';
-import {default as transpile} from '@rollup/plugin-sucrase';
+// import {default as transpile} from '@rollup/plugin-sucrase';
 import {terser} from 'rollup-plugin-terser';
 import copy from 'rollup-plugin-cpy';
 import alias from '@rollup/plugin-alias';
 import analyze from 'rollup-plugin-analyzer';
 // const prettier = require('rollup-plugin-prettier');
 // const eslint = require('rollup-plugin-prettier');
-// import sourcemap from '@rollup/plugin-sourcemaps';
+import sourcemap from 'rollup-plugin-sourcemaps';
 
 const snakeToStartCase = s=>s.split('-').map(s=>s[0].toUpperCase()+s.slice(1)).join('');
 import {readdirSync,writeFileSync} from 'fs';
@@ -22,9 +21,8 @@ import {join} from 'path';
 
 const resolvePlugin = resolve({customResolveOptions: {moduleDirectory: 'node_modules'}});
 const commonjsPlugin = commonjs({esmExternals:true});
-const analyzePlugin = analyze({
-  summaryOnly:true,
-});
+const sourceMapPlugin = sourcemap();
+const terserPlugin = terser();
 // const aliasPlugin = alias({entries: [
 //   // { find: '@a-laughlin/fp-utils', replacement: '../../fp-utils' },
 //   { find: 'react', replacement: 'https://unpkg.com/react@16/umd/react.development.js' },
@@ -49,7 +47,7 @@ const modules = readdirSync('packages')
   input:join(inDir,`${dir}.js`),
   output:['es','umd','cjs'].flatMap(format=>[
     {format, file:join(outDir,format,`${dir}.js`),compact:true, entryFileNames},
-    {format, file:join(outDir,format,`${dir}.min.js`),compact:true, entryFileNames, plugins:[terser()]},
+    {format, file:join(outDir,format,`${dir}.min.js`),compact:true,sourcemap:true, entryFileNames, plugins:[terserPlugin]},
   ]).map(o=>o.format!=='umd'?o:{
     ...o,
     name:snakeToStartCase(dir),
@@ -61,8 +59,8 @@ const modules = readdirSync('packages')
     }
   }),
   plugins:[
-    // aliasPlugin,
-    // copy([ { files: join(`packages`,dir,'package.json'), dest: outDir }]),
+    copy([ { files: join(`packages`,dir,'{LICENSE,package.json}'), dest: outDir }]),
+    sourceMapPlugin,
     resolvePlugin,
     commonjsPlugin,
     analyze({
