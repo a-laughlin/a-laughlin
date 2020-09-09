@@ -6,9 +6,9 @@
   "homepage": "",
   "license": "ISC",
   "type": "module",
-  "main": "style-string-to-object.js",
-  "browser": "style-string-to-object.js",
-  "module": "style-string-to-object.js",
+  "main": "cjs/style-string-to-object.js",
+  "browser": "umd/style-string-to-object.js",
+  "module": "es/style-string-to-object.js",
   "publishConfig": {
     "access": "public"
   },

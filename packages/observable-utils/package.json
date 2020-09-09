@@ -6,9 +6,9 @@
   "homepage": "",
   "license": "ISC",
   "type": "module",
-  "main": "observable-utils.js",
-  "module": "observable-utils.js",
-  "browser": "observable-utils.js",
+  "main": "cjs/observable-utils.js",
+  "module": "es/observable-utils.js",
+  "browser": "umd/observable-utils.js",
   "dependencies": {
     "xstream": "^11.2.0"
   },

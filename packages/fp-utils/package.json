@@ -6,9 +6,9 @@
   "homepage": "",
   "license": "ISC",
   "type": "module",
-  "main": "fp-utils.js",
-  "module": "fp-utils.js",
-  "browser": "fp-utils.js",
+  "main": "cjs/fp-utils.js",
+  "module": "es/fp-utils.js",
+  "browser": "umd/fp-utils.js",
   "publishConfig": {
     "access": "public"
   },

@@ -14,7 +14,7 @@
       "message": "chore(release): publish",
       "registry": "https://registry.npmjs.org/",
       "graphType": "all",
-      "directory": "dist"
+      "contents": "dist"
     },
     "bootstrap": {
       "ignore": "component-*",

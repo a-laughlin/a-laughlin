@@ -6,10 +6,9 @@
   "homepage": "",
   "license": "ISC",
   "type": "module",
-  "main": "gqdux.js",
-  "browser": "gqdux.js",
-  "module": "gqdux.js",
-  "//graphql-tag requires graphql": "",
+  "main": "cjs/gqdux.js",
+  "browser": "umd/gqdux.js",
+  "module": "es/gqdux.js",
   "publishConfig": {
     "access": "public"
   },

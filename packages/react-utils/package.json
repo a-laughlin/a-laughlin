@@ -6,9 +6,9 @@
   "homepage": "",
   "license": "ISC",
   "type": "module",
-  "module": "react-utils.js",
-  "main": "react-utils.js",
-  "browser": "react-utils.js",
+  "main": "cjs/react-utils.js",
+  "browser": "umd/react-utils.js",
+  "module": "es/react-utils.js",
   "publishConfig": {
     "access": "public"
   },

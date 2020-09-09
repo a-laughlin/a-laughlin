@@ -59,7 +59,6 @@
   },
   "scripts": {
     "story": "",
-    "prepublish":"yarn build",
     "example": "serve -o dist/es/redux-graphql/",
     "build": "rollup -c rollup.config.js",
     "test:clearcache": "jest --clear-cache",
