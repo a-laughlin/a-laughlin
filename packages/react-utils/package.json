@@ -1,6 +1,6 @@
 {
   "name": "@a-laughlin/react-utils",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "description": "react utils",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "homepage": "",
@@ -13,7 +13,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@a-laughlin/fp-utils": "^0.0.18",
+    "@a-laughlin/fp-utils": "^0.0.19",
     "react": ">=16.9"
   },
   "gitHead": "57f810435642e947a90f07c98b91f0ee8bdb1318"
