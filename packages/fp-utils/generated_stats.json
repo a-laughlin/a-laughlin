@@ -1,11 +1,11 @@
 {
-  "bundleSize": 19228,
+  "bundleSize": 19131,
   "bundleOrigSize": 20121,
-  "bundleReduction": 4.44,
+  "bundleReduction": 4.92,
   "modules": [
     {
       "id": "/packages/fp-utils/src/fp-utils.js",
-      "size": 18895,
+      "size": 18798,
       "origSize": 19789,
       "renderedExports": [
         "identity",
@@ -151,8 +151,8 @@
       ],
       "removedExports": [],
       "dependents": [],
-      "percent": 98.27,
-      "reduction": 4.52
+      "percent": 98.26,
+      "reduction": 5.01
     },
     {
       "id": "\u0000rollup-plugin-inject-process-env",
@@ -163,7 +163,7 @@
       "dependents": [
         "/packages/fp-utils/src/fp-utils.js"
       ],
-      "percent": 1.73,
+      "percent": 1.74,
       "reduction": 0
     }
   ],
