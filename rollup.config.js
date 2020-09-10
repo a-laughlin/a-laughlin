@@ -95,7 +95,7 @@ const modules = readdirSync('packages')
         // based on https://lihautan.com/12-line-rollup-plugin/
         plugins:[{name:'write-package.json', generateBundle(){
           mkdirSync(join(outDir,format),{recursive: true});
-          writeFileSync(join(outDir,format,'package.json'),JSON.stringify({type},null,2));
+          format!=='es' && writeFileSync(join(outDir,format,'package.json'),JSON.stringify({type},null,2));
         }}]
       };
       

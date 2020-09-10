@@ -7,7 +7,7 @@
     "access": "public"
   },
   "name": "graphql-tag-bundled",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "graphql-tag bundled with graphqljs for browser use (https://github.com/apollographql/graphql-tag#readme)",
   "homepage": "",
   "dependencies": {
