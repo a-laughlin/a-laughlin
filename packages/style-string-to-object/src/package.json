@@ -7,7 +7,7 @@
     "access": "public"
   },
   "name": "@a-laughlin/style-string-to-object",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "description": "short style syntax for efficient object styles",
   "homepage": "",
   "dependencies": {

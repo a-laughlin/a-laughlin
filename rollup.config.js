@@ -153,9 +153,9 @@ const modules = readdirSync('packages')
       // this is kind of weird
       writeFileSync(join(outDir,'package.json'),JSON.stringify({
         "type":"module",
-        "main": `./cjs/${dir}.js`,
-        "browser": `./umd/${dir}.js`,
+        "main": `./es/${dir}.js`,
         "module":`./es/${dir}.js`,
+        "browser": `./umd/${dir}.js`,
         ...pkg,
       },null,2));
       writeFileSync(join(inDir,'package.json'),JSON.stringify({

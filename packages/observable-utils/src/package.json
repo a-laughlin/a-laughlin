@@ -7,7 +7,7 @@
     "access": "public"
   },
   "name": "@a-laughlin/observable-utils",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "description": "functional reactive programming utils (aka streams,observables)",
   "homepage": "",
   "dependencies": {

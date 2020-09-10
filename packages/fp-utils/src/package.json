@@ -7,7 +7,7 @@
     "access": "public"
   },
   "name": "@a-laughlin/fp-utils",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "description": "functional programming utils",
   "homepage": "",
   "gitHead": "57f810435642e947a90f07c98b91f0ee8bdb1318"
