@@ -84,7 +84,6 @@ const modules = readdirSync('packages')
         entryFileNames,
         compact:true,file:join(outDir,format,`${dir}.js`),
         // based on https://lihautan.com/12-line-rollup-plugin/
-        // and https://2ality.com/2019/10/hybrid-npm-packages.html#option-3%3A-bare-import-esm%2C-deep-import-commonjs-with-backward-compatibility
         plugins:[{name:'write-package.json', generateBundle(){
           mkdirSync(join(outDir,format),{recursive: true});
           format!=='es' && writeFileSync(join(outDir,format,'package.json'),JSON.stringify({type},null,2));
@@ -100,13 +99,14 @@ const modules = readdirSync('packages')
       
       if(format==='umd'){
         const globalArgs={
-          name:snakeToStartCase(dir),
+          name:dir==='graphql-tag-bundled'?'gql':snakeToStartCase(dir),
           globals:{
             react:'react',
             xstream:'xstream',
             '@a-laughlin/fp-utils':'fpUtils',
             '@a-laughlin/style-string-to-object':'styleStringToObject',
             'graphql-tag':'gql',
+            'graphql-tag-bundled':'gql',
           }
         };
         Object.assign(dev,globalArgs);
@@ -135,17 +135,16 @@ const modules = readdirSync('packages')
     visualizer({ template:"network", filename:join(`packages`,dir,'stats-network.html')}),
     {name:'write-root-package.json', generateBundle(){
       const pkg = {
-        "author": "Adam Laughlin <adam.laughlin@gmail.com>",
-        "license": "MIT",
-        "publishConfig": {
-          "access": "public"
-        },
+        author: "Adam Laughlin <adam.laughlin@gmail.com>",
+        license: "MIT",
+        publishConfig: { "access": "public" },
         ...require(`./packages/${dir}/package.json`),
       };
-      // this is kind of weird
+      // main es module with type commonjs is odd, but it seems to work
+      // but https://2ality.com/2019/10/hybrid-npm-packages.html#option-3%3A-bare-import-esm%2C-deep-import-commonjs-with-backward-compatibility
       writeFileSync(join(outDir,'package.json'),JSON.stringify({
-        "main": `./es/${dir}.js`,
-        "type": `commonjs`,
+        main: `./es/${dir}.js`,
+        type: `commonjs`,
         // "module":`./es/${dir}.js`,
         // "browser": `./umd/${dir}.js`,
         ...pkg,
