@@ -1,4 +1,11 @@
 {
+  "main": "gqdux.js",
+  "type": "module",
+  "author": "Adam Laughlin <adam.laughlin@gmail.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "name": "gqdux",
   "version": "0.0.20",
   "description": "Simple, Redux-first GraphQL utilities optimized for developer speed.",

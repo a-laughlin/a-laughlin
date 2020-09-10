@@ -1,4 +1,11 @@
 {
+  "main": "style-string-to-object.js",
+  "type": "module",
+  "author": "Adam Laughlin <adam.laughlin@gmail.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "name": "@a-laughlin/style-string-to-object",
   "version": "0.0.20",
   "description": "short style syntax for efficient object styles",

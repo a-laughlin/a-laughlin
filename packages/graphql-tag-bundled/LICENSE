@@ -1,3 +1,10 @@
+Shares the MIT license with both graphql-tag and graphql-js
+Licenses:
+
+<https://github.com/apollographql/graphql-tag/blob/master/LICENSE>
+<https://github.com/graphql/graphql-js/blob/master/LICENSE>
+
+
 MIT License
 
 Copyright Adam Laughlin (github: @a-laughlin)
