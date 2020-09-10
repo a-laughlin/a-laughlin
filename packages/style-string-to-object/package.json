@@ -1,6 +1,6 @@
 {
   "name": "@a-laughlin/style-string-to-object",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "description": "short style syntax for efficient object styles",
   "homepage": "",
   "dependencies": {
