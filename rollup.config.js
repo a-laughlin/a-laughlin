@@ -97,9 +97,9 @@ const modules = readdirSync('packages')
         plugins:[terserPlugin]
       };
       
-      if(format==='umd'){
+      // if(format==='umd'){
         const globalArgs={
-          name:dir==='graphql-tag-bundled'?'gql':snakeToStartCase(dir),
+          name:snakeToStartCase(dir),
           globals:{
             react:'react',
             xstream:'xstream',
@@ -109,9 +109,10 @@ const modules = readdirSync('packages')
             'graphql-tag-bundled':'gql',
           }
         };
+        if(dir==='graphql-tag-bundled') Object.assign(globalArgs,{name:'gql',exports:'default'});
         Object.assign(dev,globalArgs);
         Object.assign(prod,globalArgs);
-      }
+      // }
       return [dev, prod];
     }),
   plugins:[

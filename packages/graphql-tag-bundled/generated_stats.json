@@ -1,7 +1,7 @@
 {
   "bundleSize": 91247,
-  "bundleOrigSize": 95812,
-  "bundleReduction": 4.76,
+  "bundleOrigSize": 95818,
+  "bundleReduction": 4.77,
   "modules": [
     {
       "id": "/node_modules/graphql/language/parser.mjs",
@@ -373,9 +373,9 @@
     {
       "id": "/packages/graphql-tag-bundled/src/graphql-tag-bundled.js",
       "size": 0,
-      "origSize": 45,
+      "origSize": 51,
       "renderedExports": [
-        "gql"
+        "default"
       ],
       "removedExports": [],
       "dependents": [],
