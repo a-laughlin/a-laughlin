@@ -1,10 +1,10 @@
 {
   "name": "gqdux",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "description": "Simple, Redux-first GraphQL utilities optimized for developer speed.",
   "homepage": "",
   "dependencies": {
-    "@a-laughlin/fp-utils": "^0.0.22"
+    "@a-laughlin/fp-utils": "^0.0.23"
   },
   "devDependencies": {
     "@testing-library/react-hooks": "^3.3.0",
