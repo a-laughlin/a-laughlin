@@ -1,10 +1,10 @@
 {
   "name": "@a-laughlin/react-utils",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "description": "react utils",
   "homepage": "",
   "dependencies": {
-    "@a-laughlin/fp-utils": "^0.0.20",
+    "@a-laughlin/fp-utils": "^0.0.21",
     "react": ">=16.9"
   },
   "gitHead": "57f810435642e947a90f07c98b91f0ee8bdb1318"
