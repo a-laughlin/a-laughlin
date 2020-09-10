@@ -95,7 +95,7 @@ const modules = readdirSync('packages')
         // based on https://lihautan.com/12-line-rollup-plugin/
         plugins:[{name:'write-package.json', generateBundle(){
           mkdirSync(join(outDir,format),{recursive: true});
-          writeFileSync(join(outDir,format,'package.json'),JSON.stringify({type},null,2));
+          writeFileSync(join(outDir,format,'package.json'),JSON.stringify({type,main:`./${dir}.js`},null,2));
         }}]
       };
       
@@ -152,13 +152,13 @@ const modules = readdirSync('packages')
       };
       // this is kind of weird
       writeFileSync(join(outDir,'package.json'),JSON.stringify({
-        "main": `cjs/${dir}.js`,
-        "browser": `umd/${dir}.js`,
-        "module":`es/${dir}.js`,
+        "main": `./cjs/${dir}.js`,
+        "browser": `./umd/${dir}.js`,
+        "module":`./es/${dir}.js`,
         ...pkg,
       },null,2));
       writeFileSync(join(inDir,'package.json'),JSON.stringify({
-        "main": `${dir}.js`,
+        "main": `./${dir}.js`,
         "type":"module",
         ...pkg,
       },null,2));

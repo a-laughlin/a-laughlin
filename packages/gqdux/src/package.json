@@ -1,5 +1,5 @@
 {
-  "main": "gqdux.js",
+  "main": "./gqdux.js",
   "type": "module",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "license": "MIT",
@@ -7,11 +7,11 @@
     "access": "public"
   },
   "name": "gqdux",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "description": "Simple, Redux-first GraphQL utilities optimized for developer speed.",
   "homepage": "",
   "dependencies": {
-    "@a-laughlin/fp-utils": "^0.0.21"
+    "@a-laughlin/fp-utils": "^0.0.22"
   },
   "devDependencies": {
     "@testing-library/react-hooks": "^3.3.0",

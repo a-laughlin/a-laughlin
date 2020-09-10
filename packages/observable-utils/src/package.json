@@ -1,5 +1,5 @@
 {
-  "main": "observable-utils.js",
+  "main": "./observable-utils.js",
   "type": "module",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "license": "MIT",
@@ -7,7 +7,7 @@
     "access": "public"
   },
   "name": "@a-laughlin/observable-utils",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "description": "functional reactive programming utils (aka streams,observables)",
   "homepage": "",
   "dependencies": {

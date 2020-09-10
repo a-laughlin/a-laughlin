@@ -1,9 +1,9 @@
 -----------------------------
 Rollup File Analysis
 -----------------------------
-bundle size:    71.813 KB
+bundle size:    71.795 KB
 original size:  96.27 KB
-code reduction: 25.4 %
+code reduction: 25.42 %
 module count:   100
 
 ██████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
@@ -195,10 +195,10 @@ unused exports:  0
 
 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 file:            /packages/react-utils/src/react-utils.js
-bundle space:    2.82 %
-rendered size:   2.025 KB
+bundle space:    2.8 %
+rendered size:   2.007 KB
 original size:   2.187 KB
-code reduction:  7.41 %
+code reduction:  8.23 %
 dependents:      0
 used exports:    48
   - toHookComposer
@@ -633,7 +633,7 @@ unused exports:  0
 
 ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 file:            /node_modules/lodash-es/_createBaseFor.js
-bundle space:    0.85 %
+bundle space:    0.86 %
 rendered size:   614 Bytes
 original size:   646 Bytes
 code reduction:  4.95 %
@@ -645,7 +645,7 @@ unused exports:  0
 
 ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 file:            /node_modules/lodash-es/keysIn.js
-bundle space:    0.85 %
+bundle space:    0.86 %
 rendered size:   614 Bytes
 original size:   776 Bytes
 code reduction:  20.88 %
@@ -812,7 +812,7 @@ unused exports:  0
 
 ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 file:            /node_modules/lodash-es/constant.js
-bundle space:    0.69 %
+bundle space:    0.7 %
 rendered size:   499 Bytes
 original size:   526 Bytes
 code reduction:  5.13 %

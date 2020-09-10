@@ -1,5 +1,5 @@
 {
-  "main": "graphql-tag-bundled.js",
+  "main": "./graphql-tag-bundled.js",
   "type": "module",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "license": "MIT",
@@ -7,7 +7,7 @@
     "access": "public"
   },
   "name": "graphql-tag-bundled",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "graphql-tag bundled with graphqljs for browser use (https://github.com/apollographql/graphql-tag#readme)",
   "homepage": "",
   "dependencies": {

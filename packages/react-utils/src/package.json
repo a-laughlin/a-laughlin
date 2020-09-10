@@ -1,5 +1,5 @@
 {
-  "main": "react-utils.js",
+  "main": "./react-utils.js",
   "type": "module",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "license": "MIT",
@@ -7,11 +7,11 @@
     "access": "public"
   },
   "name": "@a-laughlin/react-utils",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "description": "react utils",
   "homepage": "",
   "dependencies": {
-    "@a-laughlin/fp-utils": "^0.0.21",
+    "@a-laughlin/fp-utils": "^0.0.22",
     "react": ">=16.9"
   },
   "gitHead": "57f810435642e947a90f07c98b91f0ee8bdb1318"
