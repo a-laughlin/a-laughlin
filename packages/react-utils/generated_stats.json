@@ -1,7 +1,7 @@
 {
-  "bundleSize": 71795,
+  "bundleSize": 71813,
   "bundleOrigSize": 96270,
-  "bundleReduction": 25.42,
+  "bundleReduction": 25.4,
   "modules": [
     {
       "id": "packages/style-string-to-object/src/style-string-to-object.js",
@@ -201,7 +201,7 @@
     },
     {
       "id": "/packages/react-utils/src/react-utils.js",
-      "size": 2007,
+      "size": 2025,
       "origSize": 2187,
       "renderedExports": [
         "toHookComposer",
@@ -255,8 +255,8 @@
       ],
       "removedExports": [],
       "dependents": [],
-      "percent": 2.8,
-      "reduction": 8.23
+      "percent": 2.82,
+      "reduction": 7.41
     },
     {
       "id": "/node_modules/lodash-es/_arrayLikeKeys.js",
@@ -709,7 +709,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseFor.js"
       ],
-      "percent": 0.86,
+      "percent": 0.85,
       "reduction": 4.95
     },
     {
@@ -724,7 +724,7 @@
         "/node_modules/lodash-es/toPlainObject.js",
         "/node_modules/lodash-es/_baseMerge.js"
       ],
-      "percent": 0.86,
+      "percent": 0.85,
       "reduction": 20.88
     },
     {
@@ -916,7 +916,7 @@
       "dependents": [
         "/node_modules/lodash-es/_baseSetToString.js"
       ],
-      "percent": 0.7,
+      "percent": 0.69,
       "reduction": 5.13
     },
     {
