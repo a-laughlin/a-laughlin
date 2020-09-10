@@ -85,10 +85,10 @@ const modules = readdirSync('packages')
         compact:true,file:join(outDir,format,`${dir}.js`),
         // based on https://lihautan.com/12-line-rollup-plugin/
         // and https://2ality.com/2019/10/hybrid-npm-packages.html#option-3%3A-bare-import-esm%2C-deep-import-commonjs-with-backward-compatibility
-        // plugins:[{name:'write-package.json', generateBundle(){
-        //   mkdirSync(join(outDir,format),{recursive: true});
-        //   format!=='es' && writeFileSync(join(outDir,format,'package.json'),JSON.stringify({type},null,2));
-        // }}]
+        plugins:[{name:'write-package.json', generateBundle(){
+          mkdirSync(join(outDir,format),{recursive: true});
+          format==='cjs' && writeFileSync(join(outDir,format,'package.json'),JSON.stringify({type},null,2));
+        }}]
       };
       
       const prod = {
