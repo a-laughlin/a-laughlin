@@ -2,7 +2,8 @@ node_modules
 coverage
 __pycache__
 .vscode
-*.log
 .env
 dist
+*.log
 *.lock
+.DS_Store
