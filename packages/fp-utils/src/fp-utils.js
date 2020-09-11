@@ -333,6 +333,14 @@ export const diffObjs = (a={},b={}) => {
 export const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);
 
 
+var sortedRangeIsSubsetStrict=(sortedSubrange,sortedRange)=>sortedRange[0]<=sortedSubrange[0]&&sortedRange[1]>=sortedSubrange[1];
+var sortedRangeIsSubsetOrEqual=(sortedSubrange,sortedRange)=>sortedRange[0]<=sortedSubrange[0]&&sortedRange[1]>=sortedSubrange[1];
+var sortedRangesIntersect=(sortedRangeA,sortedRangeB)=>{
+  // test that the end of lowest-starting range is greater than the beginning of the highest starting range
+  return sortedRangeA[0]<sortedRangeB[0]
+    ? sortedRangeA[1]>=sortedRangeB[0]
+    : sortedRangeB[1]>=sortedRangeA[0];
+}
 
 // export const diffBy = (by, reducer) => (args = []) => {
 //   const diff = by ? diffObjs(args.map(keyBy(by))) : diffObjs(args);
