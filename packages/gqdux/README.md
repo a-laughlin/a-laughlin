@@ -34,4 +34,4 @@ Minimize AST Edges.
 
 - move collections transducers or add transducer to mapSelections
 - dispatch 1-n events in batch using schemaToQuerySelector w/ different transducers
-- enable useQuery to dispatch multiple consecutive publishes for all relevant test combinations
+- enable useQuery multiple test permutations

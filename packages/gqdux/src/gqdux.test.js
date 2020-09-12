@@ -19,7 +19,7 @@ describe("schemaToReducerMap", () => {
     type Pet{id:ID,name:String}
     scalar SomeScalar
   `);
-  let reducerMap = schemaToReducerMap(schema)();
+  let reducerMap = schemaToReducerMap(schema);
   
   beforeEach(()=>{
     state={
@@ -216,7 +216,7 @@ describe("querySelectorToUseQuery: integration test React.useState,redux.combine
       scalar SomeScalar
     `;
     querier = schemaToQuerySelector(schema);
-    reducerMap = schemaToReducerMap(schema)();
+    reducerMap = schemaToReducerMap(schema);
     const rootReducer = combineReducers(reducerMap);
     store = createStore(rootReducer,{
       SomeScalar:1,
@@ -303,7 +303,7 @@ describe("querySelectorToUseLeafQuery: integration test React.useState,redux.com
       scalar SomeScalar
     `;
     querier = schemaToQuerySelector(schema);
-    reducerMap = schemaToReducerMap(schema)();
+    reducerMap = schemaToReducerMap(schema);
     const rootReducer = combineReducers(reducerMap);
     store = createStore(rootReducer,{
       SomeScalar:1,

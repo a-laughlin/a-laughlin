@@ -32,7 +32,7 @@ const defaultActions = {
   GET:nextReducer=>(prevState,action)=>nextReducer(prevState,action)
 };
 
-export const schemaToReducerMap = (schema) => (ops=defaultActions)=>{
+export const schemaToReducerMap = (schema,ops=defaultActions)=>{
   const {selectionMeta}=indexSchema(schema);
   const actionNormalizers = mapToObject(({defKind,idKey})=>cond(
     [_=>defKind!=='object',identity],                             // leave scalars and other non-object types
