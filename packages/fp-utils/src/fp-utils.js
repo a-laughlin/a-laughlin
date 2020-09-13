@@ -16,7 +16,7 @@ export const range=(end=10,start=0,step=1,mapper=identity)=>{
 
 // primitive predicates
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isFinite
-export const isFinite = Number.isFinite || (v=>typeof value === 'number' && isFinite(value));
+export const isFinite = Number.isFinite || (v=>typeof v === 'number' && isFinite(v));
 export const isInteger = Number.isInteger || (v => isFinite(v) && v % 1 === 0);
 export const isError = e=>isObjectLike(e) && typeof e.message === 'string';
 export const isString = arg=>typeof arg==='string';
@@ -41,11 +41,11 @@ export const overArray = (fnsArray=[])=>(...args)=>mapToArray(f=>f(...args))(fns
 export const over = x=>isArray(x)?overArray(x):overObj(x);
 
 // casting
-export const constant = x=>_=>x;
+export const constant = x=>()=>x;
 export const ensureArray = (val=[])=>isArray(val) ? val : [val];
 export const ensureString = (val)=>isString(val) ? val : `${val}`;
 export const ensureFunction = (arg)=>typeof arg==='function'?arg:constant(arg);
-export const ensureProp = (obj,key,val)=>{obj.hasOwnProperty(key) ? obj[key] : (obj[key]=val);return obj;};
+export const ensureProp = (obj,key,val)=>{Object.prototype.hasOwnProperty.call(obj,key) ? obj[key] : (obj[key]=val);return obj;};
 export const ensurePropWith = fn=>(obj,key,val)=>ensureProp(obj,key,fn(obj,key,val));
 export const ensurePropIsArray = ensurePropWith(stubArray);
 export const ensurePropIsObject = ensurePropWith(stubObject);
@@ -126,7 +126,7 @@ export const immutableTransArrayToArray = fn => (coll=[]) => {
   }
   return changed===false?coll:acc;
 }
-export const immutableFilterObjectToObject = (pred=(v,k,c)=>true) => (coll={}) => {
+export const immutableFilterObjectToObject = (pred=stubTrue) => (coll={}) => {
   let k, acc = {},changed=false;
   for (k in coll)
     pred(coll[k], k, coll)
@@ -186,7 +186,7 @@ export const indexBy = (...keyGetters)=>v=>
 
 const pushToArray=(a=[],v)=>{a[a.length]=v;return a;};
 const pushToArrayProp=(acc={},v,k)=>{acc[k]=pushToArray(acc[k],v);return acc;}
-export const groupBy = fn=>transToObject((o,v,k,c)=>pushToArrayProp(o,v,fn(v,k)));
+export const groupBy = fn=>transToObject((o,v,k)=>pushToArrayProp(o,v,fn(v,k)));
 export const groupByKeys = transToObject((o,v,k)=>{for (k in v)pushToArrayProp(o,v,k)});
 export const groupByValues = transToObject((o,v)=>{
   let k,vv;
@@ -210,7 +210,7 @@ export const pick=cond(
   [isArray,keys=>obj=>transArrayToObject((o,k)=>o[k]=obj[k])(keys)],
   [isString,key=>obj=>({[key]:obj[key]})],
   [isFunction,filterToSame],
-  [stubTrue,keys=>obj=>new Error('unsupported type for pick: '+typeof keys)]
+  [stubTrue,keys=>()=>new Error('unsupported type for pick: '+typeof keys)]
 );
 
 // content
@@ -237,7 +237,7 @@ export const tdMapKeyWithAcc = mapper => nextReducer => (a,v,k,...c) => nextRedu
 export const tdAssign = f=>nextReducer => (a,v,...kc) =>nextReducer({...a,...f(a,v,...kc)},v,...kc);
 export const tdSet = (key,f)=>nextReducer => (a,v,...kc) =>{
   const next = f(a,v,...kc);
-  return a[key]===next?nextReducer(a,v,k,c):nextReducer({...a,[key]:next},v,...kc);
+  return a[key]===next?nextReducer(a,v):nextReducer({...a,[key]:next},v,...kc);
 };
 export const tdReduce = reducer => nextReducer => (a,...vkc) =>
   nextReducer(reducer(a,...vkc),...vkc);
@@ -350,9 +350,9 @@ export const diffObjs = (a={},b={}) => {
 export const diffBy = (by=x=>x.id, args = []) => by ? diffObjs(...args.map(keyBy(by))) : diffObjs(args);
 
 
-var sortedRangeIsSubsetStrict=(sortedSubrange,sortedRange)=>sortedRange[0]<=sortedSubrange[0]&&sortedRange[1]>=sortedSubrange[1];
-var sortedRangeIsSubsetOrEqual=(sortedSubrange,sortedRange)=>sortedRange[0]<=sortedSubrange[0]&&sortedRange[1]>=sortedSubrange[1];
-var sortedRangesIntersect=(sortedRangeA,sortedRangeB)=>{
+export const sortedRangeIsSubsetStrict=(sortedSubrange,sortedRange)=>sortedRange[0]<=sortedSubrange[0]&&sortedRange[1]>=sortedSubrange[1];
+export const sortedRangeIsSubsetOrEqual=(sortedSubrange,sortedRange)=>sortedRange[0]<=sortedSubrange[0]&&sortedRange[1]>=sortedSubrange[1];
+export const sortedRangesIntersect=(sortedRangeA,sortedRangeB)=>{
   // test that the end of lowest-starting range is greater than the beginning of the highest starting range
   return sortedRangeA[0]<sortedRangeB[0]
     ? sortedRangeA[1]>=sortedRangeB[0]
@@ -405,12 +405,12 @@ var sortedRangesIntersect=(sortedRangeA,sortedRangeB)=>{
 
 
 let curry,compose,pipe;
-if (globalThis.process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production') {
   // debugging versions
   const fToString = fn => fn.name ? fn.name : fn.toString();
   curry =(fn) => {
     const f1 = (...args) => {
-      if (args.length >= fn.length) { return fn(...args) };
+      if (args.length >= fn.length) { return fn(...args) }
       const f2 = (...more) => f1(...args, ...more);
       f2.toString = () => `${fToString(fn)}(${args.join(', ')})`;
       return Object.defineProperty(f2, `name`, { value: `${fToString(fn)}(${args.join(', ')})` });

@@ -1,7 +1,5 @@
 import indexSchema from './indexSchema'
 import {transToObject,isString,hasKey,isObjectLike,isInteger,cond,identity,isArray,stubTrue,diffBy, mapToObject, transArrayToObject,} from '@a-laughlin/fp-utils';
-import { indexBy } from '../../fp-utils/src/fp-utils';
-
 const defaultActions = {
   ADD:nextReducer=>(prevState,action)=>{
     // if collection/item/value
@@ -56,7 +54,10 @@ export const schemaToIndividualReducerMap = (schema,ops=defaultActions)=>{
   return transToObject((acc,actionNormalizer,dName)=>{
     for (const OP in ops){
       const fn=ops[OP](identity);
-      acc[`${dName}_${OP}`]=(prevState=null,action={})=>fn(prevState,{...action,payload:actionNormalizer(action.payload)});
+      acc[`${dName}_${OP}`]=(prevState={},action={})=>{
+        const result=fn(prevState[dName],{...action,payload:actionNormalizer(action.payload)});
+        prevState[dName]===result?prevState:{...prevState,[dName]:result};
+      };
     }
   })(schemaToActionNormalizersByDefName(schema));
 };

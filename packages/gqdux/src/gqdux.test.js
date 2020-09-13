@@ -7,7 +7,8 @@ import {
   schemaToReducerMap,
   schemaToQuerySelector,
   querySelectorToUseQuery,
-  querySelectorToUseLeafQuery
+  querySelectorToUseLeafQuery,
+  schemaToMutationReducer
 } from './gqdux';
 import gql from 'graphql-tag';
 
@@ -345,127 +346,59 @@ describe("querySelectorToUseLeafQuery: integration test React.useState,redux.com
     expect(result.current).toEqual('b');
   });
 });
-// describe("queryReducer: integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)",()=>{
-//   let store,useLeafQuery,schema,mutationReducer,dispatchMutation;
+describe("schemaToMutationReducer: integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)",()=>{
+  let store,useQuery,querier,schema,dispatchMutation;
+  const getMutationDispatcher= store=>(...args)=>store.dispatch({type:'mutation',payload:args})
+  beforeEach(()=>{
+    schema = gql`
+      type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
+      type Pet{id:ID,name:String}
+      scalar SomeScalar
+    `;
+    store = createStore(schemaToMutationReducer(schema),{
+      SomeScalar:1,
+      Person:{
+        a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
+        b:{id:'b',name:'B',best:'a',friends:['a']},
+        c:{id:'c',name:'C',best:'a',friends:['a']},
+      },
+      Pet:{
+        x:{id:'x',name:'X'},
+        y:{id:'y',name:'Y'},
+      },
+    });
+    dispatchMutation=getMutationDispatcher(store);
+    querier=schemaToQuerySelector(schema);
+    useQuery = querySelectorToUseQuery(querier,store,useState,useEffect,useMemo);
+  });
+  afterAll(()=>{
+    querier=schema=store=useQuery=dispatchMutation=null;
+  });
+  test('should update collections', () => {
+    const { result } = renderHook(() =>useQuery(gql(`{Person{id}}`)));
+    expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+    // const Person=result.current.Person;
+    // act(()=>dispatchMutation(gql(`{Person(subtract:"a")}`)));
+    // expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
+    // expect(result.current.Person).not.toBe(Person);
+    // expect(result.current.Person.b).toBe(Person.b);
+    // expect(result.current.Person.c).toBe(Person.c);
+  });
+  test('should update scalars', () => {
+    const { result } = renderHook(() =>useQuery(gql(`{SomeScalar}`)));
+    expect(result.current).toEqual({SomeScalar:1});
+    // const Person=result.current.Person;
+    // act(()=>dispatchMutation(gql(`{SomeScalar(set:1)}`)));
+    // expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
+    // expect(result.current.Person).not.toBe(Person);
+    // expect(result.current.Person.b).toBe(Person.b);
+    // expect(result.current.Person.c).toBe(Person.c);
+  });
+});
 
-//   beforeEach(()=>{
-//     schema = gql`
-//       type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
-//       type Pet{id:ID,name:String}
-//       scalar SomeScalar
-//     `;
-//     mutationReducer = schemaToMutationReducer(schema);
-//     // fold the query down, merging transformed collections into root state as it goes
-//     store = createStore(mutationReducer,{
-//       SomeScalar:1,
-//       Person:{
-//         a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
-//         b:{id:'b',name:'B',best:'a',friends:['a']},
-//         c:{id:'c',name:'C',best:'a',friends:['a']},
-//       },
-//       Pet:{
-//         x:{id:'x',name:'X'},
-//         y:{id:'y',name:'Y'},
-//       },
-//     });
-//     dispatchMutation=(gqlDoc)=>store.dispatch({type:'mutation',payload:gqlDoc});
-    
-//     useLeafQuery = querySelectorToUseLeafQuery(querier,store,useState,useEffect,useMemo);
-//   });
-//   afterAll(()=>{
-//     reducerMap=querier=schema=store=useLeafQuery=null;
-//   });
-  
-//   test('should convert scalar props to their value', () => {
-//     const query=gql(`{SomeScalar}`)
-//     const { result } = renderHook(() =>useLeafQuery(query));
-//     expect(result.current).toEqual(1);
-//   });
-//   test('should convert objects with a single selection to a collection of that selection', () => {
-//     const { result } = renderHook(() =>useLeafQuery(gql(`{Person{id}}`)));
-//     expect(result.current).toEqual({a:'a',b:'b',c:'c'});
-//   });
-//   test('should convert a single selected object + selection to the selected value', () => {
-//     const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id}}`)));
-//     expect(result.current).toEqual('a');
-//   });
-//   test('should convert one object with two selections to the object with only that selection', () => {
-//     const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id,name}}`)));
-//     expect(result.current).toEqual({a:{id:'a',name:'A'}});
-//   });
-//   test('should convert a nested property selection to the selected value', () => {
-//     const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){best{id}}}`)));
-//     expect(result.current).toEqual('b');
-//   });
-// });
 
-// describe("getUseQuery: integration test react+redux+useQuery+boundary values directive",()=>{
-//   let store,useQuery,querier,reducerMap;
-  
-//   beforeAll(()=>{
-//     const schema = gql`
-//       type Person{
-//         id:ID, @bvs([])
-//         name:String, @bvs([])
-//         best:Person, @bvs([])
-//         otherbest:Person, @bvs([])
-//         nicknames:[String], @bvs([])
-//         friends:[Person], @bvs([])
-//         pet:Pet @bvs([])
-//       }
-//       type Pet{id:ID,name:String}
-//       scalar SomeScalar
-//     `
-//     querier = getMemoizedObjectQuerier(schema);
-//     reducerMap = schemaToStateOpsMapper(schema)();
-//   });
-//   beforeEach(()=>{
-//     const rootReducer = combineReducers(reducerMap);
-//     store = createStore(rootReducer,{
-//       SomeScalar:1,
-//       Person:{
-//         a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
-//         b:{id:'b',name:'B',best:'a',friends:['a']},
-//         c:{id:'c',name:'C',best:'a',friends:['a']},
-//       },
-//       Pet:{
-//         x:{id:'x',name:'X'},
-//         y:{id:'y',name:'Y'},
-//       },
-//     });
-//     useQuery = getUseQuery(store,querier);
-//   });
-//   afterAll(()=>{
-//     reducerMap=querier=store=useQuery=null;
-//   });
-  
-//   test('should work on scalars', () => {
-//     const query=gql(`{SomeScalar}`)
-//     const { result } = renderHook(() =>useQuery(query));
-//     expect(result.current).toEqual({SomeScalar:1});
-//     const result1=result.current;
-//     const prevState = store.getState();
-//     act(()=>{store.dispatch({type:'SOMESCALAR_SET',payload:1})});
-//     expect(store.getState()).toBe(prevState);
-//     expect(result.current).toBe(result1);
-//     act(()=>{store.dispatch({type:'SOMESCALAR_SET',payload:2})});
-//     expect(result.current.SomeScalar).toBe(2);
-//     expect(store.getState()).not.toBe(prevState);
-//     expect(store.getState().SomeScalar).toBe(2);
-//     expect(store.getState().Person).toBe(prevState.Person);
-//   });
-//   test('should work on objects', () => {
-//     const query=gql(`{Person{id}}`);
-//     const { result } = renderHook(() =>useQuery(query));
-//     expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
-//     act(()=>{store.dispatch({type:'PERSON_SUBTRACT',payload:'a'});})
-//     expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
-//   })
-// });
-
+/* eslint-disable jest/no-commented-out-tests */
 // // describe("Spec Section 3: Type System", () => {
-// //   // nodes are values
-// //   // edges are keys
 // //   // Note: Does not do validation or any type-specific behaviors by default.
 // //   // However, both the schema and query documents are subtrees of rootState, so all behaviors on them are composable.
 // // });

@@ -1,6 +1,5 @@
-import {not,isObjectLike,cond,and,toPredicate, pick,ensureArray, transArrayToObject,transObjectToArray, or, stubTrue, plog, transToObject, diffBy, appendObjectReducer, tdFilter, tdFilterWithAcc, mapToObject} from '@a-laughlin/fp-utils';
+import {isObjectLike,cond,toPredicate,transArrayToObject,stubTrue,identity} from '@a-laughlin/fp-utils';
 import indexSchema from './indexSchema';
-import { compose } from '../../fp-utils/src/fp-utils';
 // returns a function that populates query arguments with passed variables
 const getArgsPopulator = vars=>{
   const getArgs = transArrayToObject((result,{name:{value:name},value})=>{
@@ -21,27 +20,22 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
   })(variableDefinitions);
 
 
-// predicates for schemaToQuerySelector
+// predicates
 const isScalarSelection=([meta])=>meta.defKind==='scalar';
 const isObjectSelection=([meta])=>meta.defKind==='object';
 const isListSelection=([meta])=>meta.isList;
 const isCollectionItemSelection=([meta])=>'fieldName' in meta;
 const isCollectionSelection=([meta])=>!('fieldName' in meta);
-const isPrimitiveValue=([meta,Field,vDenormPrev,vNorm])=>!isObjectLike( meta.isList?vNorm[0]:vNorm );
-const isObjectValue=([meta,Field,vDenormPrev,vNorm])=>isObjectLike( meta.isList?vNorm[0]:vNorm );
+const isPrimitiveValue=([meta, , ,vNorm])=>!isObjectLike( meta.isList?vNorm[0]:vNorm );
+const isObjectValue=([meta, , ,vNorm])=>isObjectLike( meta.isList?vNorm[0]:vNorm );
 
-// for filtering, a dsl is complicated
-// https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
-// Mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter for MVP, via transducers
-export const withVnorm=fn=>(acc,arr,id)=>fn(arr[3],id);
-
-const getSelectionsMapper = (itemMapper,resultMapper)=>([meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs])=>{
+const getSelectionsMapper = (mapSelection,resultMapper)=>([meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs,args])=>{
   let propsChanged = false,vDenorm={},k;
   for(const f of Field.selectionSet.selections){
     k = f.name.value;
-    vDenorm[k]=itemMapper([meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs],k);
+    vDenorm[k]=mapSelection([meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs],k);
     if(vDenorm[k] !== vDenormPrev[k]) propsChanged = true;
-  };
+  }
   return resultMapper(vDenorm,[meta,Field,vDenormPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,propsChanged]);
 };
 
@@ -53,14 +47,18 @@ const getCollectionMapper=(collectionReducers,resultMapper)=>([meta,Field,vDenor
   const reducer=(a.reduce((f,{name:{value:v}})=>f||(collectionReducers[v]?.(args[v])),null))||collectionReducers.filter(args);
   let vDenorm={},changed=false;
   for(const id in vNorm){
-    vDenorm=reducer(vDenorm,[meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],rootNorm,rootNormPrev,getArgs],id);
+    vDenorm=reducer(vDenorm,[meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],rootNorm,rootNormPrev,getArgs,args],id);
     if(vDenorm[id]!==vDenormPrev[id])changed=true;
   }
   return resultMapper(vDenorm,[meta,Field,vDenormPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,changed]);
 }
-const allItemsCombiner=(vDenorm,[meta,Field,vDenormPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,propsChanged])=>
+const allItemsCombiner=(vDenorm,[,,vDenormPrev,vNorm,vNormPrev,,,,propsChanged])=>
   vNorm !== vNormPrev || propsChanged ? vDenorm : vDenormPrev;
 
+// for filtering, a dsl is complicated and requires internal plumbing to parse it. Enable folks to create their own with transducers.
+// https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
+// Mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter for MVP, via transducers
+export const withVnorm=fn=>(acc,arr,id)=>fn(arr[3],id);
 const filter=mapSelection=>x=>{const p=withVnorm(toPredicate(x));return(...args)=>p(...args)?mapSelection(...args):args[0]};
 const omit=mapSelection=>x=>{const p=withVnorm(toPredicate(x));return(...args)=>!p(...args)?mapSelection(...args):args[0]};
 
@@ -69,19 +67,18 @@ export const schemaToQuerySelector=( schema, transducers={})=>{
     // error, key does not exist
     [isScalarSelection,cond(
       [isObjectValue,()=>{throw new Error('cannot request object without selecting fields')}],
-      [isPrimitiveValue,([meta,Field,vDenormPrev,vNorm])=>vNorm],
+      [isPrimitiveValue,([,,,vNorm])=>vNorm],
     )],
     [isObjectSelection,cond(
       [isCollectionItemSelection, cond(
-        // taking the collection item id(s), these looking up the related object and continue executing on it
-        [isListSelection,([m,f,vDP={},id=[],idP,rN,rNP,g])=>transArrayToObject((o,i)=>o[i]=mapSelections([m, f, vDP, rN[m.defName][i], rNP[m.defName]?.[i], rN, rNP, g]))(id)],
-        [stubTrue,([m,f,vDP={},id='',idP,rN, rNP, g])=>mapSelections([m, f, vDP, rN[m.defName][id], rNP[m.defName]?.[id], rN, rNP, g])],
+        // taking the collection item id(s), these find the related object and continue walking
+        [isListSelection,([m,f,vDP={},id=[],,rN,rNP,g])=>transArrayToObject((o,i)=>o[i]=mapSelections([m, f, vDP, rN[m.defName][i], rNP[m.defName]?.[i], rN, rNP, g]))(id)],
+        [stubTrue,([m,f,vDP={},id='',,rN, rNP, g])=>mapSelections([m, f, vDP, rN[m.defName][id], rNP[m.defName]?.[id], rN, rNP, g])],
       )],
       [isPrimitiveValue,()=>{throw new Error('cannot select field of primitive value')}],
       [isCollectionSelection, getCollectionMapper(
         Object.entries({filter,omit,...transducers}).reduce((o,[k,t])=>{o[k]=t((a,v,id)=>{a[id]=mapSelections(v);return a;});return o},{}),
         allItemsCombiner
-        // x=>x,
       )],
     )]
   ),allItemsCombiner);
@@ -94,3 +91,7 @@ export const schemaToQuerySelector=( schema, transducers={})=>{
     };
   };
 };
+
+export const schemaToMutationReducer = ()=>{
+  return identity;
+}
