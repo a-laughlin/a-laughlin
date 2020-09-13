@@ -135,12 +135,17 @@ const modules = readdirSync('packages')
     visualizer({ template:"treemap", filename:join(`packages`,dir,'stats-treemap.html')}),
     visualizer({ template:"network", filename:join(`packages`,dir,'stats-network.html')}),
     {name:'write-root-package.json', generateBundle(){
+      const srcPkg = require(`./packages/${dir}/package.json`);
       const pkg = {
         author: "Adam Laughlin <adam.laughlin@gmail.com>",
         license: "MIT",
         publishConfig: { "access": "public" },
-        ...require(`./packages/${dir}/package.json`),
+        ...srcPkg,
       };
+      if (!('author' in srcPkg)){
+        writeFileSync(join(inDir,'package.json'),JSON.stringify(pkg,null,2));
+      }
+
       // main es module with type commonjs is odd, but it seems to work
       // but https://2ality.com/2019/10/hybrid-npm-packages.html#option-3%3A-bare-import-esm%2C-deep-import-commonjs-with-backward-compatibility
       writeFileSync(join(outDir,'package.json'),JSON.stringify({
@@ -148,11 +153,6 @@ const modules = readdirSync('packages')
         type: `commonjs`,
         // "module":`./es/${dir}.js`,
         // "browser": `./umd/${dir}.js`,
-        ...pkg,
-      },null,2));
-      writeFileSync(join(inDir,'package.json'),JSON.stringify({
-        "main": `./${dir}.js`,
-        "type":"module",
         ...pkg,
       },null,2));
     }}

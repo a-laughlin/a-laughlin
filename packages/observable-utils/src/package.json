@@ -1,6 +1,4 @@
 {
-  "main": "./observable-utils.js",
-  "type": "module",
   "author": "Adam Laughlin <adam.laughlin@gmail.com>",
   "license": "MIT",
   "publishConfig": {
