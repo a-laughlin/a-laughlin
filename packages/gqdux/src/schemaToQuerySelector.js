@@ -1,4 +1,4 @@
-import {isObjectLike,cond,transToObject,stubTrue, mapToObject} from '@a-laughlin/fp-utils';
+import {isObjectLike,cond,transToObject,stubTrue, mapToObject, memoize} from '@a-laughlin/fp-utils';
 import indexSchema from './indexSchema';
 import {filter,omit} from './transducers';
 // returns a function that populates query arguments with passed variables
@@ -21,25 +21,21 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
   })(variableDefinitions);
 
 
-const getSelectionsMapper = (mapSelection,allItemsCombiner)=>(vDenorm={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs,args],id)=>{
-  let propsChanged = false,k;
+const getSelectionsMapper = (combiner,reduceResult)=>(acc={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs,args],id)=>{// eslint-disable-line no-unused-vars
+  let changed = false,k;
   for(const f of Field.selectionSet.selections){
     k = f.name.value;
-    vDenorm[k]=mapSelection(vDenorm[k],[meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs],k);
-    if(vDenorm[k] !== vDenormPrev[k]) propsChanged = true;
+    acc=combiner(acc,[meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs],k);
+    if(acc[k] !== vDenormPrev[k]) changed = true;
   }
-  return allItemsCombiner(vDenorm,[meta,Field,vDenormPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,propsChanged]);
+  return reduceResult(acc,[meta,Field,vDenormPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,changed]);
 };
 
-const getCollectionMapper=(collectionReducers,reduceResult)=>(acc={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs],k)=>{
+const getCollectionMapper=(reducer,reduceResult)=>(acc={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs],k)=>{
   // on the first traverse up, break if the final collection is unchanged since its items will be too.
   // if(meta.objectFields.length===0&&vNorm===vNormPrev) return reduceResult(acc,[meta,Field,vDenormPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,false],k);
-  const a=Field.arguments;
-  const args = getArgs(a);
-  const reducer=(a.reduce((f,{name:{value:v}})=>f||(collectionReducers[v]?.(args[v])),null))||collectionReducers.filter(args);
   let changed=false;
   for(const id in vNorm){
-    // acc[id]={};
     acc=reducer(acc,[meta,Field,vDenormPrev[id],vNorm[id],vNormPrev[id],rootNorm,rootNormPrev,getArgs],id);
     if(acc[id]!==vDenormPrev[id])changed=true;
   }
@@ -55,7 +51,17 @@ const getMapSelections = (allItemsCombiner,transducers={})=>{
   const isCollectionSelection=(acc,[meta])=>!('fieldName' in meta);
   const isPrimitiveValue=(acc,[meta, , ,vNorm])=>!isObjectLike( meta.isList?vNorm[0]:vNorm );
   const isObjectValue=(acc,[meta, , ,vNorm])=>isObjectLike( meta.isList?vNorm[0]:vNorm );
-  const mapSelections = getSelectionsMapper(cond(
+  const getReducerFromTransducers=(transducers,combiner)=>{
+    const tds=mapToObject(t=>t(combiner))(transducers);
+    return (a,v,k)=>{
+      const getArgs = v[v.length-1];
+      const args = getArgs(v[1].arguments);
+      const reducer = (v[1].arguments.reduce((fn,{name:{value:name}})=>fn||(tds[name]?.(args[name])),null))||tds.filter(args);
+      return reducer(a,v,k);
+    }
+  };
+  const selectionCombiner=(a,v,id)=>{a[id]=selectionReducer(a[id],v,id);return a;}
+  const selectionReducer=cond(
     // error, key does not exist
     [isScalarSelection,cond(
       [isObjectValue,()=>{throw new Error('cannot request object without selecting fields')}],
@@ -75,17 +81,18 @@ const getMapSelections = (allItemsCombiner,transducers={})=>{
       )],
       [isPrimitiveValue,()=>{throw new Error('cannot select field of primitive value')}],
       [isCollectionSelection, getCollectionMapper(
-        mapToObject(t=>t((a,v,id)=>{a[id]=mapSelections(a[id],v,id);return a;}))(transducers),
+        getReducerFromTransducers(transducers,(a,v,id)=>{a[id]=mapSelections(a[id],v,id);return a;}),
         allItemsCombiner
       )],
     )]
-  ),allItemsCombiner);
+  );
+  const mapSelections = getSelectionsMapper(selectionCombiner,allItemsCombiner);
   return mapSelections;
 };
 const getQuerySelector=(schema,mapSelections)=>{
   const {selectionMeta}=indexSchema(schema);
   return function mapQuery (query, passedVariables={}){
-    const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions,passedVariables));
+    const argsPopulator=memoize(getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions,passedVariables)));
     return (rootNorm={},rootNormPrev={},rootDenormPrev={})=>{
       return mapSelections({},[selectionMeta._query,query.definitions[0],rootDenormPrev,rootNorm,rootNormPrev,rootNorm,rootNormPrev,argsPopulator]);
     };
