@@ -348,7 +348,7 @@ describe("querySelectorToUseLeafQuery: integration test React.useState,redux.com
 });
 describe("schemaToMutationReducer: integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)",()=>{
   let store,useQuery,querier,schema,dispatchMutation;
-  const getMutationDispatcher= store=>(...args)=>store.dispatch({type:'mutation',payload:args})
+  const getMutationDispatcher= store=>(...args)=>{store.dispatch({type:'mutation',payload:args});}
   beforeEach(()=>{
     schema = gql`
       type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
