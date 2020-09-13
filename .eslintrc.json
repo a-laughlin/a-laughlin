@@ -14,6 +14,9 @@
     "sourceType": "module",
     "ecmaVersion": 2020
   },
+  "globals": {
+    "module":"writable"
+  },
   "overrides": [
     {
       "files": ["packages/*/src/**/*.js"],

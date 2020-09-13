@@ -35,3 +35,7 @@ Minimize AST Edges.
 - move collections transducers or add transducer to mapSelections
 - dispatch 1-n events in batch using schemaToQuerySelector w/ different transducers
 - enable useQuery multiple test permutations
+
+// for filtering, a dsl is complicated and requires internal plumbing to parse it. Enable folks to create their own with transducers.
+// https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
+// Mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter for MVP, via transducers

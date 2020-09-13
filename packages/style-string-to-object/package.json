@@ -1,10 +1,17 @@
 {
   "name": "@a-laughlin/style-string-to-object",
-  "version": "0.0.29",
   "description": "short style syntax for efficient object styles",
-  "homepage": "",
+  "version": "0.0.29",
   "dependencies": {
     "lodash-es": "^4"
   },
-  "gitHead": "57f810435642e947a90f07c98b91f0ee8bdb1318"
+  "main":"./src/style-string-to-object.js",
+  "module":"./src/style-string-to-object.js",
+  "gitHead": "57f810435642e947a90f07c98b91f0ee8bdb1318",
+  "author": "Adam Laughlin <adam.laughlin@gmail.com>",
+  "homepage": "",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }

@@ -24,13 +24,11 @@ import {
   tdMapWithAcc,
   over,
   isObjectLike,
-  mapToObject,
   appendArrayReducer,
   transduceBF,
   matches,
   matchesProperty,
   xor,
-  mapToArray,
   indexBy,
 } from './fp-utils'
 describe("and", () => {
@@ -73,8 +71,6 @@ describe("matches", () => {
 })
 describe("matchesProperty", () => {
   it('should match only key matches', () =>{
-    const is5=x=>x===5;
-    const not5=x=>x!==5;
     expect(matchesProperty(['a',1])({a:1})).toBe(true);
     expect(matchesProperty(['a',1])({b:1})).toBe(false);
     expect(matchesProperty(['a',1])({a:2})).toBe(false);
@@ -146,7 +142,6 @@ describe("condNoExec", () => {
 describe("cond", () => {
   const pred = x=>x===1;
   const is1=()=>'is_1',not1=()=>'not_1';
-  const fn1 = cond([pred,is1], [stubTrue,not1]);
   it('errors when passed non-function values', () =>  {
     [undefined,null,[],{},1,''].forEach(v=>expect(() => { cond([pred,v])(1) }).toThrow());
   });
@@ -249,7 +244,7 @@ describe("transduceDF/BF", () => {
     .toEqual({a:{a1:{a11:true},a2:true},b:{b1:true}});
     
     
-    expect(transduceDF({preVisit:tdOmit((v,k)=>v==='aa')})({},aTree))
+    expect(transduceDF({preVisit:tdOmit((v)=>v==='aa')})({},aTree))
     .toEqual({"0":"a","1":{"1":{"0":"aaa"}}});
     expect(transduceDF({preVisit:tdOmit((v,k)=>k===1)})({},aTree))
     .toEqual({"0":"a"});

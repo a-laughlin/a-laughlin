@@ -5,5 +5,13 @@
   "homepage": "",
   "dependencies": {
     "graphql": "^15.0.0"
+  },
+  "main":"src/graphql-tag-bundled.js",
+  "module":"src/graphql-tag-bundled.js",
+  "type":"module",
+  "author": "Adam Laughlin <adam.laughlin@gmail.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
   }
 }

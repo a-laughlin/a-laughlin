@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "// all the babel stuff is only for jest": "https://github.com/facebook/jest/issues/9430",
-  "devDependencies": {
+  "dependencies": {
     "@babel/core": "^7.9.6",
     "@babel/preset-env": "^7.9.6",
     "babel-jest": "^26.0.1",
@@ -19,32 +19,7 @@
     "eslint-plugin-react": "^7.20.0",
     "jest": "^26.0.1",
     "lerna": "^3.21.0",
-    "lodash-es": "^4"
-  },
-  "//^.*(jpe?g|png).*$": "./jestAssetsTransformer.js",
-  "// jestAssetsTransformer.js would contain": "module.exports = { process() {} };",
-  "jest": {
-    "moduleDirectories": [
-      "./node_modules",
-      "node_modules",
-      "./packages"
-    ],
-    "moduleNameMapper": {
-      "@a-laughlin/(.*)$": "<rootDir>/packages/$1/src/$1"
-    },
-    "moduleFileExtensions": [
-      "js",
-      "mjs",
-      "cjs"
-    ],
-    "transformIgnorePatterns": [
-      "node_modules/(?!(lodash-es)/)"
-    ],
-    "transform": {
-      "^.+\\.js$": "babel-jest"
-    }
-  },
-  "dependencies": {
+    "lodash-es": "^4",
     "@rollup/plugin-alias": "^3.1.1",
     "@rollup/plugin-commonjs": "^14.0.0",
     "@rollup/plugin-html": "^0.2.0",

@@ -3,6 +3,14 @@
   "version": "0.0.29",
   "description": "Simple, Redux-first GraphQL utilities optimized for developer speed.",
   "homepage": "",
+  "author": "Adam Laughlin <adam.laughlin@gmail.com>",
+  "license": "MIT",
+  "main":"src/gqdux.js",
+  "module":"src/gqdux.js",
+  "type":"module",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@a-laughlin/fp-utils": "^0.0.29"
   },
