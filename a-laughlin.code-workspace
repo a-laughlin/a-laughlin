@@ -6,6 +6,9 @@
 	],
 	// shared settings (personal settings stored in .vscode/settings.json)
 	"settings": {
-		"eslint.packageManager": "yarn"
+		"eslint.packageManager": "yarn",
+		"eslint.codeActionsOnSave.mode": "problems",
+		"eslint.alwaysShowStatus": true,
+		"eslint.run": "onSave"
 	}
 }
