@@ -1,5 +1,6 @@
 import indexSchema from './indexSchema'
 import {transToObject,isString,hasKey,isObjectLike,isInteger,cond,identity,isArray,stubTrue,diffBy, mapToObject, transArrayToObject,} from '@a-laughlin/fp-utils';
+import { indexBy } from '../../fp-utils/src/fp-utils';
 
 const defaultActions = {
   ADD:nextReducer=>(prevState,action)=>{
@@ -32,27 +33,39 @@ const defaultActions = {
   GET:nextReducer=>(prevState,action)=>nextReducer(prevState,action)
 };
 
-export const schemaToReducerMap = (schema,ops=defaultActions)=>{
-  const {selectionMeta}=indexSchema(schema);
-  const actionNormalizers = mapToObject(({defKind,idKey})=>cond(
-    [_=>defKind!=='object',identity],                             // leave scalars and other non-object types
-    [isString,payload=>({[payload]:{[idKey]:payload}})],         // convert number/string id to collection
-    [isInteger,payload=>({[payload]:{[idKey]:`${payload}`}})],   // convert number/string id to collection
+// schema aware normalizers, primarily for passing id as string/number;
+const schemaToActionNormalizersByDefName = schema=>mapToObject(({defKind,idKey})=>{
+  const normalizePayload = cond(
+    [()=>defKind!=='object',identity],                             // leave scalars and other non-object types
+    [isString,payload=>({[payload]:{[idKey]:payload}})],          // convert number/string id to collection
+    [isInteger,payload=>({[payload]:{[idKey]:`${payload}`}})],    // convert number/string id to collection
     [isObjectLike,cond(
       [isArray,transArrayToObject((o,v)=>{                        // convert array to collection
         v=normalizePayload(v);
         o[v[idKey]]=v;
       })],
-      [hasKey(idKey), payload=>({[payload[idKey]]:payload})],   // convert single item to collection
-      [stubTrue,identity]                                         // collection, leave as is
+      [hasKey(idKey), payload=>({[payload[idKey]]:payload})],     // convert single item to collection
+      [stubTrue,identity],                                        // collection, leave as is
     )],
     [stubTrue,payload=>new Error(`unrecognized payload type\n${JSON.stringify(payload,null,2)}`)]
-  ))(selectionMeta);
-  
+  );
+  return normalizePayload;
+})(indexSchema(schema).selectionMeta);
+
+export const schemaToIndividualReducerMap = (schema,ops=defaultActions)=>{
   return transToObject((acc,actionNormalizer,dName)=>{
-    const opFns=transToObject((o,opFn,OP)=>o[`${dName.toUpperCase()}_${OP}`]=opFn(identity))(ops)
-    acc[dName]=(prevState=null,action={})=>action.type in opFns
-      ? opFns[action.type](prevState,{...action,payload:actionNormalizer(action.payload)})
+    for (const OP in ops){
+      const fn=ops[OP](identity);
+      acc[`${dName}_${OP}`]=(prevState=null,action={})=>fn(prevState,{...action,payload:actionNormalizer(action.payload)});
+    }
+  })(schemaToActionNormalizersByDefName(schema));
+};
+
+export const schemaToReducerMap = (schema,ops=defaultActions)=>{
+  return mapToObject((actionNormalizer,dName)=>{
+    const opFnsByDname=transToObject((o,opFn,OP)=>o[`${dName.toUpperCase()}_${OP}`]=opFn(identity))(ops);
+    return (prevState=null,action={})=>action.type in opFnsByDname
+      ? opFnsByDname[action.type](prevState,{...action,payload:actionNormalizer(action.payload)})
       : prevState;
-  })(actionNormalizers);
+  })(schemaToActionNormalizersByDefName(schema));
 };
