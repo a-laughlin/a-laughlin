@@ -164,9 +164,26 @@ export const has = key=>obj=>key in obj;
 
 // indexers
 export const keyBy = ifElse(isString,
-  (id='id')=>transToObject((o,v,k)=>{o[v[id]]=v;}),
-  (fn=x=>x.id)=>transToObject((o,v,k)=>{o[fn(v,k)]=v;})
+  (id='id')=>keyBy(x=>x[id]),
+  (fn=x=>x.id)=>transToObject((o,v,k)=>{
+    let id=fn(v,k);
+    if (!(id in o))o[id]=v;
+    else{
+      let i=0,nextId=`${id}_duplicate_${i}`;
+      while(nextId in o)(nextId=`${id}_duplicate_${++i}`);
+      o[nextId]=v;
+    }
+  })
 );
+export const indexBy = (...keyGetters)=>v=>
+  keyGetters.length===0
+    ? v
+    :keyGetters.length===1
+      ? keyBy(keyGetters[0])(v)
+      : mapToObject((vv,kk)=>{
+          return indexBy(...keyGetters.slice(1))({[kk]:vv});
+        })(keyBy(keyGetters[0])(v));
+
 const pushToArray=(a=[],v)=>{a[a.length]=v;return a;};
 const pushToArrayProp=(acc={},v,k)=>{acc[k]=pushToArray(acc[k],v);return acc;}
 export const groupBy = fn=>transToObject((o,v,k,c)=>pushToArrayProp(o,v,fn(v,k)));

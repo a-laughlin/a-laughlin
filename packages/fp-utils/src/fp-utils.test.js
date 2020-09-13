@@ -30,6 +30,8 @@ import {
   matches,
   matchesProperty,
   xor,
+  mapToArray,
+  indexBy,
 } from './fp-utils'
 describe("and", () => {
   it('should ensure multiple predicates pass', () =>{
@@ -311,6 +313,36 @@ describe("partition", () => {
     expect(partition(isEven,isOdd)([0,1,2,3,4])).toEqual([[0,2,4],[1,3],[]]);
     expect(partition(isEven)({a:0,b:1,c:2,d:3,e:4})).toEqual([{a:0,c:2,e:4},{b:1,d:3}]);
     expect(partition(isEven)([0,1,2,3,4])).toEqual([[0,2,4],[1,3]]);
+  });
+});
+describe("indexBy", () => {
+  const aColl=[{id:'a',aa:1},{id:'b',aa:1}];
+  const oColl={a:{id:'a',aa:1},b:{id:'b',aa:1}};
+  const {a,b}=oColl;
+  it("should return the original if no indexers",()=>{
+    expect(indexBy()(aColl)).toBe(aColl);
+    expect(indexBy()(oColl)).toBe(oColl);
+  });
+  it("should work with object and function keys",()=>{
+    expect(indexBy(v=>v.id)(aColl)).toEqual({a,b});
+    expect(indexBy('id')(aColl)).toEqual({a,b});
+  });
+  it("should index a single level of enumerables",()=>{
+    expect(indexBy('id')(aColl)).toEqual({a,b});
+    expect(indexBy('id')(oColl)).toEqual({a,b});
+    expect(indexBy((v,k)=>k)('ab')).toEqual({'0':'a','1':'b'});
+  });
+  it("should return a blank object for non-enumerables",()=>{
+    const indexer = indexBy(v=>v);
+    [null,undefined,1,Number.NaN].forEach((coll)=>{
+      expect(indexer(coll)).toEqual({});
+    });
+  });
+  it("should create duplicates for non-unique keys",()=>{
+    expect(indexBy('aa')(aColl)).toEqual({'1':a,'1_duplicate_0':b});
+  });  
+  it("should index multiple levels",()=>{
+    expect(indexBy('id','aa')(aColl)).toEqual({a:{'1':a},b:{'1':b}});
   });
 });
 describe("over", () => {
