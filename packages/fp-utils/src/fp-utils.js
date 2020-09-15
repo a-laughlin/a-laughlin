@@ -175,14 +175,22 @@ export const keyBy = ifElse(isString,
     }
   })
 );
-export const indexBy = (...keyGetters)=>v=>
-  keyGetters.length===0
-    ? v
-    :keyGetters.length===1
-      ? keyBy(keyGetters[0])(v)
-      : mapToObject((vv,kk)=>{
-          return indexBy(...keyGetters.slice(1))({[kk]:vv});
-        })(keyBy(keyGetters[0])(v));
+export const indexBy = (...keyGetters)=>coll=>{
+  if (keyGetters.length===0)return coll;
+  if (keyGetters.length===1)return keyBy(keyGetters[0])(coll);
+  const getter = typeof keyGetters[0] === 'string' ? v=>v[keyGetters[0]] : keyGetters[0];
+  return mapToObject( indexBy(...keyGetters.slice(1)) )( transToObject((o,v,k)=>{
+    const kk=getter(v,k);
+    (o[kk]??(o[kk]={}))[k]=v;
+  })(coll));
+}
+  // keyGetters.length===0
+  //   ? v
+  //   :keyGetters.length===1
+  //     ? keyBy(keyGetters[0])(v)
+  //     : mapToObject((vv,kk)=>{
+  //         return indexBy(...keyGetters.slice(1))({[kk]:vv});
+  //       })(keyBy(keyGetters[0])(v));
 
 const pushToArray=(a=[],v)=>{a[a.length]=v;return a;};
 const pushToArrayProp=(acc={},v,k)=>{acc[k]=pushToArray(acc[k],v);return acc;}
@@ -328,6 +336,8 @@ export const memoize = (fn, by = identity) => {
 
 
 export const tdKeyBy = (by = x => x.id) => next=>(o,v,k,c)=>next(o,v,by(v,k,c),c)
+
+
 
 export const diffObjs = (a={},b={}) => {
   // returns subsets and changed values for object properties

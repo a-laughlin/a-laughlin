@@ -339,6 +339,9 @@ describe("indexBy", () => {
   it("should index multiple levels",()=>{
     expect(indexBy('id','aa')(aColl)).toEqual({a:{'1':a},b:{'1':b}});
   });
+  it("should only create duplicates at the final level",()=>{
+    expect(indexBy('id','aa')([a,b,b])).toEqual({a:{'1':a},b:{'1':b,'1_duplicate_0':b}});
+  });
 });
 describe("over", () => {
   it("should produce expected results",()=>{
