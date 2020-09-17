@@ -40,7 +40,7 @@ describe("schemaToReducerMap", () => {
   });
   it("should generate keys for each type ,plus scalars",()=>{
     expect(Object.keys(reducerMap).sort())
-    .toEqual(['Person','Pet','SomeScalar','Boolean','Float','ID','Int','String','_query'].sort());
+    .toEqual(['Person','Pet','SomeScalar','Boolean','Float','ID','Int','String'].sort());
   });
   it("should read values as default",()=>{
     expect(reducerMap.Person(state.Person))
@@ -375,12 +375,12 @@ describe("schemaToMutationReducer",()=>{
     /* eslint-enable no-unused-vars */
   });
   test('should update collections', () => {
-    expect(true).toBe(true);
-    // const { result } = renderHook(() =>useQuery(gql(`{Person{id}}`)));
-    // expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+    // expect(true).toBe(true);
+    const { result } = renderHook(() =>useQuery(gql(`{Person{id}}`)));
+    expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
     // const Person=result.current.Person;
-    // act(()=>dispatchMutation(gql(`{Person(subtract:"a")}`)));
-    // expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
+    act(()=>dispatchMutation(gql(`{Person(subtract:{id:"a"})}`)));
+    expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
     // expect(result.current.Person).not.toBe(Person);
     // expect(result.current.Person.b).toBe(Person.b);
     // expect(result.current.Person.c).toBe(Person.c);

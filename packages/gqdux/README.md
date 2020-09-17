@@ -18,7 +18,10 @@ Our coding speed depends on the number of AST edges
     - We can do anything with 1-length list that we can with a single object
     - Eliminating unnecessary decisions improves speed.
 
-Minimize AST Edges.
+Minimize Edges (including semantic)
+Minimize Semantic Edges (reducing differing developer backgrounds)
+No Query, Mutation, Subscription Objects, the schema describes the state tree 1:1
+No caches.
 
 ## Installing
 
@@ -39,3 +42,20 @@ Minimize AST Edges.
 // for filtering, a dsl is complicated and requires internal plumbing to parse it. Enable folks to create their own with transducers.
 // https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
 // Mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter for MVP, via transducers
+
+make selectPath and selectFullPath the default fns
+make use useSelectPath and useSelectFullPath the default hooks
+getSelectFullPath = (schema,gql,store)=>
+  (str,vars)=>schemaToQuerySelector(schema)(gql(str),vars)(store.getState())
+getUseSelectFullPath = (selectFullPath,useState,useEffect,useMemo)=>{...}
+getSelectPath=selectFullPath=>(str,vars)=>{...minimize results...}
+
+make addTodo use a basic incrementing IDkey for examples
+//pathSelector =gqdux.schemaToQuerySelector(schema);
+const todoReducer = origReducer=>{
+  let i=0;
+  return (prev={},{type='',payload={}}={})=>{
+    if (type===`TODO_ADD`) return {...prev,[i]:{id:`${i++}`,name:'foo'}};
+    return origReducer(prev,{type,payload});
+  }
+};
