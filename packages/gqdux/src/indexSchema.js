@@ -73,16 +73,21 @@ export default memoize(schema=>{
   result.selectionMeta._query = {};
   defineHiddenProp(result.selectionMeta._query,'defName','_query');
   defineHiddenProp(result.selectionMeta._query,'defKind','object');
-  defineHiddenProp(result.selectionMeta._query,'objectFields',[]);
-  defineHiddenProp(result.selectionMeta._query,'fieldName','_query');
-  defineHiddenProp(result.selectionMeta._query,'fieldKindName','_query');
+  // defineHiddenProp(result.selectionMeta._query,'objectFields',[]);
+  // defineHiddenProp(result.selectionMeta._query,'fieldName','_query');
+  // defineHiddenProp(result.selectionMeta._query,'fieldKindName','_query');
+  // defineHiddenProp(result.selectionMeta._query,'idKey','_query');
   Object.entries(result.selectionMeta).forEach(([defName,meta])=>{
     const fMeta = result.selectionMeta._query[defName] = {};
     assignAllProps(fMeta,meta);
-    defineHiddenProp(fMeta,'isList',false);
-    defineHiddenProp(fMeta,'isNonNull',false);
-    defineHiddenProp(fMeta,'isNonNullList',false);
-    if(meta.defKind==='object') result.selectionMeta._query.objectFields.push(fMeta);
+    if(meta.defKind==='object') {
+      defineHiddenProp(fMeta,'isList',true);
+      defineHiddenProp(fMeta,'isNonNull',true);
+      defineHiddenProp(fMeta,'isNonNullList',true);
+      defineHiddenProp(fMeta,'fieldName',defName);
+      defineHiddenProp(fMeta,'fieldKindName','object');
+      // result.selectionMeta._query.objectFields.push(fMeta);
+    }
   });
 
   return result;

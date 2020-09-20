@@ -2,11 +2,11 @@ import {isObjectLike,cond,transToObject,stubTrue, mapToObject, memoize, ensureAr
 import indexSchema from './indexSchema';
 import {filter,omit} from './transducers';
 
-const getSelectionsMapper = (combiner,reduceResult)=>(acc={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs,args],id)=>{// eslint-disable-line no-unused-vars
+const getSelectionsMapper = (reducer,reduceResult)=>(acc={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs,args],id)=>{// eslint-disable-line no-unused-vars
   let changed = false,k;
   for(const f of Field.selectionSet.selections){
     k = f.name.value;
-    acc=combiner(acc,[meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs],k);
+    acc=reducer(acc,[meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs],k);
     if(acc[k] !== vDenormPrev[k]) changed = true;
   }
   return reduceResult(acc,[meta,Field,vDenormPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,changed]);
@@ -27,8 +27,8 @@ const getCollectionMapper=(reducer,reduceResult)=>(acc={},[meta,Field,vDenormPre
 const isScalarSelection=(acc,[meta])=>meta.defKind==='scalar';
 const isObjectSelection=(acc,[meta])=>meta.defKind==='object';
 const isListSelection=(acc,[meta])=>meta.isList;
-const isCollectionItemSelection=(acc,[meta])=>'fieldName' in meta;
-const isCollectionSelection=(acc,[meta])=>!('fieldName' in meta);
+const isCollectionItemSelection=(acc,[m,f,vDP={},id=[],,rN,rNP,g],k)=>m.fieldName!==m.defName;
+const isCollectionSelection=(acc,[m],k)=>m.fieldName===m.defName;
 const isPrimitiveValue=(acc,[meta, , ,vNorm])=>!isObjectLike( meta.isList?vNorm[0]:vNorm );
 const isObjectValue=(acc,[meta, , ,vNorm])=>isObjectLike( meta.isList?vNorm[0]:vNorm );
 
@@ -37,7 +37,7 @@ const getMapSelections = (allItemsCombiner,transducers={})=>{
   const selectionReducer=cond(
     // error, key does not exist
     [isScalarSelection,cond(
-      [isObjectValue,()=>{throw new Error('cannot request object without selecting fields')}],
+      // [isObjectValue,()=>{throw new Error('cannot request object without selecting fields')}],
       [isPrimitiveValue,(acc,[,,,vNorm])=>vNorm],
     )],
     [isObjectSelection,cond(
@@ -46,7 +46,7 @@ const getMapSelections = (allItemsCombiner,transducers={})=>{
         [isListSelection,(acc,[m,f,vDP={},id=[],,rN,rNP,g],k)=>transToObject((o,i)=>o[i]=mapSelections(o[i],[m, f, vDP, rN[m.defName][i], rNP[m.defName]?.[i], rN, rNP, g],i))(id)],
         [stubTrue,(acc,[m,f,vDP={},id='',,rN, rNP, g],k)=>mapSelections({},[m, f, vDP, rN[m.defName][id], rNP[m.defName]?.[id], rN, rNP, g],id)],
       )],
-      [isPrimitiveValue,()=>{throw new Error('cannot select field of primitive value')}],
+      // [isPrimitiveValue,()=>{throw new Error('cannot select field of primitive value')}],
       [isCollectionSelection, getCollectionMapper(
         getReducerFromTransducers(transducers,(a,v,id)=>{a[id]=mapSelections(a[id],v,id);return a;}),
         allItemsCombiner
@@ -98,60 +98,4 @@ export const schemaToQuerySelector=(schema,transducers={})=>{
   const allItemsCombiner=(vDenorm,[,,vDenormPrev,vNorm,vNormPrev,,,,propsChanged])=>
     vNorm !== vNormPrev || propsChanged ? vDenorm : vDenormPrev;
   return getQuerySelector(schema,getMapSelections(allItemsCombiner,{filter,omit,...transducers}));
-};
-
-// root>coll
-// root>[scalar]
-// root>coll>item>[scalar]
-// root>coll>item>[id]
-// root>coll>item>[id]>otherColl[...id]
-// root>coll>item (remove from list) erase friend list: Person(id:'a',subtract:{friends:["b"]})
-// root>coll>item (remove from coll) erase friends      Person(id:'a',subtractById:{friends:["b"]})
-
-export const schemaToMutationReducer = (schema,transducers={})=>{
-  const td = (nextRoot,v,k)=>{
-    // it's going to be a lot faster to populate args on an initial run, then run the collection with existing transducers
-    const [meta,Field,vNorm,vNormRoot,getArgs]=v;
-    if (meta.defKind==='scalar'){
-      if(meta.fieldKindName){
-        nextRoot[meta.defName][k]=vNorm;
-      }
-      // handles 2 cases:
-      // parent is item, k is field key, vNorm is value
-      // parent is root i.e. _query, k is defName, vNorm is value
-      return parent;
-    } else {
-      if(meta.fieldKindName){ // parent is collection, k is id, vNorm is rel id
-        // if is list, vNorm is collection subset
-        const ids=ensureArray(vNorm);
-        for (const id of ids){
-          let possibleItem = {},changed;
-          const nextMeta=meta[s.name.value];
-          td(parent,[nextMeta,s,actualItem,vNormRoot,getArgs],s.name.value);
-          const actualItem=vNormRoot[nextMeta.defName][id];
-          for (const s of Field.selectionSet.selections){
-            if(possibleItem[s.name.value]!==actualItem[s.name.value])changed=true;
-          }
-          parent[k]=changed?possibleItem:actualItem;
-        }
-        return parent;
-      } else { // parent is root i.e. _query, k coll name, vNorm is collection
-        let newColl={},changed;
-        for (const id in vNorm){
-          newColl=td(newColl,[meta[meta.idKey],Field,vNorm[id],vNormRoot,getArgs],id);
-          if(newColl[id]!==vNorm[id])changed=true;
-        }
-        parent[k]=changed?newColl:vNorm;
-      }
-    }
-    return parent;
-  };
-  // getReducerFromTransducers(transducers,acc);
-  const {selectionMeta}=indexSchema(schema);
-  return (prevState,action)=>{
-    if(action.type!=='mutation')return prevState;
-    const [query,passedVariables={}]=action.payload;
-    const argsPopulator=getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions,passedVariables));
-    return td({},[selectionMeta._query,query.definitions[0],prevState,prevState,argsPopulator],'_query');
-  }
 };
