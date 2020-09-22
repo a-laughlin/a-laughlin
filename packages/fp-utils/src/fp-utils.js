@@ -27,7 +27,7 @@ export const is = val1=>val2=>val1===val2;
 export const isUndefOrNull = val => val === undefined || val === null;
 export const isProductionEnv = ()=>process.env.NODE_ENV === 'production';
 export const isPromise = x=>typeof x==='object'&&x!==null&&typeof x.then==='function';
-
+export const once = fn=>{let result;return (...args)=>result??(result=fn(...args))};
 
 // debugging
 export const plog = (msg='')=>pipeVal=>console.log(msg,pipeVal) || pipeVal;

@@ -1,5 +1,5 @@
 export {schemaToReducerMap} from './schemaToReducerMap';
 export {schemaToQuerySelector,schemaToMutationReducer} from './schemaToQuerySelector';
-export {querySelectorToUseQuery} from './querySelectorToUseQuery';
-export {querySelectorToUseLeafQuery} from './querySelectorToUseLeafQuery';
-
+export {pathSelectorToReactHook} from './pathSelectorToReactHook';
+export {getSelectFullPath} from './getSelectFullPath';
+export {getSelectPath} from './getSelectPath';

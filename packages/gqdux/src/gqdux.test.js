@@ -3,12 +3,13 @@ import {useState,useEffect,useMemo}from 'react';
 import {
   schemaToReducerMap,
   schemaToQuerySelector,
-  querySelectorToUseQuery,
-  querySelectorToUseLeafQuery,
+  getSelectFullPath,
+  getSelectPath,
   schemaToMutationReducer
 } from './gqdux';
 import { renderHook, act } from '@testing-library/react-hooks'
 import gql from 'graphql-tag-bundled';
+import { pathSelectorToReactHook } from './pathSelectorToReactHook';
 
 
 describe("schemaToReducerMap", () => {
@@ -202,9 +203,9 @@ describe("schemaToQuerySelector", () => {
   });
 });
 
-describe("querySelectorToUseQuery",()=>{
+describe("getUseFullPath",()=>{
   // : integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)
-  let store,useQuery,schema,querier,reducerMap;
+  let store,useQuery,schema,selectFullPath,cleanupSelectFullPath,reducerMap;
 
   beforeEach(()=>{
     schema = gql`
@@ -212,7 +213,6 @@ describe("querySelectorToUseQuery",()=>{
       type Pet{id:ID,name:String}
       scalar SomeScalar
     `;
-    querier = schemaToQuerySelector(schema);
     reducerMap = schemaToReducerMap(schema);
     const rootReducer = combineReducers(reducerMap);
     store = createStore(rootReducer,{
@@ -227,15 +227,18 @@ describe("querySelectorToUseQuery",()=>{
         y:{id:'y',name:'Y'},
       },
     });
-    useQuery = querySelectorToUseQuery(querier,store,useState,useEffect,useMemo);
+    ({selectFullPath, cleanupSelectFullPath} = getSelectFullPath(schema,gql,store));
+    useQuery = pathSelectorToReactHook(selectFullPath,store,useState,useEffect);
+  });
+  afterEach(()=>{
+    cleanupSelectFullPath();
   });
   afterAll(()=>{
-    reducerMap=querier=schema=store=useQuery=null;
+    store,useQuery,schema,selectFullPath,cleanupSelectFullPath,reducerMap=null;
   });
   
   test('should work on scalars', () => {
-    const query=gql(`{SomeScalar}`)
-    const { result } = renderHook(() =>useQuery(query));
+    const { result } = renderHook(() =>useQuery(`{SomeScalar}`));
     expect(result.current).toEqual({SomeScalar:1});
     const prevState = store.getState();
     act(()=>{store.dispatch({type:'SOMESCALAR_SET',payload:1})});
@@ -248,8 +251,7 @@ describe("querySelectorToUseQuery",()=>{
     expect(store.getState().Person).toBe(prevState.Person);
   });
   test('should work on objects', () => {
-    const query=gql(`{Person{id}}`);
-    const { result } = renderHook(() =>useQuery(query));
+    const { result } = renderHook(() =>useQuery(`{Person{id}}`));
     expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
     act(()=>{store.dispatch({type:'PERSON_SUBTRACT',payload:'a'});})
     expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
@@ -258,8 +260,8 @@ describe("querySelectorToUseQuery",()=>{
   });
   test('should update one with another changed', () => {
     const { result } = renderHook(() =>({
-      main:useQuery(gql(`{Person{id}}`)),
-      a:useQuery(gql(`{Person(id:"a"){id}}`))
+      main:useQuery(`{Person{id}}`),
+      a:useQuery(`{Person(id:"a"){id}}`)
     }));
     expect(result.current.main).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
     expect(result.current.a).toEqual({Person:{a:{id:'a'}}});
@@ -271,9 +273,9 @@ describe("querySelectorToUseQuery",()=>{
     expect(result.current.a).toEqual({Person:{a:{id:'a'}}});
   })
   test('should not update unchanged collection items', () => {
-    const { result } = renderHook(() =>useQuery(gql(`{Person{id}}`)));
-    const { result:resulta } = renderHook(() =>useQuery(gql(`{Person(id:"a"){id}}`)));
-    const { result:resultb } = renderHook(() =>useQuery(gql(`{Person(id:"b"){id}}`)));
+    const { result } = renderHook(() =>useQuery(`{Person{id}}`));
+    const { result:resulta } = renderHook(() =>useQuery(`{Person(id:"a"){id}}`));
+    const { result:resultb } = renderHook(() =>useQuery(`{Person(id:"b"){id}}`));
     const b=resultb.current.Person.b;
     expect(result.current).toEqual({Person:{a:{id:'a'}, b, c:{id:'c'}}});
     expect(resulta.current).toEqual({Person:{a:{id:'a'}}});
@@ -291,15 +293,13 @@ describe("querySelectorToUseQuery",()=>{
 
 describe("querySelectorToUseLeafQuery",()=>{
   // : integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)
-  let store,useLeafQuery,schema,querier,reducerMap;
-
+  let store,useLeafQuery,schema,selectPath,cleanupSelectPath,reducerMap;
   beforeEach(()=>{
     schema = gql`
       type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
       type Pet{id:ID,name:String}
       scalar SomeScalar
     `;
-    querier = schemaToQuerySelector(schema);
     reducerMap = schemaToReducerMap(schema);
     const rootReducer = combineReducers(reducerMap);
     store = createStore(rootReducer,{
@@ -314,31 +314,34 @@ describe("querySelectorToUseLeafQuery",()=>{
         y:{id:'y',name:'Y'},
       },
     });
-    useLeafQuery = querySelectorToUseLeafQuery(querier,store,useState,useEffect,useMemo);
+    ({selectPath, cleanupSelectPath} = getSelectPath(schema,gql,store));
+    useLeafQuery = pathSelectorToReactHook(selectPath,store,useState,useEffect);
+  });
+  afterEach(()=>{
+    cleanupSelectPath();
   });
   afterAll(()=>{
-    reducerMap=querier=schema=store=useLeafQuery=null;
+    store=useLeafQuery=schema=selectPath=cleanupSelectPath=reducerMap=null;
   });
   
   test('should convert scalar props to their value', () => {
-    const query=gql(`{SomeScalar}`)
-    const { result } = renderHook(() =>useLeafQuery(query));
+    const { result } = renderHook(() =>useLeafQuery(`{SomeScalar}`));
     expect(result.current).toEqual(1);
   });
   test('should convert objects with a single selection to a collection of that selection', () => {
-    const { result } = renderHook(() =>useLeafQuery(gql(`{Person{id}}`)));
+    const { result } = renderHook(() =>useLeafQuery(`{Person{id}}`));
     expect(result.current).toEqual({a:'a',b:'b',c:'c'});
   });
   test('should convert a single selected object + selection to the selected value', () => {
-    const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id}}`)));
+    const { result } = renderHook(() =>useLeafQuery(`{Person(id:"a"){id}}`));
     expect(result.current).toEqual('a');
   });
   test('should convert one object with two selections to the object with only that selection', () => {
-    const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){id,name}}`)));
+    const { result } = renderHook(() =>useLeafQuery(`{Person(id:"a"){id,name}}`));
     expect(result.current).toEqual({a:{id:'a',name:'A'}});
   });
   test('should convert a nested property selection to the selected value', () => {
-    const { result } = renderHook(() =>useLeafQuery(gql(`{Person(id:"a"){best{id}}}`)));
+    const { result } = renderHook(() =>useLeafQuery(`{Person(id:"a"){best{id}}}`));
     expect(result.current).toEqual('b');
   });
 });
@@ -367,7 +370,7 @@ describe("schemaToMutationReducer",()=>{
     });
     dispatchMutation=getMutationDispatcher(store);
     querier=schemaToQuerySelector(schema);
-    useQuery = querySelectorToUseQuery(querier,store,useState,useEffect,useMemo);
+    useQuery = getUseFullPath(querier,store,useState,useEffect,useMemo);
   });
   afterAll(()=>{
     /* eslint-disable no-unused-vars */

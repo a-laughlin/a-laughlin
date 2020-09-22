@@ -30,6 +30,7 @@ import {
   matchesProperty,
   xor,
   indexBy,
+  once
 } from './fp-utils'
 describe("and", () => {
   it('should ensure multiple predicates pass', () =>{
@@ -308,6 +309,15 @@ describe("partition", () => {
     expect(partition(isEven,isOdd)([0,1,2,3,4])).toEqual([[0,2,4],[1,3],[]]);
     expect(partition(isEven)({a:0,b:1,c:2,d:3,e:4})).toEqual([{a:0,c:2,e:4},{b:1,d:3}]);
     expect(partition(isEven)([0,1,2,3,4])).toEqual([[0,2,4],[1,3]]);
+  });
+});
+describe("once", () => {
+  it('should always return the same value', () => {
+    const ifn=once((i=0)=>++i);
+    const ofn=once((o={})=>({...o}));
+    expect(ifn()).toBe(1);
+    expect(ifn()).toBe(ifn());
+    expect(ofn()).toBe(ofn());
   });
 });
 describe("indexBy", () => {
