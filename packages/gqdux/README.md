@@ -41,15 +41,31 @@ No caches.
 - decide props merging vs collection merging
 - decide where domain concept components should go
 - decide where derivations should go
+
+### transudcers
+
 // for filtering, a dsl is complicated and requires internal plumbing to parse it. Enable folks to create their own with transducers.
 // https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition
 // Mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter for MVP, via transducers
 
-make selectPath and selectFullPath the default fns
-make use useSelectPath and useSelectFullPath the default hooks
-getSelectFullPath = (schema,gql,store)=>
-  (str,vars)=>schemaToQuerySelector(schema)(gql(str),vars)(store.getState())
-getUseSelectFullPath = (selectFullPath,useState,useEffect,useMemo)=>{...}
-getSelectPath=selectFullPath=>(str,vars)=>{...minimize results...}
-
-### selectors
+```js
+const withResolvedArgs=fn=>memoize((v,[meta,Field,...,getArgs],k)=>fn(v,[meta,Field,...,getArgs,getArgs(Field)],k),(v,[m,f])=>f);
+const withIdAsItem=fn=>(v,[meta,Field,vPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,args],k)=>{
+  // if(meta.isCollection) does not apply
+  vnorm.map(// if(meta.isItem) does not apply
+  return fn(v,[meta,Field,vPrev,rootNorm[meta.defName][vNorm],idPrev,rootNorm,rootNormPrev,getArgs,args],k);
+}
+const transducerFactory = transducer=>combiner=>withResolvedArgs(cond(
+  [isItem,cond( // ensure item values are normedpreviously norm the object
+    [isList,mapToSame(withIdAsItem(transducer(combiner)))],
+    [stubTrue,withIdAsItem(transducer(combiner))],
+  ),
+  [stubTrue,cond(
+    [isList,mapToSame(transducer(combiner))]
+    [stubTrue,transducer(combiner)]
+  )]
+);
+const subtractor = transducerFactory(
+  combiner=>(v,[m,f,vP,vN,vNP,rN,rNP,ga,args],k)=>matches(vN,args.subtractAny)&&combiner(v,[m,f,vP,vN,vNP,rN,rNP,ga,args],k)
+);
+```
