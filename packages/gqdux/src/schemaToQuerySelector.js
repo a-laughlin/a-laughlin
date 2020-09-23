@@ -1,15 +1,49 @@
-import {isObjectLike,cond,transToObject,stubTrue, mapToObject, memoize, ensureArray, and,identity,diffObjs} from '@a-laughlin/fp-utils';
+import {isObjectLike,cond,transToObject,stubTrue, mapToObject, memoize, ensureArray, and,identity,diffObjs, mapToSame, tdToSame} from '@a-laughlin/fp-utils';
+import { compose } from 'redux';
 import indexSchema from './indexSchema';
 import {filter,omit} from './transducers';
 
-const getSelectionsMapper = (reducer,reduceResult)=>(acc={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs,args],id)=>{// eslint-disable-line no-unused-vars
+
+// const getListReducer=(loopReducer,preTransducer=identity,postReducer,getIterable,isChanged=(v,arr,i)=>v[i]!==arr[2][i])=>preTransducer((v,arr,k)=>{
+//   let i,vv,changed=false;
+//   const iterable=getIterable(v,arr,k);
+//   for ([i,vv] of Object.entries(iterable)) {
+//     v=loopReducer(v,arr,vv,i);
+//     if(isChanged(v,arr,i))changed=true;
+//   };
+//   return postReducer(v,[...arr,changed],k);
+// });
+// const asScalarFieldReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],i)=>loopReducer(v,[m, f, vP, rN[m.defName][vN], rNP[m.defName]?.[vN], rN, rNP, g, args],i);
+// const asScalarListFieldReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],i)=>loopReducer(v,[m, f, vP, vN[i], vNP[i], rN, rNP, g, args],i);
+// const asIdFieldReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],i)=>loopReducer(v,[m, f, vP, rN[m.defName][vN], rNP[m.defName]?.[vN], rN, rNP, g, args],i);
+// const asIdListFieldReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],i)=>loopReducer(v,[m, f, vP, rN[m.defName]?.[vN[i]], rNP[m.defName]?.[vN[i]], rN, rNP, g, args],i);
+// const asItemListFieldReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],i)=>loopReducer(v,[m, f, vP, vN[i], vNP[i], rN, rNP, g, args],i);
+// const asItemReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],s,i)=>loopReducer(v,[m[s.name.value], s, vP, vN[s.name.value], vNP?.[s.name.value], rN, rNP, g, g(s)],i);
+// // note, these don't need to recurse, they're just operating at 1 level.
+// const transducerFactory = transducer=>combiner=>withResolvedArgs(cond(
+//   [isScalarSelection,cond( // ensure item values are normedpreviously norm the object
+//     [isList,getListReducer(asScalarListFieldReducer(transducer(combiner))],
+//     [stubTrue,asScalarValueReducertransducer(combiner)],
+//   )],
+//   [isCollectionItem,cond( // ensure item values are normedpreviously norm the object
+//     [isList,getSelectionsMapper(withIdAsItem(transducer(combiner)),withIdAsItem(combiner))],
+//     [stubTrue,withIdAsItem(transducer(combiner))],
+//   )],
+//   [isCollection,getSelectionsMapper(transducer(combiner),combiner)]
+// ));
+// const subtractor = transducerFactory(
+//   combiner=>(v,[m,f,vP,vN,vNP,rN,rNP,ga,args],k)=>matches(vN,args.subtractAny)&&combiner(v,[m,f,vP,vN,vNP,rN,rNP,ga,args],k)
+// );
+
+
+const getSelectionsMapper = (loopReducer,postReducer)=>(acc={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs,args],id)=>{// eslint-disable-line no-unused-vars
   let changed = false,k;
   for(const f of Field.selectionSet.selections){
     k = f.name.value;
-    acc=reducer(acc,[meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs],k);
+    acc=loopReducer(acc,[meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs],k);
     if(acc[k] !== vDenormPrev[k]) changed = true;
   }
-  return reduceResult(acc,[meta,Field,vDenormPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,changed]);
+  return postReducer(acc,[meta,Field,vDenormPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,changed]);
 };
 
 const getCollectionMapper=(reducer,reduceResult)=>(acc={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs],k)=>{
@@ -26,9 +60,9 @@ const getCollectionMapper=(reducer,reduceResult)=>(acc={},[meta,Field,vDenormPre
 // predicates
 const isScalarSelection=(acc,[meta])=>meta.defKind==='scalar';
 const isObjectSelection=(acc,[meta])=>meta.defKind==='object';
-const isListSelection=(acc,[meta])=>meta.isList;
-const isCollectionItemSelection=(acc,[m,f,vDP={},id=[],,rN,rNP,g],k)=>m.fieldName!==m.defName;
-const isCollectionSelection=(acc,[m],k)=>m.fieldName===m.defName;
+const isList=(acc,[meta])=>meta.isList;
+const isCollectionItem=(acc,[m,f,vDP={},id=[],,rN,rNP,g],k)=>m.fieldName!==m.defName;
+const isCollection=(acc,[m],k)=>m.fieldName===m.defName;
 const isPrimitiveValue=(acc,[meta, , ,vNorm])=>!isObjectLike( meta.isList?vNorm[0]:vNorm );
 const isObjectValue=(acc,[meta, , ,vNorm])=>isObjectLike( meta.isList?vNorm[0]:vNorm );
 
@@ -41,13 +75,13 @@ const getMapSelections = (allItemsCombiner,transducers={})=>{
       [isPrimitiveValue,(acc,[,,,vNorm])=>vNorm],
     )],
     [isObjectSelection,cond(
-      [isCollectionItemSelection, cond(
+      [isCollectionItem, cond(
         // these convert collection item id(s) to related object(s) and continue walking
-        [isListSelection,(acc,[m,f,vDP={},id=[],,rN,rNP,g],k)=>transToObject((o,i)=>o[i]=mapSelections(o[i],[m, f, vDP, rN[m.defName][i], rNP[m.defName]?.[i], rN, rNP, g],i))(id)],
+        [isList,(acc,[m,f,vDP={},id=[],,rN,rNP,g],k)=>transToObject((o,i)=>o[i]=mapSelections(o[i],[m, f, vDP, rN[m.defName][i], rNP[m.defName]?.[i], rN, rNP, g],i))(id)],
         [stubTrue,(acc,[m,f,vDP={},id='',,rN, rNP, g],k)=>mapSelections({},[m, f, vDP, rN[m.defName][id], rNP[m.defName]?.[id], rN, rNP, g],id)],
       )],
       // [isPrimitiveValue,()=>{throw new Error('cannot select field of primitive value')}],
-      [isCollectionSelection, getCollectionMapper(
+      [isCollection, getCollectionMapper(
         getReducerFromTransducers(transducers,(a,v,id)=>{a[id]=mapSelections(a[id],v,id);return a;}),
         allItemsCombiner
       )],
@@ -95,6 +129,11 @@ const getQuerySelector=(schema,mapSelections)=>{
 };
 
 export const schemaToQuerySelector=(schema,transducers={})=>{
+  const allItemsCombiner=(vDenorm,[,,vDenormPrev,vNorm,vNormPrev,,,,propsChanged])=>
+    vNorm !== vNormPrev || propsChanged ? vDenorm : vDenormPrev;
+  return getQuerySelector(schema,getMapSelections(allItemsCombiner,{filter,omit,...transducers}));
+};
+export const schemaToMutationReducer=(schema,transducers={})=>{
   const allItemsCombiner=(vDenorm,[,,vDenormPrev,vNorm,vNormPrev,,,,propsChanged])=>
     vNorm !== vNormPrev || propsChanged ? vDenorm : vDenormPrev;
   return getQuerySelector(schema,getMapSelections(allItemsCombiner,{filter,omit,...transducers}));
