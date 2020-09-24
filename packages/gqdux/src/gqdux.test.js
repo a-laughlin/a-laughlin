@@ -296,8 +296,19 @@ describe("querySelectorToUseLeafQuery",()=>{
   let store,useSelectPath,schema,selectPath,cleanupSelectPath,reducerMap;
   beforeEach(()=>{
     schema = gql`
-      type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
-      type Pet{id:ID,name:String}
+      type Person{
+        id:ID         @boundary(values:123)
+        name:String   @boundary(values:["","fooo","really long string"])
+        best:Person
+        otherbest:Person
+        nicknames:[String]
+        friends:[Person]
+        pet:Pet
+      }
+      type Pet{
+        id:ID         @boundary(values:456)
+        name:String   @boundary(values:["","baaar","really long string"])
+      }
       scalar SomeScalar
     `;
     reducerMap = schemaToReducerMap(schema);
@@ -344,6 +355,14 @@ describe("querySelectorToUseLeafQuery",()=>{
     const { result } = renderHook(() =>useSelectPath(`{Person(id:"a"){best{id}}}`));
     expect(result.current).toEqual('b');
   });
+  test('supports permutation testing', () => {
+    
+    // figure out the syntax for looping in a test
+    // for (const {id,name,pet} of selectPath(`{Person(id:"a"){best{id}}}`)){
+      // const { result } = render(() =><div>useSelectPath(`{Person(id:"a"){best{id}}}`));
+    // }
+    expect(true).toBe(true);
+  });
 });
 
 describe("schemaToMutationReducer",()=>{
@@ -382,39 +401,79 @@ describe("schemaToMutationReducer",()=>{
     schema=store=useQuery=dispatchMutation=cleanupSelectFullPath=selectFullPath=undefined;
     /* eslint-enable no-unused-vars */
   });
-  // subtract values
-  // rootItem->scalar                                       _query(subtract:"Somescalar")             ERROR  cannot delete item props
-  // rootItem->collection                                   _query(subtract:"Person")                 ERROR cannot delete item props
-  // rootItem->collection->item                             Person(subtract:"a")                      subtract item from collection
-  // rootItem->collection->item->scalar                     Person(id:"a"){name(subtract:"name")}     ERROR, cannot delete item prop
-  // rootItem->collection->item->item                       Person(id:"a"){best(subtract:"b")}        ERROR, cannot delete item prop
-  // rootItem->collection->item->scalar                     Person(id:"a"){nicknames(subtract:"0")}subtract item from collection
-  // rootItem->collection->item->scalarList                 Person(id:"a"){nicknames(subtract:"AA")}  subtract item from collection
-  // rootItem->collection->item->item                       Person(id:"a"){friends(subtract:"b")}     subtract item from collection
-  // rootItem->collection->item->itemList                   Person(id:"a"){friends(subtract:"0")}     subtract item from collection
-
-  test('should update collections', () => {
+  
+  test('Subtract: object subtract objectList value         Person(id:"a",subtract:{"friends":"b"})',()=>{
     expect(true).toBe(true);
-    // const { result } = renderHook(() =>useQuery(`{Person{id}}`));
-    // expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
-    // const Person=result.current.Person;
-    // act(()=>dispatchMutation(gql(`{Person(subtract:{id:"a"})}`)));
-    // expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
-    // expect(result.current.Person).not.toBe(Person);
-    // expect(result.current.Person.b).toBe(Person.b);
-    // expect(result.current.Person.c).toBe(Person.c);
-  });
-  test('should update scalars', () => {
+  })
+  test('Subtract: object subtract scalarList value         Person(id:"a",subtract:{"nicknames":"AA"})',()=>{
     expect(true).toBe(true);
-    // const { result } = renderHook(() =>useQuery(gql(`{SomeScalar}`)));
-    // expect(result.current).toEqual({SomeScalar:1});
-    // const Person=result.current.Person;
-    // act(()=>dispatchMutation(gql(`{SomeScalar(set:1)}`)));
-    // expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
-    // expect(result.current.Person).not.toBe(Person);
-    // expect(result.current.Person.b).toBe(Person.b);
-    // expect(result.current.Person.c).toBe(Person.c);
-  });
+  })
+  test('Subtract: object subtract object prop value        Person(id:"a",subtract:"best")',()=>{
+    expect(true).toBe(true);
+  })
+  test('Subtract: object subtract scalar prop value        Person(id:"a",subtract:"name") ',()=>{
+    expect(true).toBe(true);
+  })
+  test('Subtract: objectList subtract object               Person(subtract:"a")',()=>{
+    expect(true).toBe(true);
+  })
+  test('Subtract: scalarList subtract scalar               Rocks(subtract:"granite")',()=>{
+    expect(true).toBe(true);
+  })
+  test('Add: object add objectList value                   Person(id:"a",add:{"friends":"b"})',()=>{
+    expect(true).toBe(true);
+  })
+  test('Add: object add scalarList value                   Person(id:"a",add:{"nicknames":"AA"})',()=>{
+    expect(true).toBe(true);
+  })
+  test('Add: object add object prop value                  Person(id:"a",add:"best")',()=>{
+    expect(true).toBe(true);
+  })
+  test('Add: object add scalar prop value                  Person(id:"a",add:"name") ',()=>{
+    expect(true).toBe(true);
+  })
+  test('Add: objectList add object                         Person(add:"a")',()=>{
+    expect(true).toBe(true);
+  })
+  test('Add: scalarList add scalar                         Rocks(add:"granite")',()=>{
+    expect(true).toBe(true);
+  })
+  test('Union: object union objectList value               Person(id:"a",union:{"friends":"b"})',()=>{
+    expect(true).toBe(true);
+  })
+  test('Union: object union scalarList value               Person(id:"a",union:{"nicknames":"AA"})',()=>{
+    expect(true).toBe(true);
+  })
+  test('Union: object union object prop value              Person(id:"a",union:"best")',()=>{
+    expect(true).toBe(true);
+  })
+  test('Union: object union scalar prop value              Person(id:"a",union:"name") ',()=>{
+    expect(true).toBe(true);
+  })
+  test('Union: objectList union object                     Person(union:"a")',()=>{
+    expect(true).toBe(true);
+  })
+  test('Union: scalarList union scalar                     Rocks(union:"granite")',()=>{
+    expect(true).toBe(true);
+  })
+  test('Intersection: object intersect objectList value    Person(id:"a",intersect:{"friends":"b"})',()=>{
+    expect(true).toBe(true);
+  })
+  test('Intersection: object intersect scalarList value    Person(id:"a",intersect:{"nicknames":"AA"})',()=>{
+    expect(true).toBe(true);
+  })
+  test('Intersection: object intersect object prop value   Person(id:"a",intersect:"best")',()=>{
+    expect(true).toBe(true);
+  })
+  test('Intersection: object intersect scalar prop value   Person(id:"a",intersect:"name") ',()=>{
+    expect(true).toBe(true);
+  })
+  test('Intersection: objectList intersect object          Person(intersect:"a")',()=>{
+    expect(true).toBe(true);
+  })
+  test('Intersection: scalarList intersect scalar          Rocks(intersect:"granite")',()=>{
+    expect(true).toBe(true);
+  })
 });
 
 
