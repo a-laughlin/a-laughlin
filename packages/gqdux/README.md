@@ -119,14 +119,21 @@ const schema=gql`
   }
 `
 const store = createStore(schemaToRootReducer(schema));
+const change = schemaToChangePublisher(schema,store);
 const selectPath = getSelectPath(schema,gql,store);
-const mapBoundaryValues = map(withBoundaryValueCombinations(schema,selectPath));
-const GreetHuman = ({name='',petName=''})=><div>{`Hello, ${name}, and your little dog ${petName}!`}</div>;
+const schemaToEachBoundaryValueCombination=(schema)=>(gqlStr,callback)=>{
+  queryToBoundaryValueSelectionList(schema,query).forEach(callback);
+}
+const eachBoundaryValueCombination = schemaToEachBoundaryValueCombination(schema);
+const GreetHuman = ()=>{
+  const {name,petName}=selectPath('Person(id:"a"){name,pet{name}}');
+  <div>{`Hello, ${name}, and your little dog ${petName}!`}</div>
+};
 const GreetPet = ({name=''})=><div>{`Hello, ${name}, and your little dog ${petName}!`}</div>;
 test('it does stuff',()=>{
   // change(`{Person(id:"a",union:{name:${name},pet:${pet}}})}`)
-  const { container, getByText } = render(<Greeting />);
-  mapBoundaryValueSelections('Person(id:"a"){name,pet{name}}',({name,pet:petName})=>{
+  eachBoundaryValueCombination('Person(id:"a"){name,pet{name}}',({name,pet:petName})=>{
+    const { container, getByText } = render(<GreetHuman />);
     act(()=>{change(`Person(id:"a",union:{name:${name},pet:${petName}}})}`));
     expect(getByText(`Hello, ${name}, and your little dog ${petName}!`)).toBeInTheDocument()
     if(name.length===0) expect(result)id===expect(result)
