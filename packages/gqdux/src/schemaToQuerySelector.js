@@ -4,47 +4,69 @@ import indexSchema from './indexSchema';
 import {filter,omit} from './transducers';
 
 
-// const getListReducer=(loopReducer,preTransducer=identity,postReducer,getIterable,isChanged=(v,arr,i)=>v[i]!==arr[2][i])=>preTransducer((v,arr,k)=>{
-//   let i,vv,changed=false;
-//   const iterable=getIterable(v,arr,k);
-//   for ([i,vv] of Object.entries(iterable)) {
-//     v=loopReducer(v,arr,vv,i);
-//     if(isChanged(v,arr,i))changed=true;
-//   };
-//   return postReducer(v,[...arr,changed],k);
-// });
-// const asScalarFieldReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],i)=>loopReducer(v,[m, f, vP, rN[m.defName][vN], rNP[m.defName]?.[vN], rN, rNP, g, args],i);
-// const asScalarListFieldReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],i)=>loopReducer(v,[m, f, vP, vN[i], vNP[i], rN, rNP, g, args],i);
-// const asIdFieldReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],i)=>loopReducer(v,[m, f, vP, rN[m.defName][vN], rNP[m.defName]?.[vN], rN, rNP, g, args],i);
-// const asIdListFieldReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],i)=>loopReducer(v,[m, f, vP, rN[m.defName]?.[vN[i]], rNP[m.defName]?.[vN[i]], rN, rNP, g, args],i);
-// const asItemListFieldReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],i)=>loopReducer(v,[m, f, vP, vN[i], vNP[i], rN, rNP, g, args],i);
-// const asItemReducer=loopReducer=>(v,[m,f,vP,vN,vNP,rN,rNP,g,args],s,i)=>loopReducer(v,[m[s.name.value], s, vP, vN[s.name.value], vNP?.[s.name.value], rN, rNP, g, g(s)],i);
-// // note, these don't need to recurse, they're just operating at 1 level.
-// const transducerFactory = transducer=>combiner=>withResolvedArgs(cond(
-//   [isScalarSelection,cond( // ensure item values are normedpreviously norm the object
-//     [isList,getListReducer(asScalarListFieldReducer(transducer(combiner))],
-//     [stubTrue,asScalarValueReducertransducer(combiner)],
-//   )],
-//   [isCollectionItem,cond( // ensure item values are normedpreviously norm the object
-//     [isList,getSelectionsMapper(withIdAsItem(transducer(combiner)),withIdAsItem(combiner))],
-//     [stubTrue,withIdAsItem(transducer(combiner))],
-//   )],
-//   [isCollection,getSelectionsMapper(transducer(combiner),combiner)]
-// ));
+
 // const subtractor = transducerFactory(
 //   combiner=>(v,[m,f,vP,vN,vNP,rN,rNP,ga,args],k)=>matches(vN,args.subtractAny)&&combiner(v,[m,f,vP,vN,vNP,rN,rNP,ga,args],k)
 // );
-
-
-const getSelectionsMapper = (loopReducer,postReducer)=>(acc={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs,args],id)=>{// eslint-disable-line no-unused-vars
-  let changed = false,k;
-  for(const f of Field.selectionSet.selections){
-    k = f.name.value;
-    acc=loopReducer(acc,[meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs],k);
-    if(acc[k] !== vDenormPrev[k]) changed = true;
+const getIterableMapper=(mapIterateeArgs,getIterable=(a,[,,,,vN])=>vN,isChanged=(a,[,,v,vP],vv)=>v[vv]!==vP?.[vv])=>(loopReducer,combineResult)=>{
+  loopReducer = mapIterateeArgs(loopReducer);
+  return (a,arr,k,kk)=>{
+    let i,vv,changed=false;
+    for ([i,vv] of Object.entries(getIterable(a,arr,k,kk))) {
+      a=loopReducer(a,arr,vv,i);
+      if(isChanged(a,arr,vv,i))changed=true;
+    }
+    return combineResult(a,[...arr,changed],k,kk);
   }
-  return postReducer(acc,[meta,Field,vDenormPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,changed]);
-};
+}
+const getNodeType = (a,arr)=>{
+  const {isList,defKind,defName,fieldName,fieldKindName}=arr[0];
+  if (defKind==='scalar') return  (isList ? 'objectScalarList' : 'objectScalar');
+  if (isList) return (defName===fieldName ? 'objectObjectList' : 'objectIdList') ;
+  return (fieldKindName==='ID' ? 'objectId' : 'object');
+}
+const getTraversalTransducer = (transducerObj,combineResult)=>{
+  const listCombiner=(a,v,listVal,listKey)=>{a[listKey]=(a[listKey],v,id);return a;};
+  // iteration sets properties and checks changes.  After iteration choose which parent to return, so unchanged properties result in an unchanged parent.
+  const listReducer=compose(
+    nextReducer=>(a,arr,v,k)=>transducerObj[getNodeType(a,arr,v,k)](nextReducer)(a,arr,v,k),
+    nextReducer=>(a,arr,v,k)=>nextReducer(childIterators[getNodeType(a,arr,v,k)](a,arr,v,k),arr,v,k)
+  )(listCombiner);
+  
+    // 5 descend and iterate cases, 1 leaf (scalar value)
+  const parentToChildMappers={
+    objectScalar:     identity,
+    objectScalarList: loopReducer=>(a,[m,f,aP,aN,aNP,rN,rNP,g,args],vv,i)=>loopReducer(a,[m, f, aP[i], aN[i], aNP[i], rN, rNP, g, args],vv,i),
+    objectId:         loopReducer=>(a,[m,f,aP,aN,aNP,rN,rNP,g,args],vv,i)=>loopReducer(a,[m, f, aP, rN[m.defName][vv],rNP[m.defName][vv],rN,rNP,g,args],vv,i),
+    objectIdList:     loopReducer=>(a,[m,f,aP,aN,aNP,rN,rNP,g,args],vv,i)=>loopReducer(a,[m, f, aP, rN[m.defName]?.[vv], rNP[m.defName]?.[vv], rN, rNP, g, args],vv,i),
+    objectObjectList: loopReducer=>(a,[m,f,aP,aN,aNP,rN,rNP,g,args],vv,i)=>loopReducer(a,[m, f, aP, aN[i], aNP[i], rN, rNP, g, args],vv,i),
+    object:           loopReducer=>(a,[m,f,aP,aN,aNP,rN,rNP,g,args],vv,i)=>loopReducer(a,[m[s.name.value], s, aP, aN[s.name.value], aNP?.[s.name.value], rN, rNP, g, g(s)],vv,i),
+  }
+  const childIterators={
+    objectScalar:     identity, // leaf
+    objectScalarList: getIterableMapper(parentToChildMappers.objectScalarList)(identity,combineResult),
+    objectId:         parentToChildMappers.objectId(listReducer),
+    objectIdList:     getIterableMapper(parentToChildMappers.objectIdList)(listReducer,combineResult),
+    objectObjectList: getIterableMapper(parentToChildMappers.objectObjectList)(listReducer,combineResult),
+    object:           getIterableMapper( // loops over object properties - no transducer necessary since selections
+                        parentToChildMappers.object,
+                        (v,arr)=>arr[1].selectionSet.selections,
+                        (a,[,,aP],{name:{value:k}})=>a[k]!==aP[k]
+                      )(listReducer,combineResult)
+  }
+}
+
+
+
+// const getSelectionsMapper = (loopReducer,postReducer)=>(acc={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs,args],id)=>{// eslint-disable-line no-unused-vars
+//   let changed = false,k;
+//   for(const f of Field.selectionSet.selections){
+//     k = f.name.value;
+//     acc=loopReducer(acc,[meta[k],f,vDenormPrev[k],vNorm[k],vNormPrev[k],rootNorm,rootNormPrev,getArgs],k);
+//     if(acc[k] !== vDenormPrev[k]) changed = true;
+//   }
+//   return postReducer(acc,[meta,Field,vDenormPrev,vNorm,vNormPrev,rootNorm,rootNormPrev,getArgs,changed]);
+// };
 
 const getCollectionMapper=(reducer,reduceResult)=>(acc={},[meta,Field,vDenormPrev={},vNorm={},vNormPrev={},rootNorm,rootNormPrev,getArgs],k)=>{
   // on the first traverse up, break if the final collection is unchanged since its items will be too.
