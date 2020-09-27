@@ -53,6 +53,7 @@ Try it [on codepen](link)
 - decide where domain concept components should go
 - decide where derivations should go
 - derivations, custom functions when walking - not recommended since you have to read the function (set operations should be sufficient for most things)
+- make selectPath always return a list for lists, not condense down single objects, or always map, so no need to think about it.
 
 ### API
 
@@ -164,3 +165,9 @@ Write if there's interest
 ## Recipes
 
 Existing redux patterns mostly apply.  The only difference is in parsing action names.  
+
+## GQL Differences
+// converts query variable definitions array to an object, populating any relevant variables passsed
+// default per spec is returning only what's in variableDefinitions
+// this version provides the option to eliminate the duplicate definitions in each query to pass a variable
+// given the def is often specified in the schema already.

@@ -1,5 +1,5 @@
 import {createStore,combineReducers} from 'redux';
-import {useState,useEffect,useMemo}from 'react';
+import {useState,useEffect}from 'react';
 import {
   schemaToReducerMap,
   schemaToQuerySelector,
@@ -101,7 +101,7 @@ describe("schemaToQuerySelector", () => {
   afterAll(()=>{
     schema=state=querier=null;
   });
-  it("should query collectionss",()=>{
+  it("should query collections",()=>{
     const query=gql(`{Person{id}}`);
     const queryFn = querier(query);
     const result1=queryFn(state);

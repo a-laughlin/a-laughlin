@@ -184,13 +184,6 @@ export const indexBy = (...keyGetters)=>coll=>{
     (o[kk]??(o[kk]={}))[k]=v;
   })(coll));
 }
-  // keyGetters.length===0
-  //   ? v
-  //   :keyGetters.length===1
-  //     ? keyBy(keyGetters[0])(v)
-  //     : mapToObject((vv,kk)=>{
-  //         return indexBy(...keyGetters.slice(1))({[kk]:vv});
-  //       })(keyBy(keyGetters[0])(v));
 
 const pushToArray=(a=[],v)=>{a[a.length]=v;return a;};
 const pushToArrayProp=(acc={},v,k)=>{acc[k]=pushToArray(acc[k],v);return acc;}
@@ -369,6 +362,14 @@ export const sortedRangesIntersect=(sortedRangeA,sortedRangeB)=>{
     : sortedRangeB[1]>=sortedRangeA[0];
 }
 
+
+export const setNonEnumProp = (obj,key,value)=>Object.defineProperty(obj,key,{value,enumerable:false,writable:true,configurable:false});
+export const setImmutableNonEnumProp = (obj,key,value)=>Object.defineProperty(obj,key,{value,enumerable:false,writable:true,configurable:false});
+
+export const assignEnumAndNonEnumProps = (dest,...srcs)=>srcs.reduceRight((acc,src)=>{
+  Object.defineProperties(acc,Object.getOwnPropertyDescriptors(src));
+  return acc;
+},dest);
 // export const diffBy = (by, reducer) => (args = []) => {
 //   const diff = by ? diffObjs(args.map(keyBy(by))) : diffObjs(args);
 //   const { anb, anbc, bna, bnac, aib, aibc, aub, aubc, changed, changedc, a, b } = diff;
