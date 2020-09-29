@@ -17,10 +17,11 @@
 		"debug.node.autoAttach": "off",
 		"debug.showInStatusBar": "never",
 		"debug.javascript.autoAttachFilter": "smart",
-		"testExplorer.addToEditorContextMenu": true,
-		"jestTestExplorer.hideEmptyProjects": false,
-		"jestTestExplorer.logpanel": true,
 		"eslint.lintTask.enable": true,
 		"eslint.nodePath": "/Users/adam/.nvm/versions/node/v14.5.0/bin/node",
+		"jestRunIt.testMatchPatterns": [
+			"**/*.{spec,test}.{js,ts,jsx,tsx}",
+			// "**/__test__/*.{js,ts,jsx,tsx}"
+		],
 	}
 }

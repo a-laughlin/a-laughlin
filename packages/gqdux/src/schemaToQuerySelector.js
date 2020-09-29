@@ -1,10 +1,9 @@
-import {transToObject,identity,indexBy, setNonEnumProp, appendArrayReducer, appendObjectReducer, setImmutableNonEnumProp} from '@a-laughlin/fp-utils';
+import {transToObject,identity,indexBy, appendArrayReducer, appendObjectReducer, setImmutableNonEnumProp, mapToObject} from '@a-laughlin/fp-utils';
 import indexSchema from './indexSchema';
 import {filter,omit} from './transducers';
 
 // iteration sets properties and checks changes.  After iteration choose which parent to return, so unchanged properties result in an unchanged parent.
-const tdReduceEachWithChanged=(childTransducer,childCombiner,preTrans=identity,childKeys=(p,[,pN],k)=>Object.keys(pN))=>nextReducer=>preTrans((parent,arr,k)=>{
-  const reduceChild=childTransducer(childCombiner);
+const tdReduceEachWithChanged=(reduceChild,preTrans=identity,childKeys=(p,[,pN={}],k)=>Object.keys(pN))=>nextReducer=>preTrans((parent,arr,k)=>{
   let kk,nextParent,changed=false;
   for (kk of childKeys(parent,arr,k)){
     nextParent=reduceChild(nextParent,arr,kk);
@@ -21,22 +20,23 @@ const getTraversalMapper = (
   // 5 descend and iterate cases, 1 leaf (scalar value)
   // take the parent arr, and use v/k to map the parentArray's sections for the next level
   const reduce=tdReduceEachWithChanged;
-  const mappers={};
-  mappers.object            = reduce( // tdMap iters to selections
-    nextReducer=>(p={},[pP={},pN={},pNP={},rN,rNP,pqi],k)=>{
-      return nextReducer(p,mappers[pqi[k].meta.nodeType](p[k],[pP[k],pN[k],pNP[k],rN,rNP,pqi[k]],k),k);
+  const reducers={};
+  reducers.object            = reduce(
+    (p={},[pP={},pN={},pNP={},rN,rNP,pqi],k)=>{
+      return objectListCombiner(p,
+        reducers[pqi[k].meta.nodeType](p[k]??{},[pP?.[k],pN[k],pNP?.[k],rN,rNP,pqi[k]],pN[pqi[k].meta.fieldName]),
+      k);
     },
-    objectListCombiner,
     identity,
     (p,[,,,,,pqi])=>Object.keys(pqi)
   )(chooseParent);
-  mappers.objectObjectList  = reduce(mappers.object,objectListCombiner)(chooseParent);
-  mappers.objectId          = nextReducer=>(p={},[pP,pN,,rN,rNP,pqi],k)=>
-    nextReducer(p,mappers.object(p,[pP,rN[pqi[k].meta.defName][pN[k]],rNP[pqi[k].meta.defName][pN[k]],rN,rNP,pqi[k]],k),k);
-  mappers.objectIdList      = reduce(mappers.objectId,arrayListCombiner)(chooseParent);
-  mappers.objectScalar      = (p={},[,pN={},,,,pqi],k)=>objectListCombiner(p,pN[pqi.meta.fieldName],pqi.meta.fieldName);
-  mappers.objectScalarList  = reduce(nextReducer=>(p={},[,pN={}],k)=>nextReducer(p,pN[k],k),arrayListCombiner)(chooseParent);
-  return mappers.object;
+  reducers.objectObjectList  = reduce((p={},[pP,pN={},pNP={},rN,rNP,pqi],k)=>objectListCombiner(p,reducers.object({},[pP?.[k],pN?.[k],pNP?.[k],rN,rNP,pqi],k),k))(chooseParent);
+  reducers.objectId          = (p,[pP,pN,,rN,rNP,pqi],k)=>reducers.object({},[pP?.[k],rN[pqi[k].meta.defName][pN],rNP?.[pqi[k].meta.defName]?.[pN],rN,rNP,pqi[k]]);
+  reducers.objectIdList      = reduce((p=[],[pP,pN,,rN,rNP,pqi],k)=>arrayListCombiner(p,
+    reducers.object({},[pP?.[k],rN[pqi.meta.defName][pN[k]],rNP[pqi.meta.defName]?.[pN[k]],rN,rNP,pqi[k]],""),k)
+  )(chooseParent);
+  reducers.objectScalar      = (p,[,pN={}],k)=>pN;
+  return reducers.object;
 }
 
 // returns a function that populates query arguments with passed variables
@@ -61,16 +61,21 @@ const getNodeType = ({isList,defKind,defName,fieldName,fieldKindName})=>{
   return (fieldKindName==='ID' ? 'objectId' : 'object');
 }
 const indexQuery=(schema={},query={},passedVariables={},transducers={})=>{
-  const meta=indexSchema(schema).selectionMeta._query;
+  let meta=indexSchema(schema).selectionMeta;
+  // meta=meta._query;
   const getArgs = getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
-  const inner=((result={},s,meta)=>{
-    setImmutableNonEnumProp(result,'meta',meta);
-    setImmutableNonEnumProp(result.meta,'nodeType',getNodeType(meta));
-    setImmutableNonEnumProp(result,'args',indexBy((v,k)=>k in transducers?k:'implicit')(getArgs(s.arguments)));
-    for (const ss of s.selectionSet?.selections||[]) result[ss.name.value]=inner(result[ss.name.value],ss,meta[ss.name.value]);
-    return result;
-  });
-  return transToObject((o,s)=>inner(o,s,meta[s.name.value]))(query.definitions[0].selectionSet.selections);
+  const inner=(parentNode={},s,meta)=>{
+    for (const ss of s.selectionSet.selections){
+      const node = parentNode[ss.name.value]={};
+      setImmutableNonEnumProp(node,'meta',meta[ss.name.value]);
+      setImmutableNonEnumProp(node.meta,'nodeType',getNodeType(node.meta));
+      setImmutableNonEnumProp(node,'args',indexBy((v,k)=>k in transducers?k:'implicit')(getArgs(ss.arguments)));
+      if (ss.selectionSet) inner(node,ss,node.meta);
+    }
+    return parentNode;
+  }
+  const result=inner({},query.definitions[0],meta._query);
+  return result;
 };
 // [pP={},pN={},pNP={},rN,rNP,pqi]
 export const schemaToQuerySelector=(schema,transducers={})=>(query,passedVariables)=>{
