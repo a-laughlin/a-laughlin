@@ -1,7 +1,8 @@
 import {diffBy, toPredicate} from "@a-laughlin/fp-utils"
 
-export const filter=mapSelection=>(acc,arr,id,arg)=>toPredicate(arg)(arr[3],id)?mapSelection(acc,arr,id):acc;
-export const omit=mapSelection=>(acc,arr,id,arg)=>!(toPredicate(arg)(arr[3],id))?mapSelection(acc,arr,id):acc;
+export const filter=combiner=>(p,[pP,pN,pNP,rN,rNP,pqi],k)=>toPredicate(pqi.args)(pN,k)?combiner(p,[pP,pN,pNP,rN,rNP,pqi],k):p;
+export const intersect=filter;
+export const omit=combiner=>(acc,arr,id,arg)=>!(toPredicate(arg)(arr[3],id))?combiner(acc,arr,id):acc;
 export const identity=mapSelection=>mapSelection;
 export const subtract=omit;
 export const ADD = nextReducer=>(prevState,action)=>{
