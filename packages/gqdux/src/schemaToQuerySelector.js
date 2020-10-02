@@ -52,8 +52,8 @@ const indexQuery=(schema={},query={},passedVariables={},transducers={})=>{
       return (undef,[vP,vN,vNP,rN,rNP])=>{
         const mapObjectId=(fn,id,ck)=>{
           // const relMeta = meta[ck];
+          // Don't use relMeta.  Walking the tree beforehand closures the correct meta level for each childSelectors
           // console.log(`ck:`,ck,`  meta.defName:`,meta.defName, `  relMeta.defName:`,meta[ck].defName,'  fieldKindName:',meta.fieldKindName, `  relMeta.nodeType:`,getNodeType(meta[ck]), `  id:`,id,'  relMeta.fieldKindName:',relMeta.fieldKindName,'  vN:',vN)
-          // if (relMeta.defKind==='scalar')return rN[meta[ck].defName][id][ck];
           const [relcN,relcNP] = [rN[meta.defName],rNP?.[meta.defName]];
           return fn(undefined,[vP?.[ck],relcN?.[id]?.[ck],relcNP?.[id]?.[ck],rN,rNP],id);
         }
