@@ -3,6 +3,7 @@ module.exports = {
     "./node_modules",
     "./packages"
   ],
+  "verbose":false,
   "transformIgnorePatterns": [
     "<rootDir>/node_modules/(?!lodash-es)/.*"
   ],
