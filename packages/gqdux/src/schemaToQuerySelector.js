@@ -62,11 +62,10 @@ const indexQuery=(schema={},query={},passedVariables={},transducers={})=>{
         })(childSelectors)
       };
     }
-    const childrenTransducer = tdMap((arr,name2)=>{
+    const childrenTransducer = tdMap((arr)=>{
       const [vP,vN,vNP,rN,rNP]=arr;
       // console.log('nodeType:',nodeType,'  name:',name,'  name2:',name2,'  defName:',meta.defName,'  fieldName:',meta.fieldName,'  fieldKindName:',meta.fieldKindName,'  vN:',vN);
       if (nodeType==='objectObjectList') {
-
         return transToObject((coll,obj,id)=>{
           if(implicit && implicit[meta.idKey] && implicit[meta.idKey]!==id) return coll;
           coll[id]=mapToSame((childValueReducer,ck)=>{
@@ -74,33 +73,21 @@ const indexQuery=(schema={},query={},passedVariables={},transducers={})=>{
           })(childSelectors);
         })(vN);
       }
-      
       if (nodeType==='objectIdList') {
-        return tdToSame(compose(
-          // nextReducer=>(obj,id)=>{
-          //   console.log(`id`,id)
-          //   const [relcN,relcNP] = [rN[meta[ck].defName],rNP[meta[ck].defName]];
-          //   return nextReducer(undefined,[vP?.[id],relcN?.[id],relcNP?.[id],rN,rNP],id)
-          // },
-          // implicitArgsTransducer,
-          // tdMap(arr=>arr[[vP?.[id],relcN?.[id],relcNP?.[id],rN,rNP]),
-          tdMap(id=>{
-            return mapToObject((childValueReducer,ck)=>mapObjectId(childValueReducer,id,ck))(childSelectors);
-          })
-        ))(vN);
+        return transToObject((coll,id)=>{
+          if(implicit && implicit[meta.idKey] && implicit[meta.idKey]!==id) return coll;
+          coll[id]=mapToSame((childValueReducer,ck)=>{
+            return childValueReducer(undefined,[vP?.[id]?.[ck],vN?.[id]?.[ck],vP?.[id]?.[ck],rN,rNP],ck);
+          })(childSelectors);
+        })(vN);
       }
       if (nodeType==='object'){// includes 
         return transToObject((o,fn,k)=>fn(o,[vP?.[k],vN?.[k],vNP?.[k],rN,rNP],k))(childSelectors);
       }
       throw new Error("shouldn't be hit");
     });
-    const reducer =  compose(
-      // implicitArgsTransducer,
-      // explicitArgsTransducer,
-      childrenTransducer,
-      // nextReducer=>(v,[vP,vN,vNP,rN,rNP],changed)=>nextReducer(vN!==vNP||changed ? v:vP,[vP,vN,vNP,rN,rNP],name)
-    )(appendObjectReducer);
-    return (v,[vP,vN,vNP,rN,rNP])=>reducer(v,[vP,vN,vNP,rN,rNP],name);
+    return childrenTransducer(appendObjectReducer);
+    // nextReducer=>(v,[vP,vN,vNP,rN,rNP],changed)=>nextReducer(vN!==vNP||changed ? v:vP,[vP,vN,vNP,rN,rNP],name)
   }
   return inner(query.definitions[0],queryMeta);
 };
