@@ -16,11 +16,21 @@ export const filter=combiner=>(p,[pP,pN,pNP,rN,rNP,pqi],k)=>toPredicate(pqi.args
 //   if(isString(x)) return hasKey(x)
 //   if(stubTrue(x)) return stubFalse;
 // };
-export const implicit=args=>tdFilter((v,[vP,vN],k)=>{
-  // we'll need to sub variables and objects before hitting this
-  if (!(k in args)) return true;
-  return args[k]===vN[k];
-});
+export const implicit=args=>{
+  const tester = toPredicate(args);
+  // console.log(args);
+  return nextReducer=>(a,arr,k)=>{
+    const vN = arr[1]
+    // console.log('k:',k,'vP:',arr[0],'vN',arr[1]);
+    // we'll need to sub variables and objects before hitting this
+    // if (k==="b"||k==="best") console.log(`k`,k)
+    // if (kk==="b"||kk==="best") console.log(`kk`,kk)
+    // if (vN==="b"||vN==="best") console.log(`vN`,vN)
+    return tester(vN,k)&&nextReducer(a,arr,k);
+    // if (!(k in args)) return true;
+    // return args[k]===vN[k];
+  };
+};
 export const omit=combiner=>(acc,arr,id,arg)=>!(toPredicate(arg)(arr[3],id))?combiner(acc,arr,id):acc;
 export const identity=mapSelection=>mapSelection;
 export const subtract=omit;
