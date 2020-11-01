@@ -47,18 +47,20 @@ const indexQuery=(schema={},query={},passedVariables={},transducers={})=>{
   const getArgs = getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
   const inner=(s,meta)=>{
     const nodeType = getNodeType(meta);
+    // Walk the query tree beforehand closures the correct meta level for each childSelectors
     const childSelectors = transToObject((o,ss)=>o[ss.name.value]=inner(ss,meta[ss.name.value]))((s.selectionSet?.selections)??[]);
     const {explicit,implicit}=indexBy((v,k)=>k in transducers?'explicit':'implicit',(v,k)=>k)(getArgs(s.arguments));
-    const implicitArgsTransducer=implicit?transducers.implicit(implicit):identity;
-    const explicitArgsTransducer=explicit?compose(...Object.entries(explicit).map(([k,v])=>transducers[k](explicit[k]))):identity;
-    // Walking the tree beforehand closures the correct meta level for each childSelectors
+    const implicitArgsTransducer=implicit?transducers.implicit(implicit,meta):identity;
+    const explicitArgsTransducer=explicit?compose(...Object.entries(explicit).map(([k,v])=>transducers[k](explicit[k],meta))):identity;
     const mapObject=selectorsToMapObject(childSelectors);
     const mapObjectId=([vP,vN,vNP,rN,rNP])=>mapObject([vP,rN[meta.defName][vN],rN[meta.defName][vN],rN,rNP]);
     if (meta.defKind==='scalar')        return ([,vN])=>vN;
     if (nodeType==='object')            return mapObject;
     if (nodeType==='objectId')          return mapObjectId;
-    if (nodeType==='objectObjectList')  return tdMapVnorm(tdMap(
-      ([vP={},vN={},vNP={},rN,rNP],id)=>mapObject([vP[id],vN[id],vNP[id],rN,rNP])
+    if (nodeType==='objectObjectList')  return tdMapVnorm(compose(
+      // implicitArgsTransducer,
+      implicit?tdFilter((arr,id)=>(!(meta.idKey in implicit))||implicit[meta.idKey]===id):identity,
+      tdMap(([vP={},vN={},vNP={},rN,rNP],id)=>mapObject([vP[id],vN[id],vNP[id],rN,rNP])),
     )(appendObjectReducer));
     if (nodeType==='objectIdList')      return tdMapVnorm(tdMap(
       ([vP,vN,vNP,rN,rNP],i)=>mapObjectId([vP?.[i],vN?.[i],vNP?.[i],rN,rNP])
