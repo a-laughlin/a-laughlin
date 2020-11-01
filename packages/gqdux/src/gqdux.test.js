@@ -146,6 +146,19 @@ describe("schemaToQuerySelector", () => {
     let result2=querier(query)(state);
     expect(result2).toEqual(result1);
   });
+  // commenting these out to make logic in components more difficult
+  // and reduce the chance of fns that differ between front and back ends
+  // #pitofsuccess
+  // it("should accept intersection functions as variables",()=>{
+  //   let query = gql(`{Person(intersection:$fn) {best{id},otherbest{id}}}`);
+  //   let result1=querier(query,{fn:x=>x.id==="a"})(state);
+  //   expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
+  // });
+  // it("should accept subtract functions as variables",()=>{
+  //   let query = gql(`{Person(subtract:$fn) {best{id},otherbest{id}}}`);
+  //   let result1=querier(query,{fn:x=>x.id!=="a"})(state);
+  //   expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
+  // });
   it("should accept variables named differently than the key",()=>{
     let query = gql(`{Person(id:$xyz) {best{id},otherbest{id}}}`);
     let result1=querier(query,{xyz:"a"})(state);

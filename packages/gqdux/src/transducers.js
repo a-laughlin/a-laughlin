@@ -1,17 +1,9 @@
-import {diffBy, isString, tdFilter, toPredicate} from "@a-laughlin/fp-utils"
+import {diffBy, isString, not, tdFilter, toPredicate} from "@a-laughlin/fp-utils"
 
-// export const filter=combiner=>(p,[pP,pN,pNP,rN,rNP,pqi],k)=>toPredicate(pqi.args)(pN,k)?combiner(p,[pP,pN,pNP,rN,rNP,pqi],k):p;
-// export const intersect=combiner=>(p,[pP,pN,pNP,rN,rNP,pqi],k)=>{
-//   if (pqi.nodeType==='objectScalar'){}
-//   if (pqi.nodeType==='objectScalarList'){}
-//   if (pqi.nodeType==='objectId'){}
-//   if (pqi.nodeType==='objectIdList'){}
-//   if (pqi.nodeType==='objectObjectList'){}
-//   if (pqi.nodeType==='object'){}
-// };
-const polymorphicArgTest = (args,meta)=>function conforms(obj){
-  let arg;
-  if (meta.idKey in args && args[meta.idKey] !== obj[meta.idKey]) return false;
+const polymorphicArgTest = (args,meta)=>function conforms(obj,id){
+  if (meta.idKey in args && args[meta.idKey] !== id) return false;
+  // if (meta.idKey in args && args[meta.idKey] !== obj[meta.idKey]) return false;
+  // let arg;
   // for (arg in args){
   //   if (isString(args[arg]) && args[arg]!==obj[arg]) return false;
   //   if (isFinite(args[arg]) && args[arg]!==+obj[arg]) return false;
@@ -23,11 +15,10 @@ const polymorphicArgTest = (args,meta)=>function conforms(obj){
   // }
   return true;
 };
-export const intersection=(args={},meta)=>{
-  // return tdFilter(polymorphicArgTest(args,meta));
-  return tdFilter((arr,id)=>(!(meta.idKey in args))||args[meta.idKey]===id)
-};
+
+export const intersection=(args={},meta)=>tdFilter(polymorphicArgTest(args,meta));
 export const subtract=(args,meta)=>not(intersection(args,meta));
+
 export const ADD = nextReducer=>(prevState,action)=>{
   // if collection/item/value
   // which has a simpler dependency graph topology?  These fns, handling different types, or or a mutation tree?
