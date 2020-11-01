@@ -142,7 +142,7 @@ describe("schemaToQuerySelector", () => {
     let query = gql(`{Person(id:"a") {best{id},otherbest{id}}}`);
     let result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
-    query = gql(`{Person(filter: {id:"a"} ) {best{id},otherbest{id}}}`);
+    query = gql(`{Person(implicit: {id:"a"} ) {best{id},otherbest{id}}}`);
     let result2=querier(query)(state);
     expect(result2).toEqual(result1);
   });
