@@ -138,23 +138,13 @@ describe("schemaToQuerySelector", () => {
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
   });
-  it("should behave the same with (filter:{...}) and (...)",()=>{
+  it("should behave the same with (intersection:{...}) and (...)",()=>{
     let query = gql(`{Person(id:"a") {best{id},otherbest{id}}}`);
     let result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
-    query = gql(`{Person(implicit: {id:"a"} ) {best{id},otherbest{id}}}`);
+    query = gql(`{Person(intersection: {id:"a"} ) {best{id},otherbest{id}}}`);
     let result2=querier(query)(state);
     expect(result2).toEqual(result1);
-  });
-  it("should accept filter functions as variables",()=>{
-    let query = gql(`{Person(filter:$filter) {best{id},otherbest{id}}}`);
-    let result1=querier(query,{filter:x=>x.id==="a"})(state);
-    expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
-  });
-  it("should accept omit functions as variables",()=>{
-    let query = gql(`{Person(omit:$fn) {best{id},otherbest{id}}}`);
-    let result1=querier(query,{fn:x=>x.id!=="a"})(state);
-    expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
   });
   it("should accept variables named differently than the key",()=>{
     let query = gql(`{Person(id:$xyz) {best{id},otherbest{id}}}`);

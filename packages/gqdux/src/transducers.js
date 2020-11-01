@@ -9,20 +9,25 @@ import {diffBy, isString, tdFilter, toPredicate} from "@a-laughlin/fp-utils"
 //   if (pqi.nodeType==='objectObjectList'){}
 //   if (pqi.nodeType==='object'){}
 // };
-export const implicit=(args,meta)=>{
-// export const toPredicate = x=>([v,vP,vN,vNP,rN,rNP,pqi],k)=>{
-//   if(isFunction(x)) return x(vN,k);
-//   if(isArray(x)) return matchesProperty(x);
-//   if(isObjectLike(x)) return matches(x);
-//   if(isString(x)) return hasKey(x)
-//   if(stubTrue(x)) return stubFalse;
-// };
-  return tdFilter((arr,id)=>(!(meta.idKey in implicit))||implicit[meta.idKey]===id)
+const polymorphicArgTest = (args,meta)=>function conforms(obj){
+  let arg;
+  if (meta.idKey in args && args[meta.idKey] !== obj[meta.idKey]) return false;
+  // for (arg in args){
+  //   if (isString(args[arg]) && args[arg]!==obj[arg]) return false;
+  //   if (isFinite(args[arg]) && args[arg]!==+obj[arg]) return false;
+  //   if (isFunction(args[arg]) && !args[arg](obj[arg])) return false;
+  //   if (isArray(args[arg]) && !and(...mapToArray(a=>conforms(obj,a))(args[arg]) ) ) return false;
+  //   if (isObjectLike(args[arg]) && !and(...mapToArray((v,k)=>conforms(obj[k],v))(args[arg]) )) return false;
+  //   console.log(`unknown type`,{[arg]:args[arg]})
+  //   if (args[arg]!==obj[arg]) return false;
+  // }
+  return true;
 };
-export const filter = implicit;
-export const omit=combiner=>(acc,arr,id,arg)=>!(toPredicate(arg)(arr[3],id))?combiner(acc,arr,id):acc;
-export const identity=mapSelection=>mapSelection;
-export const subtract=omit;
+export const intersection=(args={},meta)=>{
+  // return tdFilter(polymorphicArgTest(args,meta));
+  return tdFilter((arr,id)=>(!(meta.idKey in args))||args[meta.idKey]===id)
+};
+export const subtract=(args,meta)=>not(intersection(args,meta));
 export const ADD = nextReducer=>(prevState,action)=>{
   // if collection/item/value
   // which has a simpler dependency graph topology?  These fns, handling different types, or or a mutation tree?
