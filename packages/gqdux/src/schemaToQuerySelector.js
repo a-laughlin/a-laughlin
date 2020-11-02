@@ -1,4 +1,4 @@
-import {transToObject,identity,indexBy, appendArrayReducer, appendObjectReducer, setImmutableNonEnumProp, mapToObject, compose, tdToSame, transToSame, over, mapToArray, tdMap, mapToSame, tdFilter, tdMapWithAcc, tdMapKey} from '@a-laughlin/fp-utils';
+import {transToObject,identity,indexBy, appendArrayReducer, appendObjectReducer, setImmutableNonEnumProp, mapToObject, compose, tdToSame, transToSame, over, mapToArray, tdMap, mapToSame, tdFilter, tdMapWithAcc, tdMapKey, tdTap} from '@a-laughlin/fp-utils';
 import indexSchema from './indexSchema';
 import {intersection,subtract,intersection as tdImplicit} from './transducers';
 
@@ -28,17 +28,20 @@ const getNodeType = ({isList,defKind,defName,fieldName,fieldKindName})=>{
 
 // iteration sets properties and checks changes.  After iteration choose which parent to return, so unchanged properties result in an unchanged parent.
 const tdMapVnorm = childReducer=>arr=>{
-  let kk,vv,v;
-  for ([kk,vv] of Object.entries(arr[1])) v = childReducer(v,arr,kk,vv);
-  return arr[1]!==arr[2]?v:arr[0];
-}
-const selectorsToMapObject = childSelectors=>([vP={},vN={},vNP={},rN,rNP])=>{
-  let v={},ck,changed=vN!==vNP;
-  for (ck in childSelectors){
-    v[ck]=childSelectors[ck]([vP[ck],vN[ck],vNP[ck],rN,rNP]);
-    // v check is necessary since an adjacent collection may have changed
-    if (v[ck]!==vP[ck])changed=true
+  const [vP,vN,vNP]=arr;
+  let kk,vv,v,changed=vN!==vNP||vP===undefined;
+  for ([kk,vv] of Object.entries(vN)) {
+    v = childReducer(v,arr,kk,vv);
+    // vN[kk]!==vNP?.[kk] && (changed=true);
   }
+  return changed?v:vP;
+}
+const selectorsToMapObject = childSelectors=>([vP,vN={},vNP={},rN,rNP])=>{
+  let v={},ck,changed=vN!==vNP||vP===undefined;
+  if (vP===undefined) for (ck in childSelectors) v[ck]=childSelectors[ck]([undefined,vN[ck],vNP[ck],rN,rNP]);
+  else if(changed) for (ck in childSelectors) v[ck]=childSelectors[ck]([vP[ck],vN[ck],vNP[ck],rN,rNP]);
+  // v check is necessary since an adjacent collection may have changed
+  else for (ck in childSelectors) ((v[ck]=childSelectors[ck]([vP[ck],vN[ck],vNP[ck],rN,rNP])) !== vP[ck]) && (changed=true);
   return changed?v:vP;
 };
 
@@ -52,16 +55,24 @@ const indexQuery=(schema={},query={},passedVariables={},transducers={})=>{
     const implicitArgsTransducer=implicit?tdImplicit(implicit,meta):identity;
     const explicitArgsTransducer=explicit?compose(...Object.entries(explicit).map(([k,v])=>transducers[k](explicit[k],meta))):identity;
     const mapObject=selectorsToMapObject(childSelectors);
-    const mapObjectId=([vP,vN,vNP,rN,rNP])=>mapObject([vP,rN[meta.defName][vN],rN[meta.defName][vN],rN,rNP]);
+    const mapObjectId=([vP,vN,vNP,rN,rNP])=>{
+      const result=mapObject([vP,rN[meta.defName][vN],rNP?.[meta.defName]?.[vN],rN,rNP]);
+      return result;
+    };
     if (meta.defKind==='scalar')        return ([,vN])=>vN;
     if (nodeType==='object')            return mapObject;
     if (nodeType==='objectId')          return mapObjectId;
-    if (nodeType==='objectObjectList')  return tdMapVnorm(compose(
-      // implicit?tdFilter((arr,id)=>(!(meta.idKey in implicit))||implicit[meta.idKey]===id):identity,
-      tdMap(([vP={},vN={},vNP={},rN,rNP],id)=>mapObject([vP[id],vN[id],vNP[id],rN,rNP])),
-      implicitArgsTransducer,
-      explicitArgsTransducer,
-    )(appendObjectReducer));
+    if (nodeType==='objectObjectList')  {
+      return tdMapVnorm(compose(
+        // implicit?tdFilter((arr,id)=>(!(meta.idKey in implicit))||implicit[meta.idKey]===id):identity,
+        tdMap(([vP,vN,vNP,rN,rNP],id)=>mapObject([vP?.[id],vN?.[id],vNP?.[id],rN,rNP])),
+        // tdTap((a,v,k)=>{
+        //   debugger;
+        // }),
+        implicitArgsTransducer,
+        explicitArgsTransducer,
+      )(appendObjectReducer));
+    }
     if (nodeType==='objectIdList')      return tdMapVnorm(compose(
       // map key and val
       nextReducer=>(a,[vP,vN,vNP,rN,rNP],i)=>nextReducer(a,mapObjectId([vP?.[i],vN?.[i],vNP?.[i],rN,rNP]),vN[i]),
