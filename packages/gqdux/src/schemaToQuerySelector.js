@@ -19,24 +19,20 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
     vars[name]=passedVariables[name]??((defaultValue??{}).value);
   })(variableDefinitions);
 
-// move to indexSchema
-const getNodeType = ({isList,defKind,defName,fieldName,fieldKindName})=>{
-  if (defKind==='scalar') return  (isList ? 'objectScalarList' : 'objectScalar');
-  if (isList) return (defName===fieldName ? 'objectObjectList' : 'objectIdList') ;
-  return (defName===fieldKindName ? 'objectId' : 'object');
+// iteration sets properties and checks changes.  After iteration choose which parent to return, so unchanged properties result in an unchanged parent.
+// loop over lists of items,
+const tdMapVnorm = childTransducer=>childCombiner=>arr=>{
+  const [vP,vN,vNP]=arr;
+  const childReducer=childTransducer(childCombiner);
+  let kk,vv,v,changed=vN!==vNP||vP===undefined;
+  // childReducer's combiner function should return the collection if undefined.
+  for ([kk,vv] of Object.entries(vN)) v = childReducer(v,arr,kk,vv);
+  // in the empty collection case, the childReducer's combiner doesn't run, so run it and make a blank copy.
+  if (v===undefined) (v = childCombiner()) && (delete v.undefined);
+  return changed ? v : vP;
 }
 
-// iteration sets properties and checks changes.  After iteration choose which parent to return, so unchanged properties result in an unchanged parent.
-const tdMapVnorm = childReducer=>arr=>{
-  const [vP,vN,vNP]=arr;
-  let kk,vv,v,changed=vN!==vNP||vP===undefined;
-  for ([kk,vv] of Object.entries(vN)) {
-    v = childReducer(v,arr,kk,vv);
-    // vN[kk]!==vNP?.[kk] && (changed=true);
-  }
-  return changed?v:vP;
-}
-const selectorsToMapObject = childSelectors=>([vP,vN={},vNP={},rN,rNP])=>{
+const childMappersToMapObject = childSelectors=>([vP,vN={},vNP={},rN,rNP])=>{
   let v={},ck,changed=vN!==vNP||vP===undefined;
   if (vP===undefined) for (ck in childSelectors) v[ck]=childSelectors[ck]([undefined,vN[ck],vNP[ck],rN,rNP]);
   else if(changed) for (ck in childSelectors) v[ck]=childSelectors[ck]([vP[ck],vN[ck],vNP[ck],rN,rNP]);
@@ -48,13 +44,13 @@ const selectorsToMapObject = childSelectors=>([vP,vN={},vNP={},rN,rNP])=>{
 const indexQuery=(schema={},query={},passedVariables={},transducers={})=>{
   const getArgs = getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
   const inner=(s,meta)=>{
-    const nodeType = getNodeType(meta);
+    const nodeType = meta.nodeType;//getNodeType(meta);
     // Walk the query tree beforehand closures the correct meta level for each childSelectors
     const childSelectors = transToObject((o,ss)=>o[ss.name.value]=inner(ss,meta[ss.name.value]))((s.selectionSet?.selections)??[]);
     const {explicit,implicit}=indexBy((v,k)=>k in transducers?'explicit':'implicit',(v,k)=>k)(getArgs(s.arguments));
     const implicitArgsTransducer=implicit?tdImplicit(implicit,meta):identity;
     const explicitArgsTransducer=explicit?compose(...Object.entries(explicit).map(([k,v])=>transducers[k](explicit[k],meta))):identity;
-    const mapObject=selectorsToMapObject(childSelectors);
+    const mapObject=childMappersToMapObject(childSelectors);
     const mapObjectId=([vP,vN,vNP,rN,rNP])=>{
       const result=mapObject([vP,rN[meta.defName][vN],rNP?.[meta.defName]?.[vN],rN,rNP]);
       return result;
@@ -62,23 +58,17 @@ const indexQuery=(schema={},query={},passedVariables={},transducers={})=>{
     if (meta.defKind==='scalar')        return ([,vN])=>vN;
     if (nodeType==='object')            return mapObject;
     if (nodeType==='objectId')          return mapObjectId;
-    if (nodeType==='objectObjectList')  {
-      return tdMapVnorm(compose(
-        // implicit?tdFilter((arr,id)=>(!(meta.idKey in implicit))||implicit[meta.idKey]===id):identity,
-        tdMap(([vP,vN,vNP,rN,rNP],id)=>mapObject([vP?.[id],vN?.[id],vNP?.[id],rN,rNP])),
-        // tdTap((a,v,k)=>{
-        //   debugger;
-        // }),
-        implicitArgsTransducer,
-        explicitArgsTransducer,
-      )(appendObjectReducer));
-    }
-    if (nodeType==='objectIdList')      return tdMapVnorm(compose(
-      // map key and val
-      nextReducer=>(a,[vP,vN,vNP,rN,rNP],i)=>nextReducer(a,mapObjectId([vP?.[i],vN?.[i],vNP?.[i],rN,rNP]),vN[i]),
+    if (nodeType==='objectObjectList') return tdMapVnorm(compose(
+      tdMap(([vP,vN,vNP,rN,rNP],id)=>mapObject([vP?.[id],vN?.[id],vNP?.[id],rN,rNP])),
       implicitArgsTransducer,
       explicitArgsTransducer,
-    )(appendObjectReducer));
+    ))(appendObjectReducer);
+    if (nodeType==='objectIdList')      return tdMapVnorm(compose(
+      // map key and val
+      implicitArgsTransducer,
+      explicitArgsTransducer,
+      nextReducer=>(a,[vP,vN,vNP,rN,rNP],i)=>nextReducer(a,mapObjectId([vP?.[i],vN?.[i],vNP?.[i],rN,rNP]),vN[i]),
+    ))(appendObjectReducer);
     throw new Error(`${nodeType} shouldn't be hit`);
   }
   return inner(query.definitions[0],indexSchema(schema).selectionMeta._query);

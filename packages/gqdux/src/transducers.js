@@ -1,18 +1,17 @@
-import {diffBy, isString, not, tdFilter, toPredicate} from "@a-laughlin/fp-utils"
+import {diffBy, isObjectLike, not, tdFilter} from "@a-laughlin/fp-utils"
 
 const polymorphicArgTest = (args,meta)=>function conforms(obj,id){
   if (meta.idKey in args && args[meta.idKey] !== id) return false;
-  // if (meta.idKey in args && args[meta.idKey] !== obj[meta.idKey]) return false;
-  // let arg;
-  // for (arg in args){
-  //   if (isString(args[arg]) && args[arg]!==obj[arg]) return false;
-  //   if (isFinite(args[arg]) && args[arg]!==+obj[arg]) return false;
-  //   if (isFunction(args[arg]) && !args[arg](obj[arg])) return false;
-  //   if (isArray(args[arg]) && !and(...mapToArray(a=>conforms(obj,a))(args[arg]) ) ) return false;
-  //   if (isObjectLike(args[arg]) && !and(...mapToArray((v,k)=>conforms(obj[k],v))(args[arg]) )) return false;
-  //   console.log(`unknown type`,{[arg]:args[arg]})
-  //   if (args[arg]!==obj[arg]) return false;
-  // }
+  let arg;
+  for (arg in args){
+    if (isObjectLike(obj[arg]) && (obj[arg][meta[arg].idKey]!==args[arg]))return false;
+    // if (isString(args[arg]) && args[arg]!==obj[arg]) return false;
+    // if (isFinite(args[arg]) && args[arg]!==+obj[arg]) return false;
+    // if (isFunction(args[arg]) && !args[arg](obj[arg])) return false;
+    // if (isArray(args[arg]) && !and(...mapToArray(a=>conforms(obj,a))(args[arg]) ) ) return false;
+    // if (isObjectLike(args[arg]) && !and(...mapToArray((v,k)=>conforms(obj[k],v))(args[arg]) )) return false;
+    // if (args[arg]!==obj[arg]) return false;
+  }
   return true;
 };
 

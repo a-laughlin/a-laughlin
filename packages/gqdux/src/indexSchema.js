@@ -80,9 +80,19 @@ export default memoize(schema=>{
       setImmutableNonEnumProp(fMeta,'isNonNullList',true);
       setImmutableNonEnumProp(fMeta,'fieldName',defName);
       setImmutableNonEnumProp(fMeta,'fieldKindName','object');
-      // result.selectionMeta._query.objectFields.push(fMeta);
     }
   });
+  const getNodeType = ({isList,defKind,defName,fieldName,fieldKindName})=>{
+    if (defKind==='scalar') return  (isList ? 'objectScalarList' : 'objectScalar');
+    if (isList) return (defName===fieldName ? 'objectObjectList' : 'objectIdList') ;
+    return (defName===fieldKindName ? 'objectId' : 'object');
+  }
+  const ensureNodeType=meta=>meta.nodeType??setImmutableNonEnumProp(meta,'nodeType',getNodeType(meta));
+  Object.values(result.selectionMeta).forEach(meta=>{
+    ensureNodeType(meta);
+    for (const fKey in meta) ensureNodeType(meta[fKey]);
+  });
+
 
   return result;
 });

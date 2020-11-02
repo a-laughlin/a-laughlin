@@ -112,13 +112,28 @@ describe("schemaToQuerySelector", () => {
     const result1 = querier(query,{id:'a'})(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
+  it("should denormalize item subsets with non-id variables",()=>{
+    const query = gql(`{Person(best:$best){best{id}}}`);
+    const result1 = querier(query,{best:'b'})(state);
+    expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
+  });
   it("should denormalize item subsets with default variables",()=>{
     const query = gql(`query getPerson($id: ID = "a"){Person(id:$id){best{id}}}`);
     const result1 = querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
+  it("should denormalize item subsets with non-id default variables",()=>{
+    const query = gql(`query getPerson($best: String = "b"){Person(best:$best){best{id}}}`);
+    const result1=querier(query)(state);
+    expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
+  });
   it("should denormalize item subsets with constants",()=>{
     const query = gql(`{Person(id:"a"){best{id}}}`);
+    const result1=querier(query)(state);
+    expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
+  });
+  it("should denormalize item subsets with non-id constants",()=>{
+    const query = gql(`{Person(best:"b"){best{id}}}`);
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
