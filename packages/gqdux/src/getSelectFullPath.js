@@ -1,6 +1,6 @@
 import {memoize} from '@a-laughlin/fp-utils';
 import {schemaToQuerySelector} from './schemaToQuerySelector';
-const getStoreScannerFactory=memoize(store=>{
+const getStoreScanner = memoize(store=>{
   let lastState,curState,unsubscribeStore,subscribers;
   return fn=>{
     if(subscribers===undefined){
@@ -25,9 +25,10 @@ const getStoreScannerFactory=memoize(store=>{
     return result;
   };
 });
+
 export const getSelectFullPath = (schema,gql,store)=>{
   let selector=schemaToQuerySelector(schema);
-  const {withPrevState:selectFullPath,cleanup}=getStoreScannerFactory(store)((lastState,curState,str,variables={},lastResult)=>{
+  const {withPrevState:selectFullPath,cleanup}=getStoreScanner(store)((lastState,curState,str,variables={},lastResult)=>{
     return (selector(gql(str),variables)(curState,lastState,lastResult));
   });
   return {
