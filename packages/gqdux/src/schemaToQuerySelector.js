@@ -22,7 +22,7 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
 // iteration sets properties and checks changes.  After iteration choose which parent to return, so unchanged properties result in an unchanged parent.
 // loop over lists of items,
 const tdMapVnorm = childTransducer=>childCombiner=>arr=>{
-  const [vP,vN,vNP]=arr;
+  const [vP,vN={},vNP]=arr;
   const childReducer=childTransducer(childCombiner);
   let kk,vv,v,changed=vN!==vNP||vP===undefined;
   // childReducer's combiner function should return the collection if undefined.
@@ -79,7 +79,10 @@ const mapQueryFactory=(schema={},transducers={},listItemCombiner)=>(query={},pas
     if (meta.nodeType==='objectScalar')            return ([,vN])=>vN;
     if (meta.nodeType==='object')                  return mapObject;
     if (meta.nodeType==='objectId')                return mapObjectId;
-    if (meta.nodeType==='objectScalarList')        return ([,vN])=>vN;
+    if (meta.nodeType==='objectScalarList')        return tdMapVnorm(compose(
+      tdMap((arr,i,vNi)=>vNi),
+      transducer,
+    ))(appendArrayReducer);
     if (meta.nodeType==='objectObjectList')        return tdMapVnorm(compose(
       tdMap(([vP,vN,vNP,rN,rNP],id,vNi)=>mapObject([vP?.[id],vNi,vNP?.[id],rN,rNP])),
       transducer,
@@ -104,9 +107,10 @@ export const schemaToQuerySelector=(schema,transducers={},listItemCombiner=appen
 
 const combineListItemToSame=(a,v,k)=>(isArray(a)?appendArrayReducer:appendObjectReducer)(a,v,k);
 const getSameList= arr=>(isArray(arr[1])?[]:{});
-export const schemaToMutationReducer=(schema,transducers={},listItemCombiner=appendObjectReducer)=>(query,passedVariables)=>{
-  const mapQuery=mapQueryFactory(schema,query,passedVariables,{...transducers,intersection,subtract},listItemCombiner);
-  return (rootNorm={},rootNormPrev={},rootDenormPrev={})=>{
-    return mapQuery([rootDenormPrev,rootNorm,rootNormPrev,rootNorm,rootNormPrev]);
+export const schemaToMutationReducer=(schema,transducers={},listItemCombiner=combineListItemToSame,getListItemAccumulator=getSameList)=>{
+  const mapQuery=mapQueryFactory( schema, {intersection,union,subtract,...transducers},listItemCombiner,getListItemAccumulator);
+  return (rootNorm={},{type='mutation',payload:[query='',variables={}]=[]}={})=>{
+    if (type!=='mutation')return rootNorm;
+    return mapQuery(query,variables)([,rootNorm,,rootNorm,]);
   };
 };

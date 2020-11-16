@@ -55,44 +55,39 @@ Try it [on codepen](link)
 - derivations, custom functions when walking - not recommended since you have to read the function (set operations should be sufficient for most things)
 - make selectPath always return a list for lists, not condense down single objects, or always map, so no need to think about it.
 
-### API
+## API
 
+`select('graphql string',{...variables...})` equivalents: redux selector, graphql query 
+`selectFullPath('graphql string',{...variables...})` equivalents: redux selector, graphql query 
+`change('graphql string',{...variables...})` equivalents: redux selector, graphql query 
+`selectorToReactHook`
+
+## Select/Change Syntax
 // Graphql isn't designed as a data query language, but an API query language.  Attempts at making it one get [complicated](https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition).
 In the #pitofsuccess spirit, I provide a few standard terms
 I don't know the best solution for this (it likely varies), but I do know having something simple and robust enough to cover many cases is helpful to get started.  To avoid semantic dependencies (that rely on developer past experience graphs), I'm going with standard set operations: Union, intersection, and Subtraction (Difference).
 
-## Operations
+### Operations
 
-`select('graphql string',{...variables...})` equivalents: redux selector, graphql query 
-`change('graphql string',{...variables...})` equivalents: redux dispatch, graphql mutation
-`useSelect` (React Hook)
+Standard set operations for simplicity and to minimize mismatch between author and user linguistic/experiential dependency graphs
 
-### Operation Arguments  
+- intersect
+- union
+- subtract
+- complement
 
-<!-- Mimic lodash filter/omit https://lodash.com/docs/4.17.15#filter for MVP, via transducers -->
-object, list, string, number
+### Operation Syntax
 
-### Operation Examples
+change syntax:
+Collection                  `Person(intersect:{id:"a"})`
+Prop                        `Person(friends:{intersect:{id:"b"}})`
+Collection + prop selection `Person(intersect:{id:"a"},friends:{intersect:{id:"b"}})`
 
-The same syntax applies for both dispatches and selections.  Props like "id" outside an operation are intersections
-Subtraction:  objectList subtract object           [`Person(subtract:"a")`](test case link)  
-Subtraction:  scalarList subtract scalar           [`Rocks(subtract:"granite")`](test case link)  
-Subtraction:  object subtract objectList value     [`Person(id:"a",subtract:{"friends":"b"})`](test case link)  
-Subtraction:  object subtract scalarList value     [`Person(id:"a",subtract:{"nicknames":"AA"})`](test case link)  
-Subtraction:  object subtract object prop value    [`Person(id:"a",subtract:"best")`](test case link)  
-Subtraction:  object subtract scalar prop value    [`Person(id:"a",subtract:"name") `](test case link)  
-Union:        objectList union object              [`Person(union:"a")`](test case link)  
-Union:        scalarList union scalar              [`Rocks(union:"granite")`](test case link)  
-Union:        object union objectList value        [`Person(id:"a",union:{"friends":"b"})`](test case link)  
-Union:        object union scalarList value        [`Person(id:"a",union:{"nicknames":"AA"})`](test case link)  
-Union:        object union object prop value       [`Person(id:"a",union:"best")`](test case link)  
-Union:        object union scalar prop value       [`Person(id:"a",union:"name") `](test case link)  
-Intersection: objectList intersect object          [`Person(intersect:"a")`](test case link)  
-Intersection: scalarList intersect scalar          [`Rocks(intersect:"granite")`](test case link)  
-Intersection: object intersect objectList value    [`Person(id:"a",intersect:{"friends":"b"})`](test case link)  
-Intersection: object intersect scalarList value    [`Person(id:"a",intersect:{"nicknames":"AA"})`](test case link)  
-Intersection: object intersect object prop value   [`Person(id:"a",intersect:"best")`](test case link)  
-Intersection: object intersect scalar prop value   [`Person(id:"a",intersect:"name") `](test case link)  
+Selection syntax: (same syntax with desired fields appended)
+e.g. `Person(intersect:{id:"a"}){id,friends}`)
+
+### Examples
+
 
 ## Testing
 Testing all the permutations of a component is both verbose and error prone.
