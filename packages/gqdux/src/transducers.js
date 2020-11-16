@@ -1,5 +1,20 @@
 import {diffBy, isArray, isFinite, isObjectLike, isString, mapToArray, not, tdFilter} from "@a-laughlin/fp-utils"
 
+
+export const intersection=(args,meta)=>nextReducer=>(a,v,k)=>{
+  if (polymorphicArgTest(args,meta)(v,k)) return nextReducer(a,v,k);
+  return a;
+};
+export const subtract=(args={},meta)=>nextReducer=>(a,v,k)=>{
+  // it isn't recursing into object properties since there are no selections...
+  // need to go deeper on args, which means passing args in addition to meta
+  if (polymorphicArgTest(args,meta)(v,k)) return a;
+  return nextReducer(a,v,k);
+}
+export const union=(args={},meta)=>nextReducer=>nextReducer;
+export const complement=(args={},meta)=>nextReducer=>nextReducer;
+
+
 export const polymorphicArgTest = (args,meta)=>{
   // return obj=>conforms(obj);
   return function conforms(obj,k){
@@ -31,28 +46,6 @@ export const polymorphicArgTest = (args,meta)=>{
   };
 }
 
-export const intersection=(args,meta)=>nextReducer=>(a,v,k,vv)=>{
-  // tdFilter(polymorphicArgTest(args,meta))
-  // console.log('args',args,` a:`,a,` v:`,v,` k:`,k,` vv:`,vv,);
-  if (polymorphicArgTest(args,meta)(v,k)) return nextReducer(a,v,k);
-  return a;
-};
-export const subtract=(args={},meta)=>nextReducer=>(a,v,k,vv)=>{
-  // it isn't recursing into object properties since there are no selections...
-  // or... no... it doesn't need to recurse when no selections.
-  //  It'll just mapVNorm on the Person collection.
-  // or...? hmm.  revisit.
-  // 
-  // 
-  // There are no selections, so use vv since v is blank.
-  // console.log('args',args,` a:`,a,` v:`,v,` k:`,k,` vv:`,vv,)
-  if (polymorphicArgTest(args,meta)(v,k)) return a;
-  return nextReducer(a,v,k);
-  // console.log('subtract',args,arr);
-  // console.log(` args:`,args,` v:`,v,` arr:`,arr,` kk:`,kk,` vv:`,vv,)
-  // return nextReducer(...arr);
-  // tdFilter(not(polymorphicArgTest(args,meta)))
-}
 
 export const ADD = nextReducer=>(prevState,action)=>{
   // if collection/item/value

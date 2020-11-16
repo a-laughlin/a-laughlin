@@ -46,14 +46,11 @@ Try it [on codepen](link)
 
 ## TODO
 
-- move collections transducers or add transducer to mapSelections
-- dispatch 1-n events in batch using schemaToQuerySelector w/ different transducers
-- enable useQuery multiple test permutations
-- decide props merging vs collection merging
+- convert select to use the query tree instead of a separate walk
+- make selectPath always return a list for lists, not condense down single objects
+- dispatch >1 change in batch
 - decide where domain concept components should go
 - decide where derivations should go
-- derivations, custom functions when walking - not recommended since you have to read the function (set operations should be sufficient for most things)
-- make selectPath always return a list for lists, not condense down single objects, or always map, so no need to think about it.
 
 ## API
 
@@ -62,34 +59,37 @@ Try it [on codepen](link)
 `change('graphql string',{...variables...})` equivalents: redux selector, graphql query 
 `selectorToReactHook`
 
-## Select/Change Syntax
+## GQL Syntax (currently a subset)
 // Graphql isn't designed as a data query language, but an API query language.  Attempts at making it one get [complicated](https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition).
 In the #pitofsuccess spirit, I provide a few standard terms
 I don't know the best solution for this (it likely varies), but I do know having something simple and robust enough to cover many cases is helpful to get started.  To avoid semantic dependencies (that rely on developer past experience graphs), I'm going with standard set operations: Union, intersection, and Subtraction (Difference).
 
-### Operations
+### Operations (3)
 
 Standard set operations for simplicity and to minimize mismatch between author and user linguistic/experiential dependency graphs
 
 - intersect
 - union
 - subtract
-- complement
 
-### Operation Syntax
+### Operation Syntax (2 ways to use)
 
-change syntax:
 Collection                  `Person(intersect:{id:"a"})`
 Prop                        `Person(friends:{intersect:{id:"b"}})`
-Collection + prop selection `Person(intersect:{id:"a"},friends:{intersect:{id:"b"}})`
+Collection + Prop           `Person(intersect:{id:"a"},friends:{intersect:{id:"b"}})`
 
-Selection syntax: (same syntax with desired fields appended)
-e.g. `Person(intersect:{id:"a"}){id,friends}`)
+### Select/Change Syntax (2)
+
+change(`Person(intersect:{id:"a"})`)
+select(`Person(intersect:{id:"a"}){id,friends}`)
+
 
 ### Examples
 
+TODO
 
 ## Testing
+
 Testing all the permutations of a component is both verbose and error prone.
 Gqdux leverages the graphql schema to enable testing all permutations of boundary values automatically.
 
@@ -139,17 +139,16 @@ test('it does stuff',()=>{
 
 ## Prior Work
 
-databases
-discreet math
-watching my own and others dev experience
-graphql
-redux
+Redux
+Graphql
+Discreet Math
 Apollo, Urql
+
+
 
 ## Escape Hatches
 
 In the interest of pit of success
-Function variables
 Action creators
 Writing custom operations
 
