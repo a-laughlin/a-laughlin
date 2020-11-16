@@ -1,6 +1,6 @@
 import {transToObject,identity,indexBy, appendArrayReducer, appendObjectReducer, setImmutableNonEnumProp, mapToObject, compose, tdToSame, transToSame, over, mapToArray, tdMap, mapToSame, tdFilter, tdMapWithAcc, tdMapKey, tdTap} from '@a-laughlin/fp-utils';
 import indexSchema from './indexSchema';
-import {intersection,subtract,intersection as tdImplicit} from './transducers';
+import {intersection,subtract,union,polymorphicArgTest} from './transducers';
 
 // returns a function that populates query arguments with passed variables
 const getArgsPopulator = vars=>{
@@ -41,49 +41,71 @@ const childMappersToMapObject = childSelectors=>arr=>{
   else for (ck in childSelectors) ((v[ck]=childSelectors[ck]([vP[ck],vN[ck],vNP[ck],rN,rNP])) !== vP[ck]) && (changed=true);
   return changed?v:vP;
 };
-
-const mapQueryFactory=(schema={},transducers={},listCombiner)=>(query={},passedVariables={})=>{
+const getTransducer = (transducers,args,meta,selections)=>{
+  let {explicit,implicit}=indexBy((v,k)=>k in transducers?'explicit':'implicit',(v,k)=>k)(args);
+  // when selecting, implicit filters then applies explicit
+  // when mutating, implicit applies explicit, leaving the rest untouched
+  const implicitTest=polymorphicArgTest(implicit,meta);
+  const getExplicitTransducers=()=>Object.keys(explicit).map(k=>transducers[k](explicit[k],meta));
+  return selections
+    ? explicit
+      ? implicit
+        ? compose(tdFilter((v,k,vNi)=>implicitTest(vNi,k)),...getExplicitTransducers())
+        : compose(...getExplicitTransducers())
+      : implicit
+        ? tdFilter((v,k,vNi)=>implicitTest(vNi,k))
+        : identity
+    : explicit // when no selections, we're mutating
+      ? implicit
+        ? compose(tdFilter((v,k,vNi)=>implicitTest(vNi,k)),...getExplicitTransducers())
+        : compose(...getExplicitTransducers())
+      : implicit
+        ? tdFilter((v,k,vNi)=>implicitTest(vNi,k))
+        : identity;
+}
+const mapQueryFactory=(schema={},transducers={},listItemCombiner)=>(query={},passedVariables={})=>{
   const getArgs = getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables));
   const inner=(s,meta)=>{
     // Walk the query tree beforehand closures the correct meta level for each childSelectors
-    const childSelectors = transToObject((o,ss)=>o[ss.name.value]=inner(ss,meta[ss.name.value]))((s.selectionSet?.selections)??[]);
+    const selectionKeys=transToObject((o,ss)=>o[ss.name.value]=ss)(s.selectionSet?.selections);
+    const childMappers = s.selectionSet?.selections
+      ? mapToObject((ss,k)=>inner(ss,meta[k]))(selectionKeys)
+      : mapToObject((ss,k)=>selectionKeys[k]?inner(ss,meta[k]):(arr,vN,vNi)=>vNi)(meta);
     const nodeType = meta.nodeType;
-    const {explicit,implicit}=indexBy((v,k)=>k in transducers?'explicit':'implicit',(v,k)=>k)(getArgs(s.arguments));
-    const implicitArgsTransducer=implicit?tdImplicit(implicit,meta):identity;
-    const explicitArgsTransducer=explicit?compose(...Object.keys(explicit).map(k=>transducers[k](explicit[k],meta))):identity;
-    const mapObject=childMappersToMapObject(childSelectors);
+    const transducer=getTransducer(transducers,getArgs(s.arguments),meta,s.selectionSet);
+    const mapObject=childMappersToMapObject(childMappers);
     const mapObjectId=([vP,vN,,rN,rNP])=>mapObject([vP,rN[meta.defName][vN],rNP?.[meta.defName]?.[vN],rN,rNP]);
     
-    if (nodeType==='objectScalar')            return ([,vN])=>vN;
-    if (nodeType==='object')                  return mapObject;
-    if (nodeType==='objectId')                return mapObjectId;
-    if (nodeType==='objectScalarList')        return ([,vN])=>vN;
-    if (nodeType==='objectObjectList')        return tdMapVnorm(compose(
-      tdMap(([vP,vN,vNP,rN,rNP],id)=>mapObject([vP?.[id],vN?.[id],vNP?.[id],rN,rNP])),
-      implicitArgsTransducer,
-      explicitArgsTransducer,
-    ))(listCombiner);
-    if (nodeType==='objectIdList')            return tdMapVnorm(compose(
+    if (meta.nodeType==='objectScalar')            return ([,vN])=>vN;
+    if (meta.nodeType==='object')                  return mapObject;
+    if (meta.nodeType==='objectId')                return mapObjectId;
+    if (meta.nodeType==='objectScalarList')        return ([,vN])=>vN;
+    if (meta.nodeType==='objectObjectList')        return tdMapVnorm(compose(
+      tdMap(([vP,vN,vNP,rN,rNP],id,vNi)=>mapObject([vP?.[id],vNi,vNP?.[id],rN,rNP])),
+      transducer,
+    ))(listItemCombiner);
+    if (meta.nodeType==='objectIdList')            return tdMapVnorm(compose(
       // map key and val
-      nextReducer=>(a,[vP,vN,vNP,rN,rNP],i)=>nextReducer(a,mapObjectId([vP?.[i],vN?.[i],vNP?.[i],rN,rNP]),vN[i]),
-      implicitArgsTransducer,
-      explicitArgsTransducer,
-    ))(listCombiner);
-    throw new Error(`${nodeType} shouldn't be hit`);
+      nextReducer=>(a,[vP,vN,vNP,rN,rNP],i,vNi)=>nextReducer(a,mapObjectId([vP?.[i],vN?.[i],vNP?.[i],rN,rNP]),vN[i]),
+      transducer,// this will be a bug, when filtering on non-selected properties
+    ))(listItemCombiner);
+    throw new Error(`${meta.nodeType} shouldn't be hit`);
   }
   return inner(query.definitions[0],indexSchema(schema).selectionMeta._query);
 };
 
-export const schemaToQuerySelector=(schema,transducers={},listCombiner=appendObjectReducer)=>{
-  const mapQuery=mapQueryFactory( schema, {...transducers,intersection,subtract},listCombiner);
+export const schemaToQuerySelector=(schema,transducers={},listItemCombiner=appendObjectReducer)=>{
+  const mapQuery=mapQueryFactory( schema, {...transducers,intersection,subtract,union},listItemCombiner);
   return (query,passedVariables)=>{
     const mq = mapQuery(query,passedVariables);
     return (rootNorm={},rootNormPrev={},rootDenormPrev={})=>mq([rootDenormPrev,rootNorm,rootNormPrev,rootNorm,rootNormPrev]);
   }
 }
 
-export const schemaToMutationReducer=(schema,transducers={},listCombiner=appendObjectReducer)=>(query,passedVariables)=>{
-  const mapQuery=mapQueryFactory(schema,query,passedVariables,{...transducers,intersection,subtract},listCombiner);
+const combineListItemToSame=(a,v,k)=>(isArray(a)?appendArrayReducer:appendObjectReducer)(a,v,k);
+const getSameList= arr=>(isArray(arr[1])?[]:{});
+export const schemaToMutationReducer=(schema,transducers={},listItemCombiner=appendObjectReducer)=>(query,passedVariables)=>{
+  const mapQuery=mapQueryFactory(schema,query,passedVariables,{...transducers,intersection,subtract},listItemCombiner);
   return (rootNorm={},rootNormPrev={},rootDenormPrev={})=>{
     return mapQuery([rootDenormPrev,rootNorm,rootNormPrev,rootNorm,rootNormPrev]);
   };

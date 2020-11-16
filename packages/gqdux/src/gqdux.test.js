@@ -3,14 +3,14 @@ import {useState,useEffect}from 'react';
 import {
   schemaToReducerMap,
   schemaToQuerySelector,
+  schemaToMutationReducer,
   getSelectFullPath,
   getSelectPath,
-  schemaToMutationReducer,
-  pathSelectorToReactHook
+  pathSelectorToReactHook,
 } from './gqdux';
+
 import { renderHook, act } from '@testing-library/react-hooks'
 import gql from 'graphql-tag-bundled';
-
 
 describe("schemaToReducerMap", () => {
   let state;
@@ -102,9 +102,9 @@ describe("schemaToQuerySelector", () => {
     schema=state=querier=null;
   });
   it("should query collections",()=>{
-    const query=gql(`{Person{id}}`);
+    const query = gql(`{Person{id}}`);
     const queryFn = querier(query);
-    const result1=queryFn(state);
+    const result1 = queryFn(state);
     expect(result1).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
   });
   it("should denormalize item subsets with variables",()=>{
@@ -386,20 +386,22 @@ describe("querySelectorToUseLeafQuery",()=>{
 describe("schemaToMutationReducer",()=>{
   // integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)
   let store,useQuery,schema,dispatchMutation,selectFullPath,cleanupSelectFullPath;
-  const getMutationDispatcher= store=>(...args)=>{store.dispatch({type:'mutation',payload:args});}
+  const getMutationDispatcher= store=>(query,vars)=>{
+    store.dispatch({type:'mutation',payload:[gql`{${query}}`,vars]});
+  };
   beforeEach(()=>{
     schema = gql`
       type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
       type Pet{id:ID,name:String}
       scalar SomeScalar
     `;
-    const rootReducer=x=>x;//schemaToMutationReducer(schema)
+    const rootReducer = schemaToMutationReducer(schema);
     store = createStore(rootReducer,{
       SomeScalar:1,
       Person:{
         a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
-        b:{id:'b',name:'B',best:'a',friends:['a']},
-        c:{id:'c',name:'C',best:'a',friends:['a']},
+        b:{id:'b',name:'B',best:'a',friends:['a'],nicknames:["BB","BBB"]},
+        c:{id:'c',name:'C',best:'b',friends:['b'],nicknames:[]},
       },
       Pet:{
         x:{id:'x',name:'X'},
@@ -424,6 +426,12 @@ describe("schemaToMutationReducer",()=>{
     expect(true).toBe(true);
   })
   test('Subtract: object subtract scalarList value         Person(id:"a",subtract:{"nicknames":"AA"})',()=>{
+    // should split a|bc, apply to a, recombine to abc
+    // const { result } = renderHook(() =>useQuery(`{Person{id,nicknames}}`));
+    // expect(result.current).toEqual({Person:{a:{id:'a',nicknames:["AA","AAA"]}, b:{id:'b',nicknames:["BB","BBB"]}, c:{id:'c',nicknames:[]}}});
+    // act(()=>{dispatchMutation(`Person(id:"a",subtract:{nicknames:"AA"})`);})
+    // console.log('store.getState()',store.getState())
+    // expect(result.current).toEqual({Person:{a:{id:'a',nicknames:["AAA"]},b:{id:'b',nicknames:["BB","BBB"]}, c:{id:'c',nicknames:[]}}});
     expect(true).toBe(true);
   })
   test('Subtract: object subtract object prop value        Person(id:"a",subtract:"best")',()=>{
@@ -433,9 +441,17 @@ describe("schemaToMutationReducer",()=>{
     expect(true).toBe(true);
   })
   test('Subtract: objectList subtract object               Person(subtract:"a")',()=>{
+    // const { result } = renderHook(() =>useQuery(`{Person{id}}`));
+    // expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+    // const c=result.current.Person.c;
+    // act(()=>{dispatchMutation(`Person(subtract:"a")`);})
+    // expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
+    // act(()=>{dispatchMutation(`Person(subtract:{id:"b"})`);})
+    // expect(result.current).toEqual({Person:{c:{id:'c'}}});
+    // expect(c).toBe(result.current.Person.c);
     expect(true).toBe(true);
-  })
-  test('Subtract: scalarList subtract scalar               Rocks(subtract:"granite")',()=>{
+  });
+  test('Subtract: scalarList subtract scalar               Pet(subtract:"x")',()=>{
     expect(true).toBe(true);
   })
   test('Add: object add objectList value                   Person(id:"a",add:{"friends":"b"})',()=>{
@@ -453,7 +469,7 @@ describe("schemaToMutationReducer",()=>{
   test('Add: objectList add object                         Person(add:"a")',()=>{
     expect(true).toBe(true);
   })
-  test('Add: scalarList add scalar                         Rocks(add:"granite")',()=>{
+  test('Add: scalarList add scalar                         Pet(add:"x")',()=>{
     expect(true).toBe(true);
   })
   test('Union: object union objectList value               Person(id:"a",union:{"friends":"b"})',()=>{
@@ -471,25 +487,25 @@ describe("schemaToMutationReducer",()=>{
   test('Union: objectList union object                     Person(union:"a")',()=>{
     expect(true).toBe(true);
   })
-  test('Union: scalarList union scalar                     Rocks(union:"granite")',()=>{
+  test('Union: scalarList union scalar                     Pet(union:"x")',()=>{
     expect(true).toBe(true);
   })
-  test('Intersection: object intersect objectList value    Person(id:"a",intersect:{"friends":"b"})',()=>{
+  test('Intersection: object intersection objectList value    Person(id:"a",intersection:{"friends":"b"})',()=>{
     expect(true).toBe(true);
   })
-  test('Intersection: object intersect scalarList value    Person(id:"a",intersect:{"nicknames":"AA"})',()=>{
+  test('Intersection: object intersection scalarList value    Person(id:"a",intersection:{"nicknames":"AA"})',()=>{
     expect(true).toBe(true);
   })
-  test('Intersection: object intersect object prop value   Person(id:"a",intersect:"best")',()=>{
+  test('Intersection: object intersection object prop value   Person(id:"a",intersection:"best")',()=>{
     expect(true).toBe(true);
   })
-  test('Intersection: object intersect scalar prop value   Person(id:"a",intersect:"name") ',()=>{
+  test('Intersection: object intersection scalar prop value   Person(id:"a",intersection:"name") ',()=>{
     expect(true).toBe(true);
   })
-  test('Intersection: objectList intersect object          Person(intersect:"a")',()=>{
+  test('Intersection: objectList intersection object          Person(intersection:"a")',()=>{
     expect(true).toBe(true);
   })
-  test('Intersection: scalarList intersect scalar          Rocks(intersect:"granite")',()=>{
+  test('Intersection: scalarList intersection scalar          Pet(intersection:"x")',()=>{
     expect(true).toBe(true);
   })
 });

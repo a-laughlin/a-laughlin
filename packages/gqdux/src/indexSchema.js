@@ -71,7 +71,9 @@ export default memoize(schema=>{
   // defineHiddenProp(result.selectionMeta._query,'fieldName','_query');
   // defineHiddenProp(result.selectionMeta._query,'fieldKindName','_query');
   // defineHiddenProp(result.selectionMeta._query,'idKey','_query');
+  const builtins=['ID','Int','Float','String','Boolean'].reduce((o,k)=>(o[k]=true) && o,{});
   Object.entries(result.selectionMeta).forEach(([defName,meta])=>{
+    if (defName in builtins||defName==='_query')return;
     const fMeta = result.selectionMeta._query[defName] = {};
     assignEnumAndNonEnumProps(fMeta,meta);
     if(meta.defKind==='object') {
