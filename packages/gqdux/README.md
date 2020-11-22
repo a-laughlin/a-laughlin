@@ -54,7 +54,7 @@ Try it [on codepen](link)
 
 ## API
 
-`select('graphql string',{...variables...})` equivalents: redux selector, graphql query 
+`gqdux('Person{id}',{...variables...})` equivalents: redux selector, graphql query 
 `selectFullPath('graphql string',{...variables...})` equivalents: redux selector, graphql query 
 `change('graphql string',{...variables...})` equivalents: redux selector, graphql query 
 `selectorToReactHook`
@@ -74,9 +74,18 @@ Standard set operations for simplicity and to minimize mismatch between author a
 
 ### Operation Syntax (2 ways to use)
 
-Collection                  `Person(intersect:{id:"a"})`
-Prop                        `Person(friends:{intersect:{id:"b"}})`
-Collection + Prop           `Person(intersect:{id:"a"},friends:{intersect:{id:"b"}})`
+```
+const reducer = initReducer(schema);
+const store = createStore(reducer);
+const {gqdux:g} = initGqdux({gql,schema,store});
+
+// selection
+Collection                  g`Person(intersect:{id:"a"})`
+Prop                        g`Person(friends:{intersect:{id:"b"}})`
+Collection + Prop           g`Person(intersect:{id:"a"},friends:{intersect:{id:"b"}})`
+```
+
+Type checking in development
 
 ### Select/Change Syntax (2)
 
