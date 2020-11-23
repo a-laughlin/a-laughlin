@@ -433,7 +433,7 @@ if (process.env.NODE_ENV !== 'production') {
   // based on https://dev.to/ascorbic/creating-a-typed-compose-function-in-typescript-3-351i
 
   compose = (...fns) => {
-    if (fns.length===0)return identity;
+    if (fns.length===0)return x=>x;
     if (fns.length===1)return fns[0];
     const fn=fns[fns.length-1];
     fns=fns.slice(0,fns.length-1);
@@ -452,7 +452,7 @@ if (process.env.NODE_ENV !== 'production') {
   curry = fn => (...args) => args.length >= fn.length ? fn(...args) : curry(fn.bind(null, ...args));
   // eslint-disable-next-line
   compose = (...fns) => (...args) =>{
-    if (fns.length===0)return identity;
+    if (fns.length===0)return x=>x;
     if (fns.length===1)return fns[0];
     return fns.slice(0,fns.length-1).reduceRight((acc, f) => f(acc), fns[fns.length-1](...args));
   }

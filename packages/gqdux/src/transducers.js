@@ -1,17 +1,22 @@
-import {diffBy, isArray, isFinite, isObjectLike, isString, mapToArray, not, tdFilter} from "@a-laughlin/fp-utils"
+import {diffBy, isArray,isFinite, isObjectLike, isString, mapToArray, not, tdFilter} from "@a-laughlin/fp-utils"
 
+const idnty=x=>x;
+export const identity=()=>idnty;
 
 export const intersection=(args,meta)=>nextReducer=>(a,v,k)=>{
   if (polymorphicArgTest(args,meta)(v,k)) return nextReducer(a,v,k);
   return a;
 };
+
 export const subtract=(args={},meta)=>nextReducer=>(a,v,k)=>{
   // it isn't recursing into object properties since there are no selections...
   // need to go deeper on args, which means passing args in addition to meta
   if (polymorphicArgTest(args,meta)(v,k)) return a;
   return nextReducer(a,v,k);
 }
+
 export const union=(args={},meta)=>nextReducer=>nextReducer;
+
 export const complement=(args={},meta)=>nextReducer=>nextReducer;
 
 

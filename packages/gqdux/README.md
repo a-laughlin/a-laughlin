@@ -4,7 +4,25 @@ Simple, Redux-native GraphQL utilities optimized for developer speed.
 
 ## Philosophy
 
-Our coding speed [depends on the number of edges]()
+The rate we can build things depends on the number and topology of graphs we need to think about and change, from run-time flow control graphs (i.e., cyclomatic complexity) to developer past experience and language graphs (i.e., semiotic complexity), and others in between.  GQdux minimizes each graph to reduce developer time per feature.
+
+Graphs it addresses:
+flow control
+semantic network
+syntactic network
+pragmatic network
+experience network
+component structure
+inheritance tree
+scope tree
+state tree
+parameter/argument tree
+schema tree
+data flow
+module network
+type network
+
+Incremental Adoptability
 
 - Leverage existing Redux knowledge, dev tools, and middleware  
 - No Graphql server necessary. Use existing REST, RPC, Web Socket, and GraphQL server middleware.
@@ -13,12 +31,6 @@ Our coding speed [depends on the number of edges]()
 Fast prototypes require speed.  We can always optimize for performance later.
 
 ## Tradeoffs
-
-## Priorities
-Priorities:
-AST size of use cases for 80% of common use cases
-\> api size (structural and semantic graphs)
-\> execution performance
 
 ### Measurement
 
@@ -51,6 +63,8 @@ Try it [on codepen](link)
 - dispatch >1 change in batch
 - decide where domain concept components should go
 - decide where derivations should go
+- Type checking in development
+- Sort transducer
 
 ## API
 
@@ -60,6 +74,7 @@ Try it [on codepen](link)
 `selectorToReactHook`
 
 ## GQL Syntax (currently a subset)
+
 // Graphql isn't designed as a data query language, but an API query language.  Attempts at making it one get [complicated](https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition).
 In the #pitofsuccess spirit, I provide a few standard terms
 I don't know the best solution for this (it likely varies), but I do know having something simple and robust enough to cover many cases is helpful to get started.  To avoid semantic dependencies (that rely on developer past experience graphs), I'm going with standard set operations: Union, intersection, and Subtraction (Difference).
@@ -74,7 +89,7 @@ Standard set operations for simplicity and to minimize mismatch between author a
 
 ### Operation Syntax (2 ways to use)
 
-```
+```js
 const reducer = initReducer(schema);
 const store = createStore(reducer);
 const {gqdux:g} = initGqdux({gql,schema,store});
@@ -84,8 +99,6 @@ Collection                  g`Person(intersect:{id:"a"})`
 Prop                        g`Person(friends:{intersect:{id:"b"}})`
 Collection + Prop           g`Person(intersect:{id:"a"},friends:{intersect:{id:"b"}})`
 ```
-
-Type checking in development
 
 ### Select/Change Syntax (2)
 

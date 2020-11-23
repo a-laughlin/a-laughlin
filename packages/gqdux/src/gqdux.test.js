@@ -11,6 +11,7 @@ import {
 
 import { renderHook, act } from '@testing-library/react-hooks'
 import gql from 'graphql-tag-bundled';
+import { pick, tdTap } from '@a-laughlin/fp-utils';
 
 describe("schemaToReducerMap", () => {
   let state;
@@ -101,6 +102,62 @@ describe("schemaToQuerySelector", () => {
   afterAll(()=>{
     schema=state=querier=null;
   });
+  it("should traverse selections",()=>{
+    state={
+      Person:{
+        a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
+        b:{id:'b',name:'B',best:'a',friends:['a']},
+        c:{id:'c',name:'C',best:'a',friends:['a']},
+      },
+    };
+    [
+      [`{Person{id}}`,[],{Person:{a:{id:"a"},b:{id:"b"},c:{id:"c"}}} ],
+      [`{Person(log:{id:"b"})}`,Object.values(state.Person),state],
+      [`{Person(log:{id:"a"}){id}}`,Object.values(state.Person),{Person:{a:{id:"a"},b:{id:"b"},c:{id:"c"}}}],
+      [`{Person(log:{id:"a",best:"b"}){id,best}}`,
+        Object.values(state.Person),
+        {Person:{a:{id:"a",best:state.Person.b},b:{id:"b",best:state.Person.a},c:{id:"c",best:state.Person.a}}} ],
+      [`{Person(log:{id:"a",best:"b"}){best}}`,
+        Object.values(state.Person),
+        {Person:{a:{best:state.Person.b},b:{best:state.Person.a},c:{best:state.Person.a}}}],
+      [ `{Person(log:{id:"a",best:"b"}){nicknames}}`,
+        Object.values(state.Person),
+        {Person:{ a:{nicknames:state.Person.a.nicknames}, b:{nicknames:[]}, c:{nicknames:[]},}} ],
+      [ `{Person(log:{id:"a"}){id,best}}`,
+        Object.values(state.Person),
+        {Person:{a:{id:"a",best:state.Person.b},b:{id:"b",best:state.Person.a},c:{id:"c",best:state.Person.a}}}
+      ],
+    ].forEach(([q,l,r])=>{
+      const logged=[];
+      const log=(meta={},args)=>tdTap((a,v,k,vNi)=>{
+        // console.log(meta.defName,`\na:`,a,`\nv:`,v,`\nk:`,k)
+        logged.push(vNi);
+      });
+      const result=schemaToQuerySelector(schema,{log})(gql(q))(state);
+      console.log(` logged:`,logged,)
+      expect(logged).toEqual(l);
+      expect(result).toEqual(r);
+    })
+  });
+  // it.only("should traverse arguments",()=>{
+    
+  //   const query = gql(`{Person(foo:{}){id}}`);
+  //   const queryFn = querier(query);
+  //   const result1 = queryFn(state);
+  //   expect(result1).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+  // });
+  // it.only("should traverse more arguments than selections",()=>{
+  //   const query = gql(`{Person{id}}`);
+  //   const queryFn = querier(query);
+  //   const result1 = queryFn(state);
+  //   expect(result1).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+  // });
+  // it.only("should traverse more selections than arguments",()=>{
+  //   const query = gql(`{Person{id}}`);
+  //   const queryFn = querier(query);
+  //   const result1 = queryFn(state);
+  //   expect(result1).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+  // });
   it("should query collections",()=>{
     const query = gql(`{Person{id}}`);
     const queryFn = querier(query);
@@ -108,7 +165,7 @@ describe("schemaToQuerySelector", () => {
     expect(result1).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
   });
   it("should denormalize item subsets with variables",()=>{
-    const query = gql(`{Person(id:$id){best{id}}}`);
+    const query = gql(`{Person(intersection:{id:$id}){best{id}}}`);
     const result1 = querier(query,{id:'a'})(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
