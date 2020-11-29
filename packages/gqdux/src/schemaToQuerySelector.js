@@ -49,27 +49,39 @@ const variableDefinitionsToObject = (variableDefinitions=[],passedVariables={})=
 
 // iteration sets properties and checks changes.  After iteration choose which parent to return, so unchanged properties result in an unchanged parent.
 // loop over lists of items,
-const tdMapVnorm = (childTransducer,getListItemAccumulator,listCombiner)=>arr=>{
-  const [vP,vN={},vNP]=arr;
+const tdMapVnorm = (listItemTransducer,getListItemAccumulator,listItemCombiner)=>arr=>{
+  let [vP=getListItemAccumulator(arr),vN={},vNP={}]=arr;
   let v = getListItemAccumulator(arr);
-  const childReducer=childTransducer(listCombiner);
-  let kk,vv,changed=vN!==vNP||vP===undefined;
-  // childReducer's combiner function should return the collection if undefined.
-  for ([kk,vv] of Object.entries(vN)) v = childReducer(v,arr,kk,vv);
-  return changed ? v : vP;
+  const comparator = isArray(v)?(v,vP)=>v[v.length]!==vP[v.length]:(v,vP,k)=>v[k]!==vP[k];
+  const childReducer=listItemTransducer(listItemCombiner);
+  let kk,vv,changed=vN!==vNP;
+  if (changed===true) {
+    for ([kk,vv] of Object.entries(vN)) v = childReducer(v,arr,kk,vv);
+    return v;
+  }
+  for ([kk,vv] of Object.entries(vN)) {
+    v = childReducer(v,arr,kk,vv);
+    if(changed===false) changed=comparator(v,vP,kk);
+  };
+  return changed?v:vP;
 }
 
-const childMappersToMapObject = (meta,childReducer)=>arr=>{
+const childMappersToMapObject = (selectionMappers)=>arr=>{
   let [vP,vN={},vNP={},rN,rNP]=arr;
-  let v={},ck,changed=vN!==vNP||vP===undefined;
-  vP ??= {}; /* eslint-disable-line */ // eslint doesn't support this syntax yet
+  let v={},ck,changed=vN!==vNP;
+  vP ??= {};
   // v check is necessary since an adjacent collection may have changed
-  for (ck in meta) {
-    v=childReducer(v,[vP[ck],vN[ck],vNP[ck],rN,rNP],ck);
+  if (changed===true){
+    for (ck in selectionMappers) ck in vN && (v[ck]=selectionMappers[ck]([vP[ck],vN[ck],vNP[ck],rN,rNP],ck));
+    return v;
+  }
+  for (ck in selectionMappers) {
+    ck in vN && (v[ck]=selectionMappers[ck]([vP[ck],vN[ck],vNP[ck],rN,rNP],ck));
     if(v[ck] !== vP[ck]) changed=true;
   }
   return changed?v:vP;
 };
+
 
 // const getArgTransducers=(transducers,queryArgs,meta={})=>{
 //   const selfTransducers={},propsTransducers={},selfTransducerList=[];
@@ -117,13 +129,11 @@ const mapQueryFactory=(schema={},transducers={},getListItemCombiner,getListItemA
 
     const selections=s?.selectionSet?.selections||[];
     const selectionMappers = selections.length===0
-      ? transToObject((o,m,k)=>o[k]=(arr,ck,vNi)=>arr[1])(meta)
+      ? transToObject((o,m,k)=>o[k]=([vP,vN,vNP,rN,rNP])=>vN)(meta)
       : transToObject((o,ss,k)=>o[ss.name.value]=inner(meta[ss.name.value],ss))(selections);
 
-    const mapObject=childMappersToMapObject(selectionMappers,compose(
-      tdMap((arr,ck,vNi)=>selectionMappers[ck](arr,ck,vNi)),
-      // tdFilter((v,ck)=>v!==undefined&&(selections.length===0||ck in selectionKeys)),
-    )(appendObjectReducer));
+    // don't need to reduce objects since selections reduces them, and no selections effectively selects all
+    const mapObject=childMappersToMapObject(selectionMappers);
     const mapObjectId=([vP,vN,,rN,rNP])=>mapObject([vP,rN[meta.defName][vN],rNP?.[meta.defName]?.[vN],rN,rNP]);
     
     if (meta.nodeType==='objectScalar')            return ([,vN])=>vN;
@@ -131,7 +141,7 @@ const mapQueryFactory=(schema={},transducers={},getListItemCombiner,getListItemA
     if (meta.nodeType==='objectId')                return mapObjectId;
     if (meta.nodeType==='objectScalarList')        return tdMapVnorm(compose(
       tdMap((arr,i,vNi)=>vNi),
-      // transducer
+      transducer
     ),getListItemAccumulator(meta.nodeType),getListItemCombiner(meta.NodeType));
     if (meta.nodeType==='objectObjectList')        return tdMapVnorm(compose(
       tdMap(([vP,vN,vNP,rN,rNP],id,vNi)=>mapObject([vP?.[id],vNi,vNP?.[id],rN,rNP])),
@@ -158,8 +168,8 @@ export const schemaToQuerySelector=(schema,transducers={},listItemCombiner=combi
 
 export const schemaToMutationReducer=(schema,transducers={},listItemCombiner=combineListItemToSame,getListItemAccumulator=getSameList)=>{
   const mapQuery=mapQueryFactory( schema, {identity:tdIdentity,intersection,union,subtract,...transducers},listItemCombiner,getListItemAccumulator);
-  return (rootNorm={},{type='mutation',payload:[query='',variables={}]=[]}={})=>{
-    if (type!=='mutation')return rootNorm;
-    return mapQuery(query,variables)([,rootNorm,,rootNorm,]);
+  return (prevState={},{type='mutation',payload:[query={},variables={}]=[]}={})=>{
+    if (type!=='mutation')return prevState;
+    return mapQuery(query,variables)([prevState,prevState,prevState]);
   };
 };

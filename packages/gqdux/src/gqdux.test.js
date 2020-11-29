@@ -122,7 +122,7 @@ describe("schemaToQuerySelector", () => {
         {Person:{a:{best:state.Person.b},b:{best:state.Person.a},c:{best:state.Person.a}}}],
       [ `{Person(log:{id:"a",best:"b"}){nicknames}}`,
         Object.values(state.Person),
-        {Person:{ a:{nicknames:state.Person.a.nicknames}, b:{nicknames:[]}, c:{nicknames:[]},}} ],
+        {Person:{ a:{nicknames:state.Person.a.nicknames}, b:{}, c:{},}} ],
       [ `{Person(log:{id:"a"}){id,best}}`,
         Object.values(state.Person),
         {Person:{a:{id:"a",best:state.Person.b},b:{id:"b",best:state.Person.a},c:{id:"c",best:state.Person.a}}}
@@ -434,9 +434,7 @@ describe("querySelectorToUseLeafQuery",()=>{
 describe("schemaToMutationReducer",()=>{
   // integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)
   let store,useQuery,schema,dispatchMutation,selectFullPath,cleanupSelectFullPath;
-  const getMutationDispatcher= store=>(query,vars)=>{
-    store.dispatch({type:'mutation',payload:[gql`{${query}}`,vars]});
-  };
+  
   beforeEach(()=>{
     schema = gql`
       type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
@@ -456,7 +454,11 @@ describe("schemaToMutationReducer",()=>{
         y:{id:'y',name:'Y'},
       },
     });
-    dispatchMutation=getMutationDispatcher(store);
+
+    dispatchMutation=(query,vars)=>{
+      store.dispatch({type:'mutation',payload:[gql`{${query}}`,vars]});
+    };
+
     ({selectFullPath,cleanupSelectFullPath}=getSelectFullPath(schema,gql,store));
     useQuery = pathSelectorToReactHook(selectFullPath,store,useState,useEffect);
   });
@@ -465,9 +467,7 @@ describe("schemaToMutationReducer",()=>{
     cleanupSelectFullPath()
   })
   afterAll(()=>{
-    /* eslint-disable no-unused-vars */
     schema=store=useQuery=dispatchMutation=cleanupSelectFullPath=selectFullPath=undefined;
-    /* eslint-enable no-unused-vars */
   });
   
   test('Subtract: object subtract objectList value         Person(id:"a",subtract:{"friends":"b"})',()=>{
@@ -477,7 +477,7 @@ describe("schemaToMutationReducer",()=>{
     // should split a|bc, apply to a, recombine to abc
     // const { result } = renderHook(() =>useQuery(`{Person{id,nicknames}}`));
     // expect(result.current).toEqual({Person:{a:{id:'a',nicknames:["AA","AAA"]}, b:{id:'b',nicknames:["BB","BBB"]}, c:{id:'c',nicknames:[]}}});
-    // act(()=>{dispatchMutation(`Person(id:"a",subtract:{nicknames:"AA"})`);})
+    // act(()=>{dispatchMutation(`Person(intersection:{id:"a"},subtract:{nicknames:"AA"})`);})
     // console.log('store.getState()',store.getState())
     // expect(result.current).toEqual({Person:{a:{id:'a',nicknames:["AAA"]},b:{id:'b',nicknames:["BB","BBB"]}, c:{id:'c',nicknames:[]}}});
     expect(true).toBe(true);
@@ -489,15 +489,24 @@ describe("schemaToMutationReducer",()=>{
     expect(true).toBe(true);
   })
   test('Subtract: objectList subtract object               Person(subtract:"a")',()=>{
-    // const { result } = renderHook(() =>useQuery(`{Person{id}}`));
-    // expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
-    // const c=result.current.Person.c;
-    // act(()=>{dispatchMutation(`Person(subtract:"a")`);})
-    // expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
-    // act(()=>{dispatchMutation(`Person(subtract:{id:"b"})`);})
-    // expect(result.current).toEqual({Person:{c:{id:'c'}}});
-    // expect(c).toBe(result.current.Person.c);
-    expect(true).toBe(true);
+    const {b:stateB,c:stateC}=store.getState().Person;
+    const bCopy = {...stateB};
+    const cCopy = {...stateC};
+    const { result } = renderHook(() =>useQuery(`{Person{id}}`));
+    expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+    const {b:selectedB,c:selectedC}=result.current.Person;
+    act(()=>{dispatchMutation(`Person(subtract:{id:"a"})`);})
+    expect(store.getState().Person.a).toBe(undefined);
+    expect(stateB.nicknames).toBe(store.getState().Person.b.nicknames);
+    expect(bCopy).toEqual(store.getState().Person.b);
+    expect(stateB).toBe(store.getState().Person.b);
+    expect(stateC).toBe(store.getState().Person.c);
+    expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
+    act(()=>{dispatchMutation(`Person(subtract:{id:"b"})`);})
+    expect(store.getState().Person.b).toBe(undefined);
+    expect(stateC).toBe(store.getState().Person.c);
+    expect(cCopy).toEqual(store.getState().Person.c);
+    expect(result.current).toEqual({Person:{c:{id:'c'}}});
   });
   test('Subtract: scalarList subtract scalar               Pet(subtract:"x")',()=>{
     expect(true).toBe(true);
@@ -539,7 +548,17 @@ describe("schemaToMutationReducer",()=>{
     expect(true).toBe(true);
   })
   test('Intersection: object intersection objectList value    Person(id:"a",intersection:{"friends":"b"})',()=>{
-    expect(true).toBe(true);
+    const {a:stateA,b:stateB,c:stateC}=store.getState().Person;
+    const aCopy = {...stateA};
+    const { result } = renderHook(() =>useQuery(`{Person{id}}`));
+    expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
+    const {b:selectedB,c:selectedC}=result.current.Person;
+    act(()=>{dispatchMutation(`Person(intersection:{id:"a"})`);})
+    expect(store.getState().Person.b).toBe(undefined);
+    expect(store.getState().Person.c).toBe(undefined);
+    expect(store.getState().Person.a).toBe(stateA);
+    expect(stateA.nicknames).toBe(store.getState().Person.a.nicknames);
+    expect(store.getState().Person).toEqual({a:aCopy});
   })
   test('Intersection: object intersection scalarList value    Person(id:"a",intersection:{"nicknames":"AA"})',()=>{
     expect(true).toBe(true);
