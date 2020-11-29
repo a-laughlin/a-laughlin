@@ -134,7 +134,7 @@ describe("schemaToQuerySelector", () => {
         logged.push(vNi);
       });
       const result=schemaToQuerySelector(schema,{log})(gql(q))(state);
-      console.log(` logged:`,logged,)
+      // console.log(` logged:`,logged,)
       expect(logged).toEqual(l);
       expect(result).toEqual(r);
     })
@@ -170,79 +170,70 @@ describe("schemaToQuerySelector", () => {
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
   it("should denormalize item subsets with non-id variables",()=>{
-    const query = gql(`{Person(best:$best){best{id}}}`);
+    const query = gql(`{Person(intersection:{best:$best}){best{id}}}`);
     const result1 = querier(query,{best:'b'})(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
   it("should denormalize item subsets with default variables",()=>{
-    const query = gql(`query getPerson($id: ID = "a"){Person(id:$id){best{id}}}`);
+    const query = gql(`query getPerson($id: ID = "a"){Person(intersection:{id:$id}){best{id}}}`);
     const result1 = querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
   it("should denormalize item subsets with non-id default variables",()=>{
-    const query = gql(`query getPerson($best: String = "b"){Person(best:$best){best{id}}}`);
+    const query = gql(`query getPerson($best: String = "b"){Person(intersection:{best:$best}){best{id}}}`);
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
   it("should denormalize item subsets with constants",()=>{
-    const query = gql(`{Person(id:"a"){best{id}}}`);
+    const query = gql(`{Person(intersection:{id:"a"}){best{id}}}`);
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
   it("should denormalize item subsets with non-id constants",()=>{
-    const query = gql(`{Person(best:"b"){best{id}}}`);
+    const query = gql(`{Person(intersection:{best:"b"}){best{id}}}`);
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
 
   it("should query multiple scalar props",()=>{
-    const query = gql(`{Person(id:$id){id,name}}`);
+    const query = gql(`{Person(intersection:{id:$id}){id,name}}`);
     const result1=querier(query,{id:'a'})(state);
     expect(result1).toEqual({Person:{a:{id:'a',name:'A'}}});
   });
   it("should query a scalar and object prop",()=>{
-    const query = gql(`{Person(id:$id){id,best{id}}}`);
+    const query = gql(`{Person(intersection:{id:$id}){id,best{id}}}`);
     const result1=querier(query,{id:'a'})(state);
     expect(result1).toEqual({Person:{a:{id:'a',best:{id:'b'}}}});
   });
   it("should query multiple object props",()=>{
-    const query = gql(`{Person(id:"a"){best{id},otherbest{id}}}`);
+    const query = gql(`{Person(intersection:{id:"a"}){best{id},otherbest{id}}}`);
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
   });
-  it("should behave the same with (intersection:{...}) and (...)",()=>{
-    let query = gql(`{Person(id:"a") {best{id},otherbest{id}}}`);
-    let result1=querier(query)(state);
-    expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
-    query = gql(`{Person(intersection: {id:"a"} ) {best{id},otherbest{id}}}`);
-    let result2=querier(query)(state);
-    expect(result2).toEqual(result1);
-  });
-  // commenting these out to make logic in components more difficult
-  // and reduce the chance of fns that differ between front and back ends
-  // #pitofsuccess
-  // it("should accept intersection functions as variables",()=>{
-  //   let query = gql(`{Person(intersection:$fn) {best{id},otherbest{id}}}`);
-  //   let result1=querier(query,{fn:x=>x.id==="a"})(state);
+  // it("should behave the same with (intersection:{...}) and (...)",()=>{
+  //   let query = gql(`{Person(id:"a") {best{id},otherbest{id}}}`);
+  //   let result1=querier(query)(state);
   //   expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
+  //   query = gql(`{Person(intersection: {id:"a"} ) {best{id},otherbest{id}}}`);
+  //   let result2=querier(query)(state);
+  //   expect(result2).toEqual(result1);
   // });
-  // it("should accept subtract functions as variables",()=>{
-  //   let query = gql(`{Person(subtract:$fn) {best{id},otherbest{id}}}`);
-  //   let result1=querier(query,{fn:x=>x.id!=="a"})(state);
-  //   expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
-  // });
+  // eliminating tests for passing functions to:
+  //   separate concerns
+  //   make logic in components more difficult #pitofsuccess
+  //   enable fns to be implemented on front or back-end
   it("should accept variables named differently than the key",()=>{
-    let query = gql(`{Person(id:$xyz) {best{id},otherbest{id}}}`);
+    let query = gql(`{Person(intersection:{id:$xyz}) {best{id},otherbest{id}}}`);
     let result1=querier(query,{xyz:"a"})(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'},otherbest:{id:'c'}}}});
   });
   it("should query objects deeply",()=>{
-    const query = gql(`{Person(id:"a"){best{best{best{best{best{best{best{best{best{best{id}}}}}}}}}}}}`);
+    const query = gql(`{Person(intersection:{id:"a"}){best{best{best{best{best{best{best{best{best{best{id}}}}}}}}}}}}`);
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{best:{best:{best:{best:{best:{best:{best:{best:{best:{id:'a'}}}}}}}}}}}}});
   });
   it("should query other types",()=>{
-    const query = gql(`{Person(id:"a"){pet{id}}}`);
+    const query = gql(`{Person(intersection:{id:"a"}){pet{id}}}`);
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{pet:{id:'x'}}}});
   });
@@ -252,12 +243,12 @@ describe("schemaToQuerySelector", () => {
     expect(result1).toEqual({SomeScalar:1});
   });
   it("should query scalar lists",()=>{
-    const query = gql(`{Person(id:"a"){nicknames}}`);
+    const query = gql(`{Person(intersection:{id:"a"}){nicknames}}`);
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{nicknames:["AA","AAA"]}}});
   });
   it("should query object lists",()=>{
-    const query = gql(`{Person(id:"a"){friends{id}}}`);
+    const query = gql(`{Person(intersection:{id:"a"}){friends{id}}}`);
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{friends:{b:{id:'b'},c:{id:'c'}}}}});
   });
@@ -336,7 +327,7 @@ describe("getUseFullPath",()=>{
   test('should update one with another changed', () => {
     const { result } = renderHook(() =>({
       main:useQuery(`{Person{id}}`),
-      a:useQuery(`{Person(id:"a"){id}}`)
+      a:useQuery(`{Person(intersection:{id:"a"}){id}}`)
     }));
     expect(result.current.main).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
     expect(result.current.a).toEqual({Person:{a:{id:'a'}}});
@@ -349,8 +340,8 @@ describe("getUseFullPath",()=>{
   })
   test('should not update unchanged collection items', () => {
     const { result } = renderHook(() =>useQuery(`{Person{id}}`));
-    const { result:resulta } = renderHook(() =>useQuery(`{Person(id:"a"){id}}`));
-    const { result:resultb } = renderHook(() =>useQuery(`{Person(id:"b"){id}}`));
+    const { result:resulta } = renderHook(() =>useQuery(`{Person(intersection:{id:"a"}){id}}`));
+    const { result:resultb } = renderHook(() =>useQuery(`{Person(intersection:{id:"b"}){id}}`));
     const b=resultb.current.Person.b;
     expect(result.current).toEqual({Person:{a:{id:'a'}, b, c:{id:'c'}}});
     expect(resulta.current).toEqual({Person:{a:{id:'a'}}});
@@ -419,15 +410,15 @@ describe("querySelectorToUseLeafQuery",()=>{
     expect(result.current).toEqual({a:'a',b:'b',c:'c'});
   });
   test('should convert a single selected object + selection to the selected value', () => {
-    const { result } = renderHook(() =>useSelectPath(`{Person(id:"a"){id}}`));
+    const { result } = renderHook(() =>useSelectPath(`{Person(intersection:{id:"a"}){id}}`));
     expect(result.current).toEqual('a');
   });
   test('should convert one object with two selections to the object with only that selection', () => {
-    const { result } = renderHook(() =>useSelectPath(`{Person(id:"a"){id,name}}`));
+    const { result } = renderHook(() =>useSelectPath(`{Person(intersection:{id:"a"}){id,name}}`));
     expect(result.current).toEqual({a:{id:'a',name:'A'}});
   });
   test('should convert a nested property selection to the selected value', () => {
-    const { result } = renderHook(() =>useSelectPath(`{Person(id:"a"){best{id}}}`));
+    const { result } = renderHook(() =>useSelectPath(`{Person(intersection:{id:"a"}){best{id}}}`));
     expect(result.current).toEqual('b');
   });
   test('supports permutation testing', () => {
