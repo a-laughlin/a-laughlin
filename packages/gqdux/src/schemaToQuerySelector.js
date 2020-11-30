@@ -4,13 +4,10 @@ import {intersection,subtract,union,polymorphicArgTest,identity as tdIdentity} f
 
 // returns a function that populates query arguments with passed variables
 const getArgsPopulator = (vars,transducers)=>{
-  // const getSubMeta=(meta,name)=>(name in meta && meta[name].defKind==='object')?meta[name]
   const nonTransducerObjToArgs=(meta,argument)=>{
     let {name:{value:name},value}=argument;
-    if (value.kind==='ObjectValue')
-      return transToObject((o,v)=>Object.assign(o,nonTransducerObjToArgs(meta,v)))(value.fields);
-    if (value.kind==='ListValue')
-      return value.values.map(v=>nonTransducerObjToArgs(meta,v));
+    if (value.kind==='ObjectValue') return transToObject((o,v)=>Object.assign(o,nonTransducerObjToArgs(meta,v)))(value.fields);
+    if (value.kind==='ListValue') return value.values.map(v=>nonTransducerObjToArgs(meta,v));
     if(value.kind==='Variable') {
       const result = vars[value.name.value];
       return meta.defKind==='scalar'
@@ -55,10 +52,6 @@ const tdMapVnorm = (listItemTransducer,getListItemAccumulator,listItemCombiner)=
   const comparator = isArray(v)?(v,vP)=>v[v.length]!==vP[v.length]:(v,vP,k)=>v[k]!==vP[k];
   const childReducer=listItemTransducer(listItemCombiner);
   let kk,vv,changed=vN!==vNP;
-  if (changed===true) {
-    for ([kk,vv] of Object.entries(vN)) v = childReducer(v,arr,kk,vv);
-    return v;
-  }
   for ([kk,vv] of Object.entries(vN)) {
     v = childReducer(v,arr,kk,vv);
     if(changed===false) changed=comparator(v,vP,kk);
@@ -67,14 +60,9 @@ const tdMapVnorm = (listItemTransducer,getListItemAccumulator,listItemCombiner)=
 }
 
 const childMappersToMapObject = (selectionMappers)=>arr=>{
-  let [vP,vN={},vNP={},rN,rNP]=arr;
+  let [vP={},vN={},vNP={},rN,rNP]=arr;
   let v={},ck,changed=vN!==vNP;
-  vP ??= {};
   // v check is necessary since an adjacent collection may have changed
-  if (changed===true){
-    for (ck in selectionMappers) ck in vN && (v[ck]=selectionMappers[ck]([vP[ck],vN[ck],vNP[ck],rN,rNP],ck));
-    return v;
-  }
   for (ck in selectionMappers) {
     ck in vN && (v[ck]=selectionMappers[ck]([vP[ck],vN[ck],vNP[ck],rN,rNP],ck));
     if(v[ck] !== vP[ck]) changed=true;
@@ -82,54 +70,14 @@ const childMappersToMapObject = (selectionMappers)=>arr=>{
   return changed?v:vP;
 };
 
-
-// const getArgTransducers=(transducers,queryArgs,meta={})=>{
-//   const selfTransducers={},propsTransducers={},selfTransducerList=[];
-//   // Selecting Collection                  g`Person(intersect:{id:"a"}){id}`
-//   // Selecting Prop                        g`Person(friends:{intersect:{id:"b"}}){friends{id}}`
-//   // Changing  Collection                  g`Person(intersect:{id:"a"})`
-//   // Changing  Prop                        g`Person(friends:{intersect:{id:"b"}})`
-//   function getTrans(m,args){
-//     Object.entries(args).forEach(([kk,vv])=>{
-//       // console.log(`isSelf v:`,v,` k:`,k,` vv:`,vv,` kk:`,kk,` meta[kk]:`,meta[kk],)
-//       selfTransducers[kk]=transducers[k]((vv,meta[kk]))
-//     });
-//   }
-//   Object.entries(queryArgs).forEach(([k,v])=>{
-//     const isSelf=k in transducers,isProp=!isSelf && k in meta;
-
-//     if (isSelf){
-//       console.log(`isSelf v:`,v,` k:`,k,'Object.keys(meta)',Object.keys(meta),'meta.id.nodeType',meta.id.nodeType);
-//       selfTransducerList.push(transducers[k]((v,meta)));
-//       Object.entries(v).forEach(([kk,vv])=>{
-//         // console.log(`isSelf v:`,v,` k:`,k,` vv:`,vv,` kk:`,kk,` meta[kk]:`,meta[kk],)
-//         selfTransducers[kk]=transducers[k]((vv,meta[kk]))
-//       });
-//     } else if (isProp){
-//       Object.entries(v).forEach(([kk,vv])=>{
-//         console.log(`isProp v:`,v,` k:`,k,` vv:`,vv,` kk:`,kk,)
-//         if(! kk in transducers) throw new Error(`No implicit handling yet.  No transducer defined for ${kk} in ${JSON.stringify(v)}`);
-//         propsTransducers[k]=transducers[kk](vv,meta[k]);
-//       });
-//     } else {
-//       throw new Error(`No implicit handling yet.  No transducer defined for ${k} in ${JSON.stringify(queryArgs)}`);
-//     }
-//   });
-//   return {propsTransducers,selfTransducers,selfTransducer:compose(...selfTransducerList)};
-// };
 const mapQueryFactory=(schema={},transducers={},getListItemCombiner,getListItemAccumulator)=>(query={},passedVariables={})=>{
   const getArgs = getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables),transducers);
   return inner(indexSchema(schema).selectionMeta._query,query.definitions[0]);
   function inner( meta, s, transducer=getArgs(meta,s)){
-    // Collection                  g`Person(intersect:{id:"a"})`
-    // Prop                        g`Person(friends:{intersect:{id:"b"}})`
-    // Collection + Prop           g`Person(intersect:{id:"a"},friends:{intersect:{id:"b"}})`
-    // Walk the query tree beforehand closures the correct meta level for each childSelectors
-    // const transducer = let {propsTransducers,selfTransducers,selfTransducer}=getArgTransducers(transducers,args,meta);
-
+    // Walk the query tree beforehand to enclose the correct meta level for each childSelectors
     const selections=s?.selectionSet?.selections||[];
     const selectionMappers = selections.length===0
-      ? transToObject((o,m,k)=>o[k]=([vP,vN,vNP,rN,rNP])=>vN)(meta)
+      ? mapToObject((m,k)=>arr=>arr[1])(meta)
       : transToObject((o,ss,k)=>o[ss.name.value]=inner(meta[ss.name.value],ss))(selections);
 
     // don't need to reduce objects since selections reduces them, and no selections effectively selects all
@@ -150,7 +98,7 @@ const mapQueryFactory=(schema={},transducers={},getListItemCombiner,getListItemA
     if (meta.nodeType==='objectIdList')            return tdMapVnorm(compose(
       // map key and val
       nextReducer=>(a,[vP,vN,vNP,rN,rNP],i,vNi)=>nextReducer(a,mapObjectId([vP?.[i],vN?.[i],vNP?.[i],rN,rNP]),vN[i]),
-      transducer// this will be a bug, when filtering on non-selected properties
+      transducer
     ),getListItemAccumulator(meta.nodeType),getListItemCombiner(meta.NodeType));
     throw new Error(`${meta.nodeType}:${meta.defName} shouldn't be hit`);
   }
@@ -162,7 +110,13 @@ export const schemaToQuerySelector=(schema,transducers={},listItemCombiner=combi
   const mapQuery=mapQueryFactory( schema, {...transducers,identity:tdIdentity,intersection,subtract,union},listItemCombiner,getListItemAccumulator);
   return (query,passedVariables)=>{
     const mq = mapQuery(query,passedVariables);
-    return (rootNorm={},rootNormPrev={},rootDenormPrev={})=>mq([rootDenormPrev,rootNorm,rootNormPrev,rootNorm,rootNormPrev]);
+    // if(query?.definitions[0].selectionSet?.selections[0]?.selectionSet){
+      return (rootNorm={},rootNormPrev={},rootDenormPrev={})=>mq([rootDenormPrev,rootNorm,rootNormPrev,rootNorm,rootNormPrev]);
+    // }
+    // return (prevState={},{type='mutation',payload:[query={},variables={}]=[]}={})=>{
+    //   if (type!=='mutation')return prevState;
+    //   return mq([prevState,prevState,prevState]);
+    // }
   }
 }
 
