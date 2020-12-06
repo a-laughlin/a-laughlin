@@ -3,39 +3,46 @@ import indexSchema from './indexSchema';
 import {intersection,subtract,union,polymorphicArgTest,identity as tdIdentity} from './transducers';
 
 // returns a function that populates query arguments with passed variables
-const getArgsPopulator = (vars,transducers)=>{
-  const nonTransducerObjToArgs=(meta,argument)=>{
+const getArgsPopulator = (vars={},transducers={})=>{
+  const inner=(meta,argument,hasTransducer=false)=>{
     let {name:{value:name},value}=argument;
-    if (value.kind==='ObjectValue') return transToObject((o,v)=>Object.assign(o,nonTransducerObjToArgs(meta,v)))(value.fields);
-    if (value.kind==='ListValue') return value.values.map(v=>nonTransducerObjToArgs(meta,v));
-    if(value.kind==='Variable') {
-      const result = vars[value.name.value];
-      return meta.defKind==='scalar'
-        ? isObjectLike(result)
-          ? isArray(result)
-            ? result.map(r=>typeof r==='string'?r:new Error(`cannot pass objectlike property to select scalars. Pass strings instead`))
-            : new Error(`cannot pass object property to select scalars`)
-          : result
-        : isObjectLike(result)
-          ? isArray(result)
-            ? result.map(r=>typeof r==='string'?{[meta.idKey]:r}:r)
-            : result
-          : {[argument.name.value]:result};
-    }
-    if ('value' in value) {
-      if (!('idKey' in meta))throw new Error(`shouldn't hit scalar value without an idKey: ${JSON.stringify(value,null,2)}`);
-      return {[name]:value.value};
-    }
-    throw new Error(`non-value argument shouldn't be hit: ${JSON.stringify(value,null,2)}`);
-  };
-  const getArgs = (m,argument)=>{
-    const {name:{value:name}}=argument;
+    // handle implicit
     if (name in transducers){
-      return transducers[name](m,nonTransducerObjToArgs(m,argument));
+      // td:scalar
+      // td:[scalar]
+      // td:{scalarListProp:scalar}                     Person(intersection:{nicknames:"AA"}) | Person(nicknames:"AA")
+      // td:{scalarListProp:[scalar]}                   Person(intersection:{nicknames:["AA"]})| Person(nicknames:["AA"])
+      // td:{objectListProp:scalar}                     Person(intersection:{friends:"b"}) | Person(friends:"a")
+      // td:{objectListProp:[scalar]}                   Person(intersection:{friends:["b"]}) | Person(friends:["a"])
+      // td:{objectListProp:{scalarKey:scalarVal}}      Person(intersection:{friends:{id:"b"}})
+      // td:{objectListProp:[{scalarKey:scalarVal}]}    Person(intersection:{friends:[{id:"b"}]})
+      if(hasTransducer)throw new Error(`Cannot nest transducers`);
+      if (value.value) return transducers[name](meta,value.value);
+      if (value.kind==='NullValue')return transducers[name](meta,null);
+      if (value.kind==='Variable')return transducers[name](meta,vars[value.name.value]);
+      if (value.fields) return transducers[name](meta, transToObject((o,a)=>{o[a.name.value]=inner(meta[a.name.value]??meta,a,true)})(value.fields) );
+      if (value.values) return transducers[name](meta, value.values.map(a=>inner(meta[a.name.value]??meta,a,true))(value.values) );
+      throw new Error(`shouldn't be hit`);
+    } else {
+      // scalarListProp:{td:scalar}                     Person(nicknames:{intersection:"AA"}) | Person(nicknames:"AA")
+      // scalarListProp:{td:[scalar]}                   Person(nicknames:{intersection:["AA"]})| Person(nicknames:["AA"])
+      // objectListProp:{td:scalar}                     Person(friends:{intersection:"b"}) | Person(friends:"a")
+      // objectListProp:{td:[scalar]}                   Person(friends:{intersection:["b"]}) | Person(friends:["a"])
+      // objectListProp:{td:{scalarKey:scalarVal}}      Person(friends:{intersection:{id:"b"}})
+      // objectListProp:{td:[{scalarKey:scalarVal}]}    Person(friends:{intersection:[{id:"b"}]})
+      if (value.value) return hasTransducer?value.value:transducers.intersection(meta,{[name]:value.value});
+      if (value.kind==='NullValue') return hasTransducer?null:transducers.intersection(meta,{[name]:null})
+      if (value.kind==='Variable') return hasTransducer?vars[value.name.value]:transducers.intersection(meta,{[name]:vars[value.name.value]});
+      if (value.values) return hasTransducer
+        ? value.values.map(a=>inner(meta,a,hasTransducer))
+        : transducers.intersection(meta,{[name]:value.values.map(a=>inner(meta,a,true))})
+      if (value.fields) return hasTransducer
+        ? transToObject((o,a)=> o[a.name.value]=inner(meta[a.name.value],a,hasTransducer))(value.fields)
+        : compose(...value.fields.map(a=>inner(meta[a.name.value]??meta,a,hasTransducer)))
+      throw new Error(`shouldn't be hit`);
     }
-    throw new Error('props transducers not implemented yet');
   };
-  return (meta,s)=>compose(...(s.arguments??[]).map(a=>getArgs(meta,a)));
+  return (meta,s)=>compose(...(s.arguments??[]).map(a=>inner(meta[a.name?.value]??meta,a)));
 }
 
 // convert the gql AST definitions to an object for simpler access

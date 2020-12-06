@@ -247,6 +247,11 @@ describe("schemaToQuerySelector", () => {
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{nicknames:["AA","AAA"]}}});
   });
+  it("should query scalar list items",()=>{
+    const query = gql(`{Person(intersection:{id:"a"},nicknames:{intersection:"AA"}){nicknames}}`);
+    const result1=querier(query)(state);
+    expect(result1).toEqual({Person:{a:{nicknames:["AA"]}}});
+  });
   it("should query object lists",()=>{
     const query = gql(`{Person(intersection:{id:"a"}){friends{id}}}`);
     const result1=querier(query)(state);
@@ -357,7 +362,7 @@ describe("getUseFullPath",()=>{
   })
 });
 
-describe("querySelectorToUseLeafQuery",()=>{
+describe("useSelectPath",()=>{
   // : integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)
   let store,useSelectPath,schema,selectPath,cleanupSelectPath,reducerMap;
   beforeEach(()=>{
@@ -421,6 +426,7 @@ describe("querySelectorToUseLeafQuery",()=>{
     const { result } = renderHook(() =>useSelectPath(`{Person(intersection:{id:"a"}){best{id}}}`));
     expect(result.current).toEqual('b');
   });
+  
   test('supports permutation testing', () => {
     
     // figure out the syntax for looping in a test
@@ -471,21 +477,27 @@ describe("schemaToMutationReducer",()=>{
   });
   
   test('Subtract: object subtract objectList value         Person(id:"a",subtract:{"friends":"b"})',()=>{
+    // const Person=store.getState().Person, {a,b,c}=Person;
+    // const { result } = renderHook(() =>useQuery(`{Person{id,friends}}`));
+    // expect(result.current).toEqual({Person:mapToObject(pick(['id','friends']))(Person)});
+    // act(()=>{dispatchMutation(`Person(intersection:{id:"a"},subtract:{friends:{id:"b"}})`);})
+    // console.log('store.getState()',store.getState())
+    // expect(result.current).toEqual({Person:{a:{id:'a',friends:{b:store.getState().Person.b}["AAA"]},b:{id:'b',nicknames:["BB","BBB"]}, c:{id:'c',nicknames:[]}}});
     expect(true).toBe(true);
   })
   test('Subtract: object subtract scalarList value         Person(id:"a",subtract:{"nicknames":"AA"})',()=>{
     // should split a|bc, apply to a, recombine to abc
     // const { result } = renderHook(() =>useQuery(`{Person{id,nicknames}}`));
     // expect(result.current).toEqual({Person:{a:{id:'a',nicknames:["AA","AAA"]}, b:{id:'b',nicknames:["BB","BBB"]}, c:{id:'c',nicknames:[]}}});
-    // act(()=>{dispatchMutation(`Person(intersection:{id:"a"},subtract:{nicknames:"AA"})`);})
-    // console.log('store.getState()',store.getState())
-    // expect(result.current).toEqual({Person:{a:{id:'a',nicknames:["AAA"]},b:{id:'b',nicknames:["BB","BBB"]}, c:{id:'c',nicknames:[]}}});
+    // act(()=>{dispatchMutation(`Person(intersection:{id:"a"},subtract:{nicknames:["AA"]})`);})
+    // // console.log('store.getState()',store.getState())
+    // expect(result.current).toEqual({Person:{a:{id:'a',nicknames:["AAA"]},b,c}});
     expect(true).toBe(true);
   })
   test('Subtract: object subtract object prop value        Person(id:"a",subtract:"best")',()=>{
     expect(true).toBe(true);
   })
-  test('Subtract: object subtract scalar prop value        Person(id:"a",subtract:"name") ',()=>{
+  test('Subtract: object subtract scalar prop value        Person(intersection:{id:"a"},subtract:{"ni":)',()=>{
     expect(true).toBe(true);
   })
   test('Subtract: objectList subtract object               Person(subtract:"a")',()=>{

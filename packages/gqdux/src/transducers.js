@@ -1,4 +1,4 @@
-import {diffBy, isArray,isFinite, isObjectLike, isString, mapToArray, not, tdFilter, tdOmit} from "@a-laughlin/fp-utils"
+import {and, diffBy, isArray,isFinite, isObjectLike, isString, mapToArray, not, tdFilter, tdOmit} from "@a-laughlin/fp-utils"
 import { isObject } from 'lodash-es';
 
 const idnty=x=>x;
@@ -15,8 +15,17 @@ export const complement=(args={},meta)=>nextReducer=>nextReducer;
 
 export const polymorphicArgTest = (meta,args)=>{
   if(meta.nodeType==='objectScalarList'){
-    if(!isObjectLike(args)) return (v,k)=>v===args;
-    throw new Error(`cannot pass object args on a scalar list`)
+    if(!isObjectLike(args)) return (v,k)=>v[meta.fieldName].includes(args);
+    if(isArray(args)) return (v,k)=>v.find(vv=>!args.includes(vv));
+    // return and(...Object.keys(args).map(k=>polymorphicArgTest(meta[k],args[k])));
+    return (v,k)=>{
+      for (const arg in args) {
+        console.log('object arg scalar list',args,v,k);
+        if (!polymorphicArgTest(meta,args[arg])(v,k)) return false;
+      }
+      return true;
+    };
+    // throw new Error(`cannot pass object args on a scalar list ${JSON.stringify(args)}`);
   } else if (meta.nodeType==='objectObjectList'){
     if(isObjectLike(args)) {
       return (obj,k,vNObj)=>{
@@ -28,7 +37,8 @@ export const polymorphicArgTest = (meta,args)=>{
         return true;
       }
     } else {
-      return (obj,k)=>obj[meta.idKey]===v===args;
+      throw new Error(`non-objectlike args not supported by polymorphicArgTest yet`);
+      // return (obj,k)=>obj[meta.idKey]===v===args;
     }
   } else if (meta.nodeType==='objectIdList') { // never hit..., though working without it.  TBD why.
     if(isObjectLike(args)) {
