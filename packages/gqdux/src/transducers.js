@@ -4,54 +4,45 @@ import { isObject } from 'lodash-es';
 const idnty=x=>x;
 export const identity=()=>idnty;
 
-export const intersection=(meta,args)=>tdFilter(polymorphicArgTest(meta,args));
+export const intersection=(meta,args)=>tdFilter(polymorphicListItemTest(meta,args));
 
-export const subtract=(meta,args)=>tdOmit(polymorphicArgTest(meta,args));
+export const subtract=(meta,args)=>tdOmit(polymorphicListItemTest(meta,args));
 
 export const union=(args={},meta)=>nextReducer=>nextReducer;
 
 export const complement=(args={},meta)=>nextReducer=>nextReducer;
 
 
-export const polymorphicArgTest = (meta,args)=>{
+export const polymorphicListItemTest = (meta,args)=>{
   if(meta.nodeType==='objectScalarList'){
-    if(!isObjectLike(args)) return (v,k)=>v[meta.fieldName].includes(args);
-    if(isArray(args)) return (v,k)=>v.find(vv=>!args.includes(vv));
-    // return and(...Object.keys(args).map(k=>polymorphicArgTest(meta[k],args[k])));
-    return (v,k)=>{
-      for (const arg in args) {
-        console.log('object arg scalar list',args,v,k);
-        if (!polymorphicArgTest(meta,args[arg])(v,k)) return false;
-      }
-      return true;
-    };
-    // throw new Error(`cannot pass object args on a scalar list ${JSON.stringify(args)}`);
+    if(!isObjectLike(args)) return (v,k)=>v===args;
+    if(isArray(args)) return (new Set(args)).has;
+    throw new Error(`can't compare scalar list values with object argument ${JSON.stringify(args)}`);
   } else if (meta.nodeType==='objectObjectList'){
-    if(isObjectLike(args)) {
-      return (obj,k,vNObj)=>{
-        // if(k==='a'&&vNObj.id==='a'){
-        //   debugger;
-        // }
-        let arg;
-        for (arg in args) if (vNObj[arg]!==args[arg]) return false;
-        return true;
-      }
-    } else {
-      throw new Error(`non-objectlike args not supported by polymorphicArgTest yet`);
-      // return (obj,k)=>obj[meta.idKey]===v===args;
+    if(!isObjectLike(args)) return (obj,k)=>k===args;
+    if (isArray(args)) {
+      const has=(new Set(args)).has;
+      return (v,k)=>has(k);
+    }
+    return (obj,k,origObj)=>{
+      for (const arg in args) if (origObj[arg]!==args[arg]) return false;
+      return true;
     }
   } else if (meta.nodeType==='objectIdList') { // never hit..., though working without it.  TBD why.
+    if(!isObjectLike(args)) return (obj,k)=>console.log(` obj:`,obj,)||k===args;
+    if(isArray(args)) if (isArray(args)) {
+      const has=(new Set(args)).has;
+      return (obj,k,origId)=>console.log(` args:`,args,` obj:`,obj,` origId:`,origId,)||has(origVal);
+    }
     if(isObjectLike(args)) {
-      return (obj,k,vNi)=>{
-        let arg;
-        for (arg in args) if (obj[arg]!==args[arg]) return false;
+      return (obj,k,origId)=>{
+        console.log(` args:`,args,` obj:`,obj,` origId:`,origId,)
+        for (const arg in args) if (obj[arg]!==args[arg]) return false;
         return true;
       }
-    } else {
-      return (obj,k)=>obj[meta.idKey]===v===args;
     }
   }
-  throw new Error(`shouldn't be hit since there are only 3 collection types`);
+  throw new Error(`shouldn't be hit since there are only 3 collection types (and objectIdList is skipped)`);
 }
 
 export const ADD = nextReducer=>(prevState,action)=>{

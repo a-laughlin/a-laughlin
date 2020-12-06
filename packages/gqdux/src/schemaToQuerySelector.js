@@ -42,7 +42,16 @@ const getArgsPopulator = (vars={},transducers={})=>{
       throw new Error(`shouldn't be hit`);
     }
   };
-  return (meta,s)=>compose(...(s.arguments??[]).map(a=>inner(meta[a.name?.value]??meta,a)));
+  return (meta,s)=>{
+    const selfTransducers=[],propsTransducers={};
+    (s.arguments??[]).forEach((a)=>{
+      const result=inner(meta[a.name.value]??meta,a);
+      if (typeof result!== 'function') throw new Error('function expected from getTransducers');
+      if(a.name.value in transducers)selfTransducers.push(result);
+      else (propsTransducers[a.name.value]=result);
+    });
+    return [compose(...selfTransducers),propsTransducers];
+  }
 }
 
 // convert the gql AST definitions to an object for simpler access
@@ -80,12 +89,13 @@ const childMappersToMapObject = (selectionMappers)=>arr=>{
 const mapQueryFactory=(schema={},transducers={},getListItemCombiner,getListItemAccumulator)=>(query={},passedVariables={})=>{
   const getArgs = getArgsPopulator(variableDefinitionsToObject(query.definitions[0].variableDefinitions||[],passedVariables),transducers);
   return inner(indexSchema(schema).selectionMeta._query,query.definitions[0]);
-  function inner( meta, s, transducer=getArgs(meta,s)){
+  function inner( meta, s, propsTransducer=x=>x,[selfTransducer,childPropTransducers]=getArgs(meta,s)){
     // Walk the query tree beforehand to enclose the correct meta level for each childSelectors
+    // console.log(`${meta.defName} ${meta.fieldName} propsTransducer:`,propsTransducer,)
     const selections=s?.selectionSet?.selections||[];
     const selectionMappers = selections.length===0
       ? mapToObject((m,k)=>arr=>arr[1])(meta)
-      : transToObject((o,ss,k)=>o[ss.name.value]=inner(meta[ss.name.value],ss))(selections);
+      : transToObject((o,ss,k)=>o[ss.name.value]=inner(meta[ss.name.value],ss,childPropTransducers[ss.name.value]))(selections);
 
     // don't need to reduce objects since selections reduces them, and no selections effectively selects all
     const mapObject=childMappersToMapObject(selectionMappers);
@@ -96,17 +106,20 @@ const mapQueryFactory=(schema={},transducers={},getListItemCombiner,getListItemA
     if (meta.nodeType==='objectId')                return mapObjectId;
     if (meta.nodeType==='objectScalarList')        return tdMapVnorm(compose(
       tdMap((arr,i,vNi)=>vNi),
-      transducer
-    ),getListItemAccumulator(meta.nodeType),getListItemCombiner(meta.NodeType));
+      selfTransducer,
+      propsTransducer,
+    ),getListItemAccumulator(meta.nodeType),getListItemCombiner(meta.nodeType));
     if (meta.nodeType==='objectObjectList')        return tdMapVnorm(compose(
       tdMap(([vP,vN,vNP,rN,rNP],id,vNi)=>mapObject([vP?.[id],vNi,vNP?.[id],rN,rNP])),
-      transducer
-    ),getListItemAccumulator(meta.nodeType),getListItemCombiner(meta.NodeType));
+      selfTransducer,
+      propsTransducer,
+    ),getListItemAccumulator(meta.nodeType),getListItemCombiner(meta.nodeType));
     if (meta.nodeType==='objectIdList')            return tdMapVnorm(compose(
       // map key and val
       nextReducer=>(a,[vP,vN,vNP,rN,rNP],i,vNi)=>nextReducer(a,mapObjectId([vP?.[i],vN?.[i],vNP?.[i],rN,rNP]),vN[i]),
-      transducer
-    ),getListItemAccumulator(meta.nodeType),getListItemCombiner(meta.NodeType));
+      selfTransducer,
+      propsTransducer,
+    ),getListItemAccumulator(meta.nodeType),getListItemCombiner(meta.nodeType));
     throw new Error(`${meta.nodeType}:${meta.defName} shouldn't be hit`);
   }
 };
