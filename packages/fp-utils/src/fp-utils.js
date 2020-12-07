@@ -357,11 +357,50 @@ export const sortedRangeIsSubsetStrict=(sortedSubrange,sortedRange)=>sortedRange
 export const sortedRangeIsSubsetOrEqual=(sortedSubrange,sortedRange)=>sortedRange[0]<=sortedSubrange[0]&&sortedRange[1]>=sortedSubrange[1];
 export const sortedRangesIntersect=(sortedRangeA,sortedRangeB)=>{
   // test that the end of lowest-starting range is greater than the beginning of the highest starting range
-  return sortedRangeA[0]<sortedRangeB[0]
-    ? sortedRangeA[1]>=sortedRangeB[0]
-    : sortedRangeB[1]>=sortedRangeA[0];
+  return sortedRangeA[0]<sortedRangeB[0] ? sortedRangeA[1]>=sortedRangeB[0] : sortedRangeB[1]>=sortedRangeA[0];
 }
 
+// array set operations, from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set
+function isSuperset(set, subset) {
+  const supserset = new Set(set);
+  for (const elem of subset) if (!supserset.has(elem)) return false;
+  return true
+}
+
+function union(setA, setB) {
+    const _union = new Set(setA);
+    for (const elem of setB) _union.add(elem);
+    return _union;
+}
+
+function intersection(setA, setB) {
+    const _intersection = new Set();
+    for (const elem of setB) if(setA.has(elem)) _intersection.add(elem);
+    return _intersection
+}
+
+function symmetricDifference(setA, setB) {
+    const _difference = new Set(setA);
+    for (const elem of setB) _difference.has(elem) ? _difference.delete(elem) : _difference.add(elem);
+    return _difference;
+}
+
+function difference(setA, setB) {
+    const _difference = new Set(setA);
+    for (const elem of setB) _difference.delete(elem);
+    return _difference;
+}
+
+// Examples
+let setA = new Set([1, 2, 3, 4])
+let setB = new Set([2, 3])
+let setC = new Set([3, 4, 5, 6])
+
+isSuperset(setA, setB)          // => true
+union(setA, setC)               // => Set [1, 2, 3, 4, 5, 6]
+intersection(setA, setC)        // => Set [3, 4]
+symmetricDifference(setA, setC) // => Set [1, 2, 5, 6]
+difference(setA, setC)          // => Set [1, 2]
 
 export const setNonEnumProp = (obj,key,value)=>Object.defineProperty(obj,key,{value,enumerable:false,writable:true,configurable:false});
 export const setImmutableNonEnumProp = (obj,key,value)=>Object.defineProperty(obj,key,{value,enumerable:false,writable:true,configurable:false});
