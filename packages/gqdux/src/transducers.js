@@ -42,7 +42,7 @@ export const polymorphicListItemTest = (meta,args)=>{
       }
     }
   }
-  throw new Error(`shouldn't be hit since there are only 3 collection types (and objectIdList is skipped)`);
+  throw new Error(`shouldn't be hit since there are only 3 collection types`);
 }
 
 export const ADD = nextReducer=>(prevState,action)=>{

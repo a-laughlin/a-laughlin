@@ -516,11 +516,13 @@ describe("schemaToMutationReducer",()=>{
   // });
   
   test('Subtract: object subtract objectList value         Person(id:"a",subtract:{"friends":"b"})',()=>{
-    const { result } = renderHook(() =>useQuery(`{Person{id,friends}}`));
+    const { result } = renderHook(() =>useQuery(`{Person{id,friends{id}}}`));
+    // IF I HAVEN'T Selected a subset, throw an error
+    // const { result } = renderHook(() =>useQuery(`{Person{id,friends}}`));
     const Person=store.getState().Person;
-    const s=mapToObject(({id,friends})=>({id,friends}))(Person);
-    const [a,b,c]=[s.a,s.b,s.c].map(({id,friends})=>({id,friends:transToObject((o,f)=>o[f]=s[f])(friends)}));
-    expect(result.current).toEqual({Person:{a,b,c}});
+    const s=mapToObject(({id,friends})=>({id,friends:transToObject((o,f)=>o[f]=({id:f}))(friends) }))(Person);
+    // const [a,b,c]=[s.a,s.b,s.c].map(({id,friends})=>({id,friends:transToObject((o,f)=>o[f]=s[f])(friends)}));
+    expect(result.current).toEqual({Person:s});
     const{a:selectedA,b:selectedB,c:selectedC}=result.current.Person;
     const{a:stateA,b:stateB,c:stateC}=result.current.Person;
     act(()=>{dispatchMutation(`Person(intersection:{id:"a"},friends:{subtract:{id:"b"}})`);})
