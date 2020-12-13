@@ -11,7 +11,21 @@ import {
 
 import { renderHook, act } from '@testing-library/react-hooks'
 import gql from 'graphql-tag-bundled';
-import { isObjectLike, mapToObject, pick, tdTap, transToObject } from '@a-laughlin/fp-utils';
+import { isObjectLike, mapToObject, over, pick, pipe, tdTap, transToObject } from '@a-laughlin/fp-utils';
+const mapUnion=(mapper={x:x=>x})=>source=>{const dest={};for (const k in source) dest[k]=k in mapper?mapper[k](source[k],k,source):source[k];return dest};
+const mapPropsIntersection=(mapper={x:x=>x})=>source=>{const dest={};for (const k in mapper) dest[k]=mapper[k](source[k],k,source);return dest};
+// const mapPropsIntersection=(a={x:x=>x})=>b=>{const c={};for (const k in a) c[k]=a[k](b[k],k,b);return c};
+const selectNestedProps=(rootObj)=>{
+  return (...lists)=>inner(rootObj,...lists.map(l=>l.split(',')));
+  function inner(obj,head,...tail){
+    if (head===undefined||!isObjectLike(obj)) return obj;
+    return transToObject((o,k)=>{
+      if (k==='friends') o[k]=transToObject((oo,kk)=>{oo[kk]=inner(rootObj[kk],...tail)})(obj[k]);
+      else if (k==='best') o[k]=inner(rootObj[k],...tail);
+      else o[k]=inner(obj[k],...tail);
+    })(head);
+  }
+}
 
 describe("schemaToReducerMap", () => {
   let state;
@@ -102,43 +116,6 @@ describe("schemaToQuerySelector", () => {
   afterAll(()=>{
     schema=state=querier=null;
   });
-  it("should traverse selections",()=>{
-    state={
-      Person:{
-        a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
-        b:{id:'b',name:'B',best:'a',friends:['a']},
-        c:{id:'c',name:'C',best:'a',friends:['a']},
-      },
-    };
-    [
-      [`{Person{id}}`,[],{Person:{a:{id:"a"},b:{id:"b"},c:{id:"c"}}} ],
-      [`{Person(log:{id:"b"})}`,Object.values(state.Person),state],
-      [`{Person(log:{id:"a"}){id}}`,Object.values(state.Person),{Person:{a:{id:"a"},b:{id:"b"},c:{id:"c"}}}],
-      [`{Person(log:{id:"a",best:"b"}){id,best}}`,
-        Object.values(state.Person),
-        {Person:{a:{id:"a",best:state.Person.b},b:{id:"b",best:state.Person.a},c:{id:"c",best:state.Person.a}}} ],
-      [`{Person(log:{id:"a",best:"b"}){best}}`,
-        Object.values(state.Person),
-        {Person:{a:{best:state.Person.b},b:{best:state.Person.a},c:{best:state.Person.a}}}],
-      [ `{Person(log:{id:"a",best:"b"}){nicknames}}`,
-        Object.values(state.Person),
-        {Person:{ a:{nicknames:state.Person.a.nicknames}, b:{}, c:{},}} ],
-      [ `{Person(log:{id:"a"}){id,best}}`,
-        Object.values(state.Person),
-        {Person:{a:{id:"a",best:state.Person.b},b:{id:"b",best:state.Person.a},c:{id:"c",best:state.Person.a}}}
-      ],
-    ].forEach(([q,l,r])=>{
-      const logged=[];
-      const log=(meta={},args)=>tdTap((a,v,k,vNi)=>{
-        // console.log(meta.defName,`\na:`,a,`\nv:`,v,`\nk:`,k)
-        logged.push(vNi);
-      });
-      const result=schemaToQuerySelector(schema,{log})(gql(q))(state);
-      // console.log(` logged:`,logged,)
-      expect(logged).toEqual(l);
-      expect(result).toEqual(r);
-    })
-  });
   // it.only("should traverse arguments",()=>{
     
   //   const query = gql(`{Person(foo:{}){id}}`);
@@ -188,6 +165,11 @@ describe("schemaToQuerySelector", () => {
     const query = gql(`{Person(intersection:{id:"a"}){best{id}}}`);
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
+  });
+  it("should denormalize lists of ids",()=>{
+    const query = gql(`{Person{id,friends{id}}}`);
+    const result1=querier(query)(state);
+    expect(result1).toEqual({Person:selectNestedProps(state.Person)('a,b,c','id,friends','id')});
   });
   it("should denormalize item subsets with non-id constants",()=>{
     const query = gql(`{Person(intersection:{best:"b"}){best{id}}}`);
@@ -257,6 +239,11 @@ describe("schemaToQuerySelector", () => {
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{friends:{b:{id:'b'},c:{id:'c'}}}}});
   });
+  it("should return an error when selecting objects without ids",()=>{
+    const query = gql(`{Person(intersection:{id:"a"}){friends}}`);
+    const result1=querier(query)(state);
+    expect(result1.Person.a.friends).toEqual(new Error(`objects must have selections`));
+  });
   it("should return unchanged values",()=>{
     const query=gql(`{Person{id}}`);
     const queryFn = querier(query);
@@ -276,7 +263,7 @@ describe("schemaToQuerySelector", () => {
 
 describe("getUseFullPath",()=>{
   // : integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)
-  let store,useQuery,schema,selectFullPath,cleanupSelectFullPath,reducerMap;
+  let store,useQuery,schema,selectFullPath,cleanupSelectFullPath,reducerMap,selectPersonProps;
 
   beforeEach(()=>{
     schema = gql`
@@ -298,6 +285,8 @@ describe("getUseFullPath",()=>{
         y:{id:'y',name:'Y'},
       },
     });
+    const sp = selectNestedProps(store.getState().Person);
+    selectPersonProps=(...lists)=>({Person:sp(...lists)});
     ({selectFullPath, cleanupSelectFullPath} = getSelectFullPath(schema,gql,store));
     useQuery = pathSelectorToReactHook(selectFullPath,store,useState,useEffect);
   });
@@ -305,7 +294,7 @@ describe("getUseFullPath",()=>{
     cleanupSelectFullPath();
   });
   afterAll(()=>{
-    store,useQuery,schema,selectFullPath,cleanupSelectFullPath,reducerMap=null;
+    store,useQuery,schema,selectFullPath,cleanupSelectFullPath,selectPersonProps,reducerMap=null;
   });
   
   test('should work on scalars', () => {
@@ -328,6 +317,12 @@ describe("getUseFullPath",()=>{
     expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
     act(()=>{store.dispatch({type:'PERSON_ADD',payload:{id:'d',name:'D',best:'b',otherbest:'c',nicknames:["DD","DDD"],friends:['b','c'],pet:'x'}})});
     expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'},d:{id:'d'} }});
+  });
+  test('should work on nested object', () => {
+    const { result } = renderHook(() =>useQuery(`{Person{id,friends{id}}}`));
+    expect(result.current).toEqual(selectPersonProps('a,b,c','id,friends','id'));
+    act(()=>{store.dispatch({type:'PERSON_SUBTRACT',payload:'a'});})
+    expect(result.current).toEqual(selectPersonProps('b,c','id,friends','id'));
   });
   test('should update one with another changed', () => {
     const { result } = renderHook(() =>({
@@ -437,18 +432,61 @@ describe("useSelectPath",()=>{
   });
 });
 
+// const values={
+//   id:['a'/* ,null,undefined */],
+//   friends:['b',{id:'b'},{best:'a'}/* ,null,undefined */],
+//   nicknames:['AA'/* ,null,undefined */],
+//   name:['A'/* ,null,undefined */],
+//   best:['b'/* ,null,undefined */],
+//   blank:[],
+// };
+// const valueStrings=mapToObject(v=>v.map(vv=>!isObjectLike(vv)?vv:('id' in vv?`{id:"${vv.id}"}`:`{best:"${vv.best}"}`)))(values);
+// const args=Object.entries(values).flatMap(([k,valueList])=>{
+//   if (k==='blank')return [[k,'','']];
+//   return valueList.flatMap((v,i)=>[ [k, valueStrings[k][i], v], [k,`[${valueStrings[k][i]}]`,[v]] ]);
+// });
+// const selectionList=['',...Object.keys(values)];
+// const selections=selectionList.flatMap(selection1=>selectionList.map(selection2=>{
+//   if(selection1===selection2&&selection1!=='')return [];
+//   return [selection1,selection2,selection1===''
+//     ?selection2===''
+//       ? ''
+//       : `{${selection2}}`
+//     :selection2===''
+//       ? `{${selection1}}`
+//       : `{${selection1},${selection2}}`];
+// }));
+
+// ['','intersection:'/* ,'subtract:' */].forEach(transducerName=>{
+//   args.forEach(([k,vStr,v],ai)=>{
+//     selections.forEach(([selection1,selection2,selectionStr],si)=>{
+//       if(ai<=1&&si<=1)console.log(` k:`,k,` vStr:`,vStr,` selectionStr:`,selectionStr,);
+//       test(`${transducerName} Person(${transducerName}{${k}:${vStr}})${selectionStr})`,()=>{
+//         const query = gql(`Person(${transducerName}:{${k}:${vStr}})${selectionStr})`);
+//         if(selectionStr===''){
+//           const { result } = renderHook(() =>useQuery(`{Person{id,friends{id}}}`));
+//           expect(result.current).toEqual(selectPersonProps('a,b,c','id,friends','id'));
+//         } else {
+
+//         }
+//       });
+//     });
+//   });
+// });
+
+
 describe("schemaToMutationReducer",()=>{
   // integration test React.useState,redux.combineReducers(schemaReducerMap),schemaToQuerySelector(schema)
-  let store,useQuery,schema,dispatchMutation,selectFullPath,cleanupSelectFullPath;
+  let store,useQuery,schema,dispatchMutation,selectFullPath,cleanupSelectFullPath,rootReducer,state,selectPersonProps;
+  schema = gql`
+    type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
+    type Pet{id:ID,name:String}
+    scalar SomeScalar
+  `;
+  rootReducer = schemaToMutationReducer(schema);
   
   beforeEach(()=>{
-    schema = gql`
-      type Person{id:ID,name:String,best:Person,otherbest:Person,nicknames:[String],friends:[Person],pet:Pet}
-      type Pet{id:ID,name:String}
-      scalar SomeScalar
-    `;
-    const rootReducer = schemaToMutationReducer(schema);
-    store = createStore(rootReducer,{
+    state={
       SomeScalar:1,
       Person:{
         a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['b','c'],pet:'x'},
@@ -459,12 +497,12 @@ describe("schemaToMutationReducer",()=>{
         x:{id:'x',name:'X'},
         y:{id:'y',name:'Y'},
       },
-    });
-
+    }
+    selectPersonProps=(...lists)=>({Person:selectNestedProps(state.Person)(...lists)});
+    store = createStore(rootReducer,state);
     dispatchMutation=(query,vars)=>{
       store.dispatch({type:'mutation',payload:[gql`{${query}}`,vars]});
     };
-
     ({selectFullPath,cleanupSelectFullPath}=getSelectFullPath(schema,gql,store));
     useQuery = pathSelectorToReactHook(selectFullPath,store,useState,useEffect);
   });
@@ -473,62 +511,32 @@ describe("schemaToMutationReducer",()=>{
     cleanupSelectFullPath()
   })
   afterAll(()=>{
-    schema=store=useQuery=dispatchMutation=cleanupSelectFullPath=selectFullPath=undefined;
+    schema=state=store=useQuery=dispatchMutation=cleanupSelectFullPath=selectFullPath=rootReducer=selectPersonProps=undefined;
   });
-  const values={
-    id:['a'/* ,null,undefined */],
-    friends:['b',{id:'b'},{best:'a'}/* ,null,undefined */],
-    nicknames:['AA'/* ,null,undefined */],
-    name:['A'/* ,null,undefined */],
-    best:['b'/* ,null,undefined */],
-    blank:[],
-  };
-  const valueStrings=mapToObject(v=>v.map(vv=>!isObjectLike(vv)?vv:('id' in vv?`{id:"${vv.id}"}`:`{best:"${vv.best}"}`)))(values);
-  const args=Object.entries(values).flatMap(([k,valueList])=>{
-    if (k==='blank')return [[k,'','']];
-    return valueList.flatMap((v,i)=>[ [k, valueStrings[k][i], v], [k,`[${valueStrings[k][i]}]`,[v]] ]);
-  });
-  const selectionList=['',...Object.keys(values)];
-  const selections=selectionList.flatMap(selection1=>selectionList.map(selection2=>{
-    if(selection1===selection2&&selection1!=='')return [];
-    return [selection1,selection2,selection1===''
-      ?selection2===''
-        ? ''
-        : `{${selection2}}`
-      :selection2===''
-        ? `{${selection1}}`
-        : `{${selection1},${selection2}}`];
-  }));
   
-  // ['intersection','subtract'].forEach(transducerName=>{
-  //   args.forEach(([k,vStr,v],a)=>{
-  //     selections.forEach(([selection1,selection2,selectionStr],s)=>{
-  //       // if(a<=1&&s<=1)console.log(` k:`,k,` vStr:`,vStr,` selectionStr:`,selectionStr,);
-  //       // test(`${transducerName} Person(${transducerName}:{${k}:${vStr}})${selectionStr}`,()=>{
-  //       //   if(selections===''){
-
-  //       //   } else {
-
-  //       //   }
-  //       // });
-  //     });
-  //   });
-  // });
   
-  test('Subtract: object subtract objectList value         Person(id:"a",subtract:{"friends":"b"})',()=>{
+  // const filterMapBWithA=(a={x:x=>x})=>b=>{const c={};for (const k in a) c[a]=a[k](b[k],k,b);return c};
+  test('Subtract: object subtract objectList value         Person(intersection:{id:"a"},friends:{subtract:{id:"b"}})',()=>{
     const { result } = renderHook(() =>useQuery(`{Person{id,friends{id}}}`));
-    // IF I HAVEN'T Selected a subset, throw an error
-    // const { result } = renderHook(() =>useQuery(`{Person{id,friends}}`));
-    const Person=store.getState().Person;
-    const s=mapToObject(({id,friends})=>({id,friends:transToObject((o,f)=>o[f]=({id:f}))(friends) }))(Person);
-    // const [a,b,c]=[s.a,s.b,s.c].map(({id,friends})=>({id,friends:transToObject((o,f)=>o[f]=s[f])(friends)}));
-    expect(result.current).toEqual({Person:s});
+    expect(result.current).toEqual(selectPersonProps('a,b,c','id,friends','id'));
     const{a:selectedA,b:selectedB,c:selectedC}=result.current.Person;
-    const{a:stateA,b:stateB,c:stateC}=result.current.Person;
-    act(()=>{dispatchMutation(`Person(intersection:{id:"a"},friends:{subtract:{id:"b"}})`);})
-    expect(result.current).toEqual({Person:{a:{...selectedA,friends:{c:selectedC}},b:selectedB,c:selectedC}});
-    expect(store.getState().Person).toEqual({Person:{a:{...selectedA,friends:['c']},b:selectedB,c:selectedC}});
-  })
+    const{a:stateA,b:stateB,c:stateC}=store.getState().Person;
+    act(()=>{dispatchMutation(`Person(intersection:{id:"a"})`);})
+    // act(()=>{dispatchMutation(`Person(intersection:{id:"a"},friends:{subtract:{id:"b"}})`);})
+    expect(result.current).toEqual({Person:{a:{id:"a",friends:{b:{id:'b'},c:{id:'c'}}}}});
+    expect(store.getState().Person.a).toBe(stateA);
+    expect(store.getState().Person.b).toBe(undefined);
+    expect(store.getState().Person.c).toBe(undefined);
+    act(()=>{
+      dispatchMutation(`Person(friends:{subtract:"b"})`);
+    });
+    expect(store.getState().Person.b).toBe(undefined);
+    expect(store.getState().Person.c).toBe(undefined);
+    expect(store.getState().Person.a).toEqual({...stateA,friends:['c']});
+    expect(result.current.Person.a).toEqual({id:"a",friends:{c:{id:'c'}}});
+    // expect(store.getState().Person.a).toBe(stateA);
+    // expect(result.current.Person.a).toEqual({id:"a",friends:{c:{id:"c"}}});
+  });
   test('Subtract: object subtract scalarList value         Person(id:"a",subtract:{"nicknames":"AA"})',()=>{
     // should split a|bc, apply to a, recombine to abc
     // const { result } = renderHook(() =>useQuery(`{Person{id,nicknames}}`));
@@ -551,11 +559,13 @@ describe("schemaToMutationReducer",()=>{
     const { result } = renderHook(() =>useQuery(`{Person{id}}`));
     expect(result.current).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
     const {b:selectedB,c:selectedC}=result.current.Person;
+    // console.log(` selectedB:`,selectedB,)
     act(()=>{dispatchMutation(`Person(subtract:{id:"a"})`);})
-    expect(result.current).toEqual({Person:{b:{id:'b'}, c:{id:'c'}}});
+    // console.log(selectPersonProps('b,c','id'))
+    expect(result.current).toEqual(selectPersonProps('b,c','id'));
     expect(store.getState().Person.a).toBe(undefined);
-    expect(selectedB).toBe(result.current.Person.b);
-    expect(selectedC).toBe(result.current.Person.c);
+    expect(result.current.Person.b).toBe(selectedB);
+    expect(result.current.Person.c).toBe(selectedC);
     expect(stateB).toBe(store.getState().Person.b);
     expect(stateC).toBe(store.getState().Person.c);
     expect(bCopy).toEqual(store.getState().Person.b);
@@ -607,7 +617,7 @@ describe("schemaToMutationReducer",()=>{
   test('Union: scalarList union scalar                     Pet(union:"x")',()=>{
     expect(true).toBe(true);
   })
-  test('Intersection: object intersection objectList value    Person(id:"a",intersection:{"friends":"b"})',()=>{
+  test('Intersection: object intersection objectList value    Person(intersection:{id:"a"})',()=>{
     const {a:stateA,b:stateB,c:stateC}=store.getState().Person;
     const aCopy = {...stateA};
     const { result } = renderHook(() =>useQuery(`{Person{id}}`));

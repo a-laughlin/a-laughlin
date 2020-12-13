@@ -29,17 +29,15 @@ export const polymorphicListItemTest = (meta,args)=>{
       return true;
     }
   } else if (meta.nodeType==='objectIdList') { // never hit..., though working without it.  TBD why.
-    if(!isObjectLike(args)) return (obj,k)=>console.log(` obj:`,obj,)||k===args;
+    if(!isObjectLike(args)) return (obj,k)=>/* console.log(` args:`,args,` k:`,k,` obj:`,obj,)|| */k===args;
     if(isArray(args)) if (isArray(args)) {
       const has=(new Set(args)).has;
       return (obj,k,origId)=>console.log(` args:`,args,` obj:`,obj,` origId:`,origId,)||has(origVal);
     }
-    if(isObjectLike(args)) {
-      return (obj,k,origId)=>{
-        console.log(` args:`,args,` obj:`,obj,` origId:`,origId,)
-        for (const arg in args) if (obj[arg]!==args[arg]) return false;
-        return true;
-      }
+    return (obj,k,origObj)=>{
+      for (const arg in args) if (origObj[arg]!==args[arg]) return false;
+      console.log(` args:`,args,` obj:`,obj,` k:`,k,` origObj:`,origObj)
+      return true;
     }
   }
   throw new Error(`shouldn't be hit since there are only 3 collection types`);

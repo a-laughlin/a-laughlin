@@ -5,7 +5,7 @@ const getStoreScanner = memoize(store=>{
   return fn=>{
     if(subscribers===undefined){
       subscribers=new Set();
-      curState=lastState=store.getState();
+      curState=store.getState();
       unsubscribeStore=store.subscribe(()=>{
         lastState=curState;
         curState=store.getState();
