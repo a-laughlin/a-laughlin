@@ -10,18 +10,14 @@
 		"eslint.codeActionsOnSave.mode": "problems",
 		"npm.packageManager": "yarn",
 		"npm-intellisense.packageSubfoldersIntellisense": true,
-		"prettier.packageManager": "yarn",
 		"javascript.preferences.quoteStyle": "single",
 		"editor.tabSize": 2,
-		"jestrunner.configPath": "jest.config.js",
-		"debug.node.autoAttach": "off",
 		"debug.showInStatusBar": "never",
 		"debug.javascript.autoAttachFilter": "smart",
 		"eslint.lintTask.enable": true,
 		"eslint.nodePath": "/Users/adam/.nvm/versions/node/v14.5.0/bin/node",
 		"jestRunIt.testMatchPatterns": [
 			"**/*.{spec,test}.{js,ts,jsx,tsx}",
-			// "**/__test__/*.{js,ts,jsx,tsx}"
 		],
 	}
 }

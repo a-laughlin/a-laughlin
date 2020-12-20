@@ -12,35 +12,59 @@ export const union=(args={},meta)=>nextReducer=>nextReducer;
 
 export const complement=(args={},meta)=>nextReducer=>nextReducer;
 
-
+const debugPTest=false;
 export const polymorphicListItemTest = (meta,args)=>{
+  debugPTest && console.log(` meta.nodeType:`,meta.nodeType,` meta.fieldName:`,meta.fieldName,` args:`,args,)
   if(meta.nodeType==='objectScalarList'){
     if(!isObjectLike(args)) return (v,k)=>v===args;
     if(isArray(args)) return (new Set(args)).has;
     throw new Error(`can't compare scalar list values with object argument ${JSON.stringify(args)}`);
   } else if (meta.nodeType==='objectObjectList'){
-    if(!isObjectLike(args)) return (obj,k)=>k===args;
+    if(!isObjectLike(args)) return (obj,k,currentStateObj)=>{
+      debugPTest && console.log(`objectObjectList scalar args:`,args,` obj:`,obj,` k:`,k,` currentStateObj:`,currentStateObj,);
+      return k===args
+    };
     if (isArray(args)) {
       const has=(new Set(args)).has;
-      return (v,k)=>has(k);
+      return (obj,k,currentStateObj)=>{
+        debugPTest && console.log(`objectObjectList array args:`,args,` obj:`,obj,` k:`,k,` currentStateObj:`,currentStateObj,)
+        return has(k);
+      };
     }
-    return (obj,k,origObj)=>{
-      for (const arg in args) if (origObj[arg]!==args[arg]) return false;
+    return (obj,k,currentStateObj)=>{
+      debugPTest && console.log(`objectObjectList object args:`,args,` obj:`,obj,` k:`,k,` currentStateObj:`,currentStateObj,)
+      if(currentStateObj===undefined)return false;
+      for (const arg in args) if (currentStateObj[arg]!==args[arg]) return false;
       return true;
     }
   } else if (meta.nodeType==='objectIdList') { // never hit..., though working without it.  TBD why.
-    if(!isObjectLike(args)) return (obj,k)=>/* console.log(` args:`,args,` k:`,k,` obj:`,obj,)|| */k===args;
+    if(!isObjectLike(args)) return (id,k,currentStateObj)=>{
+      debugPTest && console.log(`objectIdList scalar args:`,args,` id:`,id,` k:`,k,` currentStateObj:`,currentStateObj,)
+      return args===id;
+    }
     if(isArray(args)) if (isArray(args)) {
       const has=(new Set(args)).has;
-      return (obj,k,origId)=>console.log(` args:`,args,` obj:`,obj,` origId:`,origId,)||has(origVal);
+      return (id,k,currentStateObj)=>{
+        debugPTest && console.log(`objectIdList array: args:`,args,` id:`,id,` k:`,k,` currentStateObj:`,currentStateObj,)
+        return has(id);
+      }
     }
-    return (obj,k,origObj)=>{
-      for (const arg in args) if (origObj[arg]!==args[arg]) return false;
-      console.log(` args:`,args,` obj:`,obj,` k:`,k,` origObj:`,origObj)
-      return true;
+    return (id,k,currentStateObj)=>{
+      debugPTest && console.log(`objectIdList object: args:`,args,` id:`,id,` k:`,k,` currentStateObj:`,currentStateObj);
+      return args[meta.idKey]===id;
+      // for (const arg in args) if (currentStateObj[arg]!==args[arg]) return false;
+      // return true;
     }
+  } else {
+    // debugPTest && console.log(`${meta.nodeType} scalar: args:`,args);
+    if(!isObjectLike(args)) return (v,k,currentStateObj)=>{
+      debugPTest && console.log(`${meta.nodeType} scalar: args:`,args,` v:`,v,` k:`,k,` currentStateObj:`,currentStateObj);
+      return v===args;
+    }
+    if(isArray(args)) return (new Set(args)).has;
+    throw new Error(`can't compare scalar list values with object argument ${JSON.stringify(args)}`);
   }
-  throw new Error(`shouldn't be hit since there are only 3 collection types`);
+  throw new Error(`shouldn't be hit since there are only 3 collection types ${JSON.stringify({meta,args,nodeType:meta.nodeType,fieldname:meta.fieldName})}`);
 }
 
 export const ADD = nextReducer=>(prevState,action)=>{

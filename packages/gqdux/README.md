@@ -4,14 +4,12 @@ Simple, Redux-native GraphQL utilities optimized for developer speed.
 
 ## Philosophy
 
-The rate we can build things depends on the number and topology of graphs we need to think about and change, from run-time flow control graphs (i.e., cyclomatic complexity) to developer past experience and language graphs (i.e., semiotic complexity), and others in between.  GQdux minimizes each graph to reduce developer time per feature.
+The rate we can build things depends on the number and topology of graphs we need to think about and change, from run-time flow control graphs (i.e., cyclomatic complexity) to developer past experience and language graphs (i.e., semiotic complexity), and others in between.  GQdux maximizes developer time per feature by minimizing the number of graphs to interact with.
 
 Graphs it addresses:
 flow control
 semantic network
-syntactic network
-pragmatic network
-experience network
+semiotic network
 component structure
 inheritance tree
 scope tree
@@ -28,36 +26,38 @@ Incremental Adoptability
 - No Graphql server necessary. Use existing REST, RPC, Web Socket, and GraphQL server middleware.
 - Flexible property partitioning - send only what each server needs
 
-Fast prototypes require speed.  We can always optimize for performance later.
-
-## Tradeoffs
-
-### Measurement
+Concerns Separation
 
 ## Constraints
 
 - constraints:
-  - always creates a collection for objects, for a few reasons:
+  - always creates a collection for objects:
     - We often start with a single object, and need a list of them. Starting with a list is more flexible.
     - We can do anything with 1-length list that we can with a single object
-    - Eliminating unnecessary decisions improves speed.
+    
 
 ## Installing
 
 ## Quick Start (Redux Only)
 
+```js
+import {createStore} from 'redux';
+import {initReducer,initGqdux} from 'gqdux';
+
+const {gqdux:g} = initGqdux({gql,schema,store:createStore(initReducer(schema))});
+
+// mutation
+Collection                  g`Person(intersect:{id:"a"})`
+Prop                        g`Person(friends:{intersect:{id:"b"}})`
+```
+
 Try it [on codepen](link)
-
-// import {schemaToQuerySelector} from 'https://unpkg.com/gqdux@0.0.28';
-// import gql from '<https://unpkg.com/graphql-tag-bundled@0.0.8/es/graphql-tag>-
-
-// import {schemaToQuerySelector} from 'https://unpkg.com/gqdux@0.0.28';
-// import gql from '<https://unpkg.com/graphql-tag-bundled@0.0.8/es/graphql-tag>-
 
 ## Quick Start (Redux + React)
 
 ## TODO
 
+- set up build with snowpack
 - convert select to use the query tree instead of a separate walk
 - make selectPath always return a list for lists, not condense down single objects
 - dispatch >1 change in batch
@@ -68,12 +68,13 @@ Try it [on codepen](link)
 
 ## API
 
-`gqdux('Person{id}',{...variables...})` equivalents: redux selector, graphql query 
+
+`gqdux('Person{id}',{...variables...})` equivalents: redux selector, graphql query
 `selectFullPath('graphql string',{...variables...})` equivalents: redux selector, graphql query 
 `change('graphql string',{...variables...})` equivalents: redux selector, graphql query 
 `selectorToReactHook`
 
-## GQL Syntax (currently a subset)
+## GQL Syntax (intentionally a subset)
 
 // Graphql isn't designed as a data query language, but an API query language.  Attempts at making it one get [complicated](https://hasura.io/docs/1.0/graphql/manual/queries/query-filters.html#fetch-if-the-single-nested-object-defined-via-an-object-relationship-satisfies-a-condition).
 In the #pitofsuccess spirit, I provide a few standard terms
@@ -90,14 +91,14 @@ Standard set operations for simplicity and to minimize mismatch between author a
 ### Operation Syntax (2 ways to use)
 
 ```js
-const reducer = initReducer(schema);
-const store = createStore(reducer);
-const {gqdux:g} = initGqdux({gql,schema,store});
+import {createStore} from 'redux';
+import {initReducer,initGqdux} from 'gqdux';
 
-// selection
+const {gqdux:g} = initGqdux({gql,schema,store:createStore(initReducer(schema))});
+
+// mutation
 Collection                  g`Person(intersect:{id:"a"})`
 Prop                        g`Person(friends:{intersect:{id:"b"}})`
-Collection + Prop           g`Person(intersect:{id:"a"},friends:{intersect:{id:"b"}})`
 ```
 
 ### Select/Change Syntax (2)
@@ -121,6 +122,7 @@ TODO get this test working
 import { render } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
 import gql from 'graphql-tag-bundled';
+
 import {schemaToRootReducer,getSelectPath,mapBoundaryValueCombinations} from 'gqdux';
 import {createStore} from 'redux';
 import {useState,useEffect} from 'react';

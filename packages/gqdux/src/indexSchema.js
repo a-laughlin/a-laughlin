@@ -68,7 +68,7 @@ export default memoize(schema=>{
   setImmutableNonEnumProp(result.selectionMeta._query,'defKind','object');
   setImmutableNonEnumProp(result.selectionMeta._query,'nodeType','object');
   // defineHiddenProp(result.selectionMeta._query,'objectFields',[]);
-  // defineHiddenProp(result.selectionMeta._query,'fieldName','_query');
+  setImmutableNonEnumProp(result.selectionMeta._query,'fieldName','_query');
   // defineHiddenProp(result.selectionMeta._query,'fieldKindName','_query');
   // defineHiddenProp(result.selectionMeta._query,'idKey','_query');
   const builtins=['ID','Int','Float','String','Boolean'].reduce((o,k)=>(o[k]=true) && o,{});
@@ -82,6 +82,9 @@ export default memoize(schema=>{
       setImmutableNonEnumProp(fMeta,'isNonNullList',true);
       setImmutableNonEnumProp(fMeta,'fieldName',defName);
       setImmutableNonEnumProp(fMeta,'fieldKindName','object');
+    } else {
+      setImmutableNonEnumProp(fMeta,'fieldName',defName);
+      setImmutableNonEnumProp(fMeta,'fieldKindName','scalar');
     }
   });
   const getNodeType = ({isList,defKind,defName,fieldName,fieldKindName})=>{

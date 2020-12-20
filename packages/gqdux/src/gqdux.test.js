@@ -12,6 +12,30 @@ import {
 import { renderHook, act } from '@testing-library/react-hooks'
 import gql from 'graphql-tag-bundled';
 import { isObjectLike, mapToObject, over, pick, pipe, tdTap, transToObject } from '@a-laughlin/fp-utils';
+
+import { CustomConsole, LogType, LogMessage } from '@jest/console';
+import {ErrorWithStack, formatTime} from 'jest-util';
+function simpleFormatter(type, message){
+    const TITLE_INDENT = '    ';
+    const CONSOLE_INDENT = TITLE_INDENT + '  ';
+    const rawStack = new ErrorWithStack(undefined).stack;
+
+    const origin = rawStack
+      .split('\n')[5];
+      // .slice(stackLevel)
+      // .filter(Boolean)
+      // .join('\n');
+    // return JSON.stringify(message).replace(/"/g,'').replace(/,/g,', ')
+    // return message.split(/\n/).map(line => CONSOLE_INDENT + line).join('\n');
+    // return message+origin;
+    // if (type === 'error')return message;
+    return JSON.stringify(message.split(/\n\s*/).join('')).replace(/"|'/g,'').replace(/undefined/g,'u')+'  at: '+origin.replace(/^.*\((.+)\)/,'$1');
+}
+
+
+global.console = new CustomConsole(process.stdout, process.stderr, simpleFormatter);
+
+
 const mapUnion=(mapper={x:x=>x})=>source=>{const dest={};for (const k in source) dest[k]=k in mapper?mapper[k](source[k],k,source):source[k];return dest};
 const mapPropsIntersection=(mapper={x:x=>x})=>source=>{const dest={};for (const k in mapper) dest[k]=mapper[k](source[k],k,source);return dest};
 // const mapPropsIntersection=(a={x:x=>x})=>b=>{const c={};for (const k in a) c[k]=a[k](b[k],k,b);return c};
@@ -141,6 +165,11 @@ describe("schemaToQuerySelector", () => {
     const result1 = queryFn(state);
     expect(result1).toEqual({Person:{a:{id:'a'}, b:{id:'b'}, c:{id:'c'}}});
   });
+  it(`should denormalize item subsets with constants Person(intersection:{id:"a"}){best{id}}`,()=>{
+    const query = gql(`{Person(intersection:{id:"a"}){best{id}}}`);
+    const result1=querier(query)(state);
+    expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
+  });
   it("should denormalize item subsets with variables",()=>{
     const query = gql(`{Person(intersection:{id:$id}){best{id}}}`);
     const result1 = querier(query,{id:'a'})(state);
@@ -161,11 +190,7 @@ describe("schemaToQuerySelector", () => {
     const result1=querier(query)(state);
     expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
   });
-  it("should denormalize item subsets with constants",()=>{
-    const query = gql(`{Person(intersection:{id:"a"}){best{id}}}`);
-    const result1=querier(query)(state);
-    expect(result1).toEqual({Person:{a:{best:{id:'b'}}}});
-  });
+
   it("should denormalize lists of ids",()=>{
     const query = gql(`{Person{id,friends{id}}}`);
     const result1=querier(query)(state);
@@ -519,23 +544,41 @@ describe("schemaToMutationReducer",()=>{
   test('Subtract: object subtract objectList value         Person(intersection:{id:"a"},friends:{subtract:{id:"b"}})',()=>{
     const { result } = renderHook(() =>useQuery(`{Person{id,friends{id}}}`));
     expect(result.current).toEqual(selectPersonProps('a,b,c','id,friends','id'));
-    const{a:selectedA,b:selectedB,c:selectedC}=result.current.Person;
+    const{a:denormedA,b:denormedB,c:denormedC}=result.current.Person;
     const{a:stateA,b:stateB,c:stateC}=store.getState().Person;
+    // act(()=>{dispatchMutation(`Person(intersection:{id:"a"},friends:{subtract:"b"})`);})
+    
+    act(()=>{dispatchMutation(`Person(friends:{subtract:"b"})`); });
+    // expect(store.getState().Person).toEqual({
+    //   a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['c'],pet:'x'},
+    //   b:stateB,
+    //   c:stateC,
+    // });
+    expect(store.getState().Person.a).not.toBe(stateA);
+    expect(store.getState().Person.b).toBe(stateB);
+    expect(store.getState().Person.c).toBe(stateC);
+    expect(result.current.Person.a).not.toBe(denormedA);
+    expect(result.current.Person.b).toBe(denormedB);
+    expect(result.current.Person.c).toBe(denormedC);
+    expect(result.current).toEqual({Person:{a:{id:"a",friends:{c:{id:'c'}}},b:denormedB,c:denormedC}});
+    act(()=>{dispatchMutation(`Person(subtract:"c")`); });
+    // does not cascade changes yet, so keep props
+    expect(store.getState().Person).toEqual({
+      a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['c'],pet:'x'},
+      b:stateB,
+    });
+    expect(result.current).toEqual({Person:{a:{id:"a",friends:{c:{id:'c'}}},b:{id:"b",friends:{a:{id:"a"}}}}});
+    expect(store.getState().Person.a).toBe(stateA);
+    expect(store.getState().Person.b).toBe(stateB);
+    expect(store.getState().Person.c).toBe(undefined);
     act(()=>{dispatchMutation(`Person(intersection:{id:"a"})`);})
-    // act(()=>{dispatchMutation(`Person(intersection:{id:"a"},friends:{subtract:{id:"b"}})`);})
-    expect(result.current).toEqual({Person:{a:{id:"a",friends:{b:{id:'b'},c:{id:'c'}}}}});
+    expect(store.getState().Person).toEqual({
+      a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['c'],pet:'x'},
+    });
+    expect(result.current).toEqual({Person:{a:{id:"a",friends:{c:{id:'c'}}},b:{id:"b",friends:{a:{id:"a"}}}}});
     expect(store.getState().Person.a).toBe(stateA);
     expect(store.getState().Person.b).toBe(undefined);
     expect(store.getState().Person.c).toBe(undefined);
-    act(()=>{
-      dispatchMutation(`Person(friends:{subtract:"b"})`);
-    });
-    expect(store.getState().Person.b).toBe(undefined);
-    expect(store.getState().Person.c).toBe(undefined);
-    expect(store.getState().Person.a).toEqual({...stateA,friends:['c']});
-    expect(result.current.Person.a).toEqual({id:"a",friends:{c:{id:'c'}}});
-    // expect(store.getState().Person.a).toBe(stateA);
-    // expect(result.current.Person.a).toEqual({id:"a",friends:{c:{id:"c"}}});
   });
   test('Subtract: object subtract scalarList value         Person(id:"a",subtract:{"nicknames":"AA"})',()=>{
     // should split a|bc, apply to a, recombine to abc
