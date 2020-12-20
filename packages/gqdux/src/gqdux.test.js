@@ -545,28 +545,38 @@ describe("schemaToMutationReducer",()=>{
     const { result } = renderHook(() =>useQuery(`{Person{id,friends{id}}}`));
     expect(result.current).toEqual(selectPersonProps('a,b,c','id,friends','id'));
     const{a:denormedA,b:denormedB,c:denormedC}=result.current.Person;
-    const{a:stateA,b:stateB,c:stateC}=store.getState().Person;
+    let{a:stateA,b:stateB,c:stateC}=store.getState().Person;
     // act(()=>{dispatchMutation(`Person(intersection:{id:"a"},friends:{subtract:"b"})`);})
     
     act(()=>{dispatchMutation(`Person(friends:{subtract:"b"})`); });
-    // expect(store.getState().Person).toEqual({
-    //   a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['c'],pet:'x'},
-    //   b:stateB,
-    //   c:stateC,
-    // });
-    expect(store.getState().Person.a).not.toBe(stateA);
-    expect(store.getState().Person.b).toBe(stateB);
-    expect(store.getState().Person.c).toBe(stateC);
-    expect(result.current.Person.a).not.toBe(denormedA);
-    expect(result.current.Person.b).toBe(denormedB);
-    expect(result.current.Person.c).toBe(denormedC);
-    expect(result.current).toEqual({Person:{a:{id:"a",friends:{c:{id:'c'}}},b:denormedB,c:denormedC}});
-    act(()=>{dispatchMutation(`Person(subtract:"c")`); });
-    // does not cascade changes yet, so keep props
     expect(store.getState().Person).toEqual({
       a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['c'],pet:'x'},
       b:stateB,
+      c:{id:'c',name:'C',best:'b',friends:[],nicknames:[]},
     });
+    expect(store.getState().Person.a).not.toBe(stateA);
+    stateA=store.getState().Person.a;
+    expect(store.getState().Person.b).toBe(stateB);
+    expect(store.getState().Person.c).not.toBe(stateC);
+    stateC=store.getState().Person.c;
+    expect(result.current.Person.a).not.toBe(denormedA);
+    expect(result.current.Person.b).toBe(denormedB);
+    expect(result.current.Person.c).not.toBe(denormedC);
+    expect(result.current).toEqual({Person:{a:{id:"a",friends:{c:{id:'c'}}},b:denormedB,c:{id:"c",friends:{}}}});
+    act(()=>{dispatchMutation(`Person(subtract:"c")`); });
+    // does not cascade changes yet, so keep props
+    expect(store.getState()).toEqual({
+      SomeScalar:1,
+      Pet:{
+        x:{id:'x',name:'X'},
+        y:{id:'y',name:'Y'},
+      },
+      Person:{
+        a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['c'],pet:'x'},
+        b:stateB,
+      }
+    });
+    
     expect(result.current).toEqual({Person:{a:{id:"a",friends:{c:{id:'c'}}},b:{id:"b",friends:{a:{id:"a"}}}}});
     expect(store.getState().Person.a).toBe(stateA);
     expect(store.getState().Person.b).toBe(stateB);
@@ -575,7 +585,7 @@ describe("schemaToMutationReducer",()=>{
     expect(store.getState().Person).toEqual({
       a:{id:'a',name:'A',best:'b',otherbest:'c',nicknames:["AA","AAA"],friends:['c'],pet:'x'},
     });
-    expect(result.current).toEqual({Person:{a:{id:"a",friends:{c:{id:'c'}}},b:{id:"b",friends:{a:{id:"a"}}}}});
+    expect(result.current).toEqual({Person:{a:{id:"a",friends:{c:{id:'c'}}}}});
     expect(store.getState().Person.a).toBe(stateA);
     expect(store.getState().Person.b).toBe(undefined);
     expect(store.getState().Person.c).toBe(undefined);

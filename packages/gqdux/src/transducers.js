@@ -12,7 +12,7 @@ export const union=(args={},meta)=>nextReducer=>nextReducer;
 
 export const complement=(args={},meta)=>nextReducer=>nextReducer;
 
-const debugPTest=false;
+const debugPTest=false//meta.nodeType==='objectIdList';
 export const polymorphicListItemTest = (meta,args)=>{
   debugPTest && console.log(` meta.nodeType:`,meta.nodeType,` meta.fieldName:`,meta.fieldName,` args:`,args,)
   if(meta.nodeType==='objectScalarList'){
@@ -38,11 +38,11 @@ export const polymorphicListItemTest = (meta,args)=>{
       return true;
     }
   } else if (meta.nodeType==='objectIdList') { // never hit..., though working without it.  TBD why.
-    if(!isObjectLike(args)) return (id,k,currentStateObj)=>{
+    if(!isObjectLike(args)) return ((id,k,currentStateObj)=>{
       debugPTest && console.log(`objectIdList scalar args:`,args,` id:`,id,` k:`,k,` currentStateObj:`,currentStateObj,)
       return args===id;
-    }
-    if(isArray(args)) if (isArray(args)) {
+    })
+    if (isArray(args)) {
       const has=(new Set(args)).has;
       return (id,k,currentStateObj)=>{
         debugPTest && console.log(`objectIdList array: args:`,args,` id:`,id,` k:`,k,` currentStateObj:`,currentStateObj,)
@@ -51,18 +51,9 @@ export const polymorphicListItemTest = (meta,args)=>{
     }
     return (id,k,currentStateObj)=>{
       debugPTest && console.log(`objectIdList object: args:`,args,` id:`,id,` k:`,k,` currentStateObj:`,currentStateObj);
-      return args[meta.idKey]===id;
-      // for (const arg in args) if (currentStateObj[arg]!==args[arg]) return false;
-      // return true;
+      for (const arg in args) if (currentStateObj[arg]!==args[arg]) return false;
+      return true;
     }
-  } else {
-    // debugPTest && console.log(`${meta.nodeType} scalar: args:`,args);
-    if(!isObjectLike(args)) return (v,k,currentStateObj)=>{
-      debugPTest && console.log(`${meta.nodeType} scalar: args:`,args,` v:`,v,` k:`,k,` currentStateObj:`,currentStateObj);
-      return v===args;
-    }
-    if(isArray(args)) return (new Set(args)).has;
-    throw new Error(`can't compare scalar list values with object argument ${JSON.stringify(args)}`);
   }
   throw new Error(`shouldn't be hit since there are only 3 collection types ${JSON.stringify({meta,args,nodeType:meta.nodeType,fieldname:meta.fieldName})}`);
 }
