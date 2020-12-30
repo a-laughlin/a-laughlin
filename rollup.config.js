@@ -82,7 +82,8 @@ const modules = readdirSync('packages')
       const dev = {
         format,
         entryFileNames,
-        compact:true,file:join(outDir,format,`${dir}.js`),
+        compact:true,
+        file:join(outDir,format,`${dir}.js`),
         // based on https://lihautan.com/12-line-rollup-plugin/
         plugins:[{name:'write-package.json', generateBundle(){
           mkdirSync(join(outDir,format),{recursive: true});
@@ -145,16 +146,17 @@ const modules = readdirSync('packages')
       if (!('author' in srcPkg)){
         writeFileSync(join(inDir,'package.json'),JSON.stringify(pkg,null,2));
       }
-
-      // main es module with type commonjs is odd, but it seems to work
-      // but https://2ality.com/2019/10/hybrid-npm-packages.html#option-3%3A-bare-import-esm%2C-deep-import-commonjs-with-backward-compatibility
-      writeFileSync(join(outDir,'package.json'),JSON.stringify({
+      const outputJSON = JSON.stringify({
+        ...pkg,
         main: `./es/${dir}.js`,
+        // module:`es/`,
         type: `commonjs`,
         // "module":`./es/${dir}.js`,
         // "browser": `./umd/${dir}.js`,
-        ...pkg,
-      },null,2));
+      },null,2);
+      // main es module with type commonjs is odd, but it seems to work
+      // but https://2ality.com/2019/10/hybrid-npm-packages.html#option-3%3A-bare-import-esm%2C-deep-import-commonjs-with-backward-compatibility
+      writeFileSync(join(outDir,'package.json'),outputJSON);
     }}
   ],
 }))
