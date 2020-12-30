@@ -1,12 +1,12 @@
 {
-  "bundleSize": 107254,
-  "bundleOrigSize": 334071,
+  "bundleSize": 107272,
+  "bundleOrigSize": 334083,
   "bundleReduction": 67.89,
   "modules": [
     {
       "id": "/node_modules/xstream/index.js",
       "size": 52736,
-      "origSize": 172307,
+      "origSize": 172319,
       "renderedExports": [
         "__moduleExports"
       ],
@@ -30,8 +30,8 @@
         "/node_modules/xstream/extra/split.js",
         "/node_modules/xstream/extra/throttle.js"
       ],
-      "percent": 49.17,
-      "reduction": 69.39
+      "percent": 49.16,
+      "reduction": 69.4
     },
     {
       "id": "/node_modules/xstream/extra/tween.js",
@@ -80,7 +80,7 @@
     },
     {
       "id": "/packages/observable-utils/src/observable-utils.js",
-      "size": 4017,
+      "size": 4035,
       "origSize": 5196,
       "renderedExports": [
         "xs",
@@ -143,8 +143,8 @@
       ],
       "removedExports": [],
       "dependents": [],
-      "percent": 3.75,
-      "reduction": 22.69
+      "percent": 3.76,
+      "reduction": 22.34
     },
     {
       "id": "/node_modules/xstream/extra/fromDiagram.js",

@@ -1,17 +1,17 @@
 -----------------------------
 Rollup File Analysis
 -----------------------------
-bundle size:    107.254 KB
-original size:  334.071 KB
+bundle size:    107.272 KB
+original size:  334.083 KB
 code reduction: 67.89 %
 module count:   21
 
 ████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░
 file:            /node_modules/xstream/index.js
-bundle space:    49.17 %
+bundle space:    49.16 %
 rendered size:   52.736 KB
-original size:   172.307 KB
-code reduction:  69.39 %
+original size:   172.319 KB
+code reduction:  69.4 %
 dependents:      15
   - /node_modules/xstream/extra/concat.js
   - /node_modules/xstream/extra/fromDiagram.js
@@ -74,10 +74,10 @@ unused exports:  0
 
 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 file:            /packages/observable-utils/src/observable-utils.js
-bundle space:    3.75 %
-rendered size:   4.017 KB
+bundle space:    3.76 %
+rendered size:   4.035 KB
 original size:   5.196 KB
-code reduction:  22.69 %
+code reduction:  22.34 %
 dependents:      0
 used exports:    57
   - xs
