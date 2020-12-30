@@ -1,11 +1,11 @@
 {
   "name": "@a-laughlin/observable-utils",
-  "version": "0.0.29",
+  "version": "0.0.30",
   "description": "functional reactive programming utils (aka streams,observables)",
   "homepage": "",
-  "main":"src/observable-utils.js",
-  "module":"src/observable-utils.js",
-  "type":"module",
+  "main": "src/observable-utils.js",
+  "module": "src/observable-utils.js",
+  "type": "module",
   "dependencies": {
     "xstream": "^11.2.0"
   },
