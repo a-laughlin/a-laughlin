@@ -1,13 +1,13 @@
 {
   "name": "@a-laughlin/react-utils",
-  "version": "0.0.30",
+  "version": "0.0.31",
   "description": "react utils",
   "homepage": "",
   "main": "src/react-utils.js",
   "module": "src/react-utils.js",
   "type": "module",
   "dependencies": {
-    "@a-laughlin/fp-utils": "^0.0.30",
+    "@a-laughlin/fp-utils": "^0.0.31",
     "react": ">=16.9"
   },
   "gitHead": "57f810435642e947a90f07c98b91f0ee8bdb1318",

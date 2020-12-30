@@ -1,7 +1,7 @@
 {
   "name": "@a-laughlin/style-string-to-object",
   "description": "short style syntax for efficient object styles",
-  "version": "0.0.30",
+  "version": "0.0.31",
   "dependencies": {
     "lodash-es": "^4"
   },
